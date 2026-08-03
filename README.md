@@ -1,4 +1,4 @@
-# robium-examples
+# robium-apps
 
 Polished, battle-tested robotics example applications built with the
 [robium](https://github.com/robium-ai/robium) Claude Code plugin.
