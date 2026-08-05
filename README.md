@@ -10,4 +10,6 @@ headless in Docker).
 
 ## Apps
 
-_(none promoted yet — coming soon)_
+| App | What it shows | Stack | Try it |
+| --- | --- | --- | --- |
+| [indoor-navigation](indoor-navigation/) | SLAM builds a map, Nav2 drives clicked goals, fully in sim, viewer bundled | ROS 2 Jazzy · Nav2 · slam_toolbox · Gazebo Harmonic · Docker | `make build && make demo` → http://localhost:8765 |

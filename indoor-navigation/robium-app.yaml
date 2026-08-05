@@ -1,0 +1,59 @@
+schema_version: "1"
+id: indoor-navigation
+name: Indoor navigation (TurtleBot 3 + Nav2)
+summary: SLAM builds a map, Nav2 drives clicked goals, fully in sim, viewer bundled.
+version: 1.0.0
+status: stable
+license: MIT
+tags: [navigation, ros2, nav2, gazebo, slam, foxglove, lichtblick]
+
+runtime:
+  kind: docker
+  entrypoint: make demo
+
+verbs:
+  build: make build
+  demo: make demo
+  smoke: make smoke
+  check: make check
+  down: make down
+
+scenarios:
+  sim:
+    command: make sim
+    summary: headless simulation bringup only, no SLAM or Nav2
+  slam:
+    command: make slam
+    summary: drive the mapping route and save the map
+  nav:
+    command: make nav
+    summary: navigation on the saved map, initial pose set manually
+
+requirements:
+  hardware: []
+  gpu: none
+  network: optional
+
+demo:
+  default_scenario: demo
+  hosted: true
+  orchestrator:            # source for demo-orchestrator demos/<demo_id>.json
+    demo_id: nav-trial     # legacy id kept by live-demo infra through the rename
+    title: TurtleBot 3 autonomous navigation (ROS 2 + Nav2 + Gazebo)
+    image: indoor-navigation:latest
+    command: [/entrypoint.sh, ros2, launch, indoor_nav_bringup, demo.launch.py]
+    gateway_port: 8765
+    ready_log: DEMO READY
+    max_instances: 3
+    session_seconds: 1800
+    env:
+      GZ_RELAY: 127.0.0.1
+      GZ_IP: 127.0.0.1
+      FASTDDS_BUILTIN_TRANSPORTS: UDPv4
+      ROS_DOMAIN_ID: "42"
+      TURTLEBOT3_MODEL: burger
+  estimated_startup_seconds: 45
+
+artifacts:
+  thumbnail: null
+  case_study: docs/case-study.md
