@@ -1,0 +1,67 @@
+schema_version: "1"
+id: imitation-manipulation
+name: Imitation manipulation (ACT on PushT)
+summary: ACT learns PushT from human demos; browse its checkpoint ladder and probe generalization on blocks it never saw, live in the browser.
+version: 2.0.0
+status: stable
+license: MIT
+tags: [imitation-learning, lerobot, act, pusht, gradio, rerun, generalization, mps]
+
+runtime:
+  kind: uv
+  entrypoint: make demo
+
+verbs:
+  build: make sync
+  demo: make demo
+  smoke: make smoke
+  check: make check
+
+scenarios:
+  fetch-artifacts:
+    command: make fetch-artifacts
+    summary: pull the pretrained ladder + eval bundle from the public Hub repo (no token)
+  demo-image:
+    command: make demo-image
+    summary: build the self-contained demo container (fetches artifacts at build time)
+  demo-smoke:
+    command: make demo-smoke
+    summary: the demo ship bar (DEMO READY + T and out-of-distribution episodes via the Gradio API)
+  train-baseline:
+    command: make train-baseline
+    summary: 10k-step ACT train for meaningful metrics (~21 min on M2 Pro MPS)
+  baseline-eval:
+    command: make baseline-eval
+    summary: evaluate the 10k baseline over 10 episodes
+  train-ladder:
+    command: make train-ladder
+    summary: rebuild the demo checkpoint ladder (1k/3k/5k rungs, ~10 min)
+  eval-ladder:
+    command: make eval-ladder
+    summary: eval every ladder rung and write outputs/demo/ladder.json
+
+requirements:
+  hardware: []
+  gpu: optional          # MPS accelerates; CPU fallback works (the container is CPU)
+  network: required      # fetch-artifacts pulls ~794 MB; smoke pulls lerobot/pusht (~186 MB)
+
+demo:
+  default_scenario: demo # needs artifacts in outputs/ (make fetch-artifacts, or train them)
+  hosted: false          # v2 demo is session-blind (plain Gradio app; per-user isolation is
+                         # the container boundary). The legacy /demos/manip-trial page spoke
+                         # the retired session-gateway contract; re-enable hosted once the
+                         # website island supports container-level sessions for HTTP apps.
+  orchestrator:          # forward config for demos/<demo_id>.json when hosted returns
+    demo_id: manip-trial # legacy id kept by live-demo infra through the rename
+    title: ACT imitation learning on PushT — checkpoint ladder + generalization probes
+    image: imitation-manipulation:latest
+    command: [python, -m, imitation_manipulation.demo.app]
+    gateway_port: 8765
+    ready_log: DEMO READY
+    max_instances: 2
+    session_seconds: 1800
+  estimated_startup_seconds: 30
+
+artifacts:
+  thumbnail: assets/thumbnail.png
+  case_study: docs/case-study.md
