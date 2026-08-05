@@ -1,0 +1,82 @@
+<mujoco model="scene_pick">
+  <!-- Our own file, tracked in git via a .gitignore negation (this directory
+       is otherwise the vendored menagerie dump — ~18MB of binary STL meshes,
+       repopulated by `make assets` and NOT committed). It must live
+       alongside scene_box.xml: MuJoCo resolves <include> and mesh paths
+       relative to the including file's own directory, so this cannot move
+       up a level without breaking so101.xml's mesh references.
+
+       The vendored scene_box.xml ships only a wrist-mounted camera; it has
+       no third-person overview camera at all. Rather than edit the vendored
+       XML in place (which would break `make assets`' idempotency), this file
+       includes it unmodified and adds the missing "scene" camera here. -->
+  <include file="scene_box.xml"/>
+
+  <worldbody>
+    <!-- Fixed third-person view of the workspace, statically aimed at the
+         cube-spawn/bin area's midpoint. Originally mode="targetbody"
+         target="box", but that mode re-runs MuJoCo's camera-tracking
+         SMOOTHING FILTER on every update_scene() call, so its pose is
+         call-history-dependent even when the physics state is bit-identical
+         (confirmed empirically: env.reset(seed=X) twice in a row produced
+         non-bit-identical "scene" frames -- up to 16-85 LSB drift over ~17%
+         of pixels -- purely from this camera's dynamic tracking; the
+         "fixed"-mode wrist_cam was always exactly reproducible). A static
+         xyaxes orientation, computed once, has none of that: it is plain
+         forward kinematics like wrist_cam, so it renders bit-identically
+         for identical qpos. xyaxes derived from pos=(0.9,-0.9,0.7) looking
+         at (0.335,0.05,0.05) -- the midpoint of CUBE_SPAWN_CENTER and the
+         bin's center -- with world +z as up. -->
+    <camera name="scene" pos="0.9 -0.9 0.7"
+            xyaxes="0.859482 0.511166 -0.000000 -0.259116 0.435682 0.861998"/>
+
+    <!-- Open-top bin: the "in the bin" half of the task. Static (no freejoint) so
+         it cannot be knocked around. Walls are thin to keep contacts cheap.
+         pos is a starting guess from the task brief; validated (and, if needed,
+         moved) by Step 3a's IK reachability probe -- see config.py comment on
+         CUBE_SPAWN_CENTER and the task-4 report for the final coordinates. -->
+    <body name="bin" pos="0.35 0.16 0.0">
+      <geom name="bin_floor" type="box" size="0.06 0.06 0.005" pos="0 0 0.005"
+            rgba="0.8 0.2 0.2 1"/>
+      <geom name="bin_wall_px" type="box" size="0.005 0.06 0.03" pos="0.055 0 0.03"
+            rgba="0.8 0.2 0.2 1"/>
+      <geom name="bin_wall_nx" type="box" size="0.005 0.06 0.03" pos="-0.055 0 0.03"
+            rgba="0.8 0.2 0.2 1"/>
+      <geom name="bin_wall_py" type="box" size="0.06 0.005 0.03" pos="0 0.055 0.03"
+            rgba="0.8 0.2 0.2 1"/>
+      <geom name="bin_wall_ny" type="box" size="0.06 0.005 0.03" pos="0 -0.055 0.03"
+            rgba="0.8 0.2 0.2 1"/>
+    </body>
+
+    <!-- Work surface (pedestal) under the cube-spawn square. NOT cosmetic, and
+         not a fudge to make the canary green: menagerie's scene puts the floor
+         at the ARM'S OWN BASE level, whereas a real SO-101 rig has the arm base
+         and the manipulanda on the SAME raised work surface. This restores the
+         geometry the arm was actually designed for.
+
+         Task 5 established why it is load-bearing. With the cube on the floor,
+         the 5-DOF arm can only reach the spawn square with its fingers pitched
+         ~32 deg BELOW horizontal, and at that pitch the fixed jaw's collision
+         mesh shaft (gripper-local z -0.106..-0.010) sweeps straight through the
+         cube's volume: the arm stalls (shoulder_lift/elbow_flex saturated at
+         their +-2.94 N*m forcerange) and the jaws close on empty air. Raising
+         the cube flattens the required reach, so the wrist can present the jaws
+         to the cube instead of diving onto it.
+
+         HEIGHT (0.06 m) was chosen by measurement, not taste — swept 0.06/0.07/
+         0.08/0.09/0.10/0.12/0.14 end-to-end through the real oracle. Higher is
+         NOT better: clearance keeps improving but the arm's reach flattens out
+         and the pick degrades (0.09 -> 3/10, 0.12/0.14 -> 0/10). 0.06 measured
+         best. Task 4's bin position and the +-0.035 clear-drop margin are
+         untouched (the bin stays on the floor, so the arm still has to lift the
+         cube UP off the pedestal and carry it DOWN into the bin -- the task did
+         not get easier, just physically possible).
+
+         Half-extent 0.09 in x/y comfortably contains the 10 cm spawn square
+         (half-extent 0.05) plus the cube's own 0.02 half-width, with margin. -->
+    <body name="pedestal" pos="0.32 -0.06 0">
+      <geom name="ped_top" type="box" size="0.09 0.09 0.03" pos="0 0 0.03"
+            rgba="0.55 0.55 0.6 1"/>
+    </body>
+  </worldbody>
+</mujoco>
