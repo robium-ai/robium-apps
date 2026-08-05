@@ -4,9 +4,12 @@ Polished, battle-tested robotics example applications built with the
 [robium](https://github.com/robium-ai/robium) Claude Code plugin.
 
 Each app here has passed its smoke test and a public-readiness review before
-promotion. Apps arrive one at a time as they are validated — first up:
-classical ROS 2 navigation (Nav2 + slam_toolbox + Gazebo Harmonic, fully
-headless in Docker).
+promotion.
+
+- **Standard:** [docs/reference-applications-design.md](docs/reference-applications-design.md)
+- **Adding an app:** [CONTRIBUTING.md](CONTRIBUTING.md)
+- **CLI:** `npx robium-ai app list` from a clone of this repo (or
+  `app check <id>` / `app run <id>`)
 
 ## Apps
 
