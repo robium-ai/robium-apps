@@ -52,4 +52,4 @@ demo:
 
 artifacts:
   thumbnail: null
-  case_study: null
+  case_study: docs/case-study.md
