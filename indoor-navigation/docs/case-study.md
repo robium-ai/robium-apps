@@ -1,3 +1,13 @@
+---
+title: A robot maps a world it has never seen, then drives it
+summary: The classical autonomous-navigation pipeline (SLAM, Nav2, Gazebo) built end-to-end by an AI coding agent, running headless in one Docker image with the viewer bundled in.
+app: indoor-navigation
+date: 2026-08-05
+hero: assets/trailer.gif
+hero_alt: Simulated TurtleBot 3 driving itself to a clicked goal in the bundled browser viewer (simulation footage)
+featured: true
+---
+
 # Case study: indoor-navigation
 
 *A TurtleBot 3 explores a world it has never seen, maps it, and then drives
