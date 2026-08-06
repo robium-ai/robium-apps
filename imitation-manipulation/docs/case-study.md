@@ -1,3 +1,13 @@
+---
+title: Watching a policy learn, checkpoint by checkpoint
+summary: ACT learns PushT from human demonstrations on a GPU-less Mac; browse its whole training ladder live and probe generalization on block shapes it never saw.
+app: imitation-manipulation
+date: 2026-08-05
+hero: assets/thumbnail.png
+hero_alt: The PushT demo UI with the checkpoint ladder (simulation)
+featured: true
+---
+
 # Case study: imitation-manipulation
 
 *A policy learns to push a T-block from human demonstrations — no reward
