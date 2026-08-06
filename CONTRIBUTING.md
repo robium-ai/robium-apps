@@ -15,7 +15,11 @@ this page is the short path through it.
   (the pass bar, exits nonzero on failure), `check` (preflight), `down`
   (teardown where applicable).
 - `README.md` with a five-minute quick start, tested exactly as written.
-- `docs/architecture-brief.md` and, for mature apps, `docs/case-study.md`.
+- `docs/architecture-brief.md` and `docs/case-study.md` — the case study IS
+  the app's public article: frontmatter (title, summary, app, date, hero,
+  featured) drives the website's articles pages and frontpage picks, and the
+  body is portable markdown for cross-posting. It is a living document;
+  revise it as the app evolves. Hero media may start as a placeholder.
 - Honest labeling everywhere: simulated, recorded, mocked, and live
   components are never conflated; performance claims state hardware, data,
   scenario, and measurement method.
