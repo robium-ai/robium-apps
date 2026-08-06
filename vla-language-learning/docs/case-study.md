@@ -3,6 +3,8 @@ title: Teaching an arm to listen — honestly
 summary: A language-conditioned SmolVLA policy drives a simulated SO-101 arm. The pipeline is proven end-to-end; the full-training checkpoint is not — and this article says so.
 app: vla-language-learning
 date: 2026-08-05
+hero: assets/hero-placeholder.svg
+hero_alt: Placeholder — real footage coming
 featured: true
 ---
 
