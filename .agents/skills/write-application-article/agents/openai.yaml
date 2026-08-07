@@ -1,0 +1,4 @@
+interface:
+  display_name: "Write Application Article"
+  short_description: "Interview, research, and write authentic app articles"
+  default_prompt: "Use $write-application-article to interview me and develop an evidence-backed article for this application."
