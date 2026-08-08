@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<!--
+  Static overhead camera for the turtlebot3_world arena.
+
+  Rendering is software-only in this container (no GPU), so every camera costs
+  real CPU and eats into the sim's real-time factor. Kept deliberately cheap:
+  640x480 at 10 Hz is enough to watch the robot drive, and the arena is static
+  so there is nothing to gain from a higher rate.
+
+  Pose: 6 m up, pitched 90 deg so the camera's +X view axis points at the
+  ground. horizontal_fov 1.047 (60 deg) at that height covers ~6.9 m across,
+  which frames the whole ~5 m arena with margin.
+-->
+<sdf version="1.9">
+  <model name="overhead_camera">
+    <static>true</static>
+    <link name="link">
+      <pose>0 0 6 0 1.5708 0</pose>
+      <sensor name="overhead_camera" type="camera">
+        <update_rate>10</update_rate>
+        <topic>overhead/image_raw</topic>
+        <gz_frame_id>overhead_camera_link</gz_frame_id>
+        <camera name="overhead">
+          <horizontal_fov>1.047</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>480</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.1</near>
+            <far>100</far>
+          </clip>
+        </camera>
+      </sensor>
+    </link>
+  </model>
+</sdf>

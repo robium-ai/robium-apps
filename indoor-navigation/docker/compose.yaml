@@ -9,7 +9,7 @@ x-app: &app
   image: indoor-navigation:latest
   environment:
     ROS_DOMAIN_ID: "42"
-    TURTLEBOT3_MODEL: burger
+    TURTLEBOT3_MODEL: burger_cam
 
 services:
   sim:
@@ -47,7 +47,7 @@ services:
     profiles: [test]
     environment:
       ROS_DOMAIN_ID: "42"
-      TURTLEBOT3_MODEL: burger
+      TURTLEBOT3_MODEL: burger_cam
       # Host-overridable outer/inner smoke bound (see scripts/run_smoke.sh).
       SMOKE_TIMEOUT: "${SMOKE_TIMEOUT:-180}"
     command: bash /ws/scripts/run_smoke.sh
