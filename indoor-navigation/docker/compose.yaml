@@ -16,7 +16,33 @@ services:
     <<: *app
     profiles: [sim]
     ports: ["8765:8765"]
-    command: ros2 launch indoor_nav_bringup sim.launch.py
+    # WORLD=arena falls back to the cheap pillar arena; default is the house.
+    # Every frame here is software-rendered (llvmpipe, no GPU), so being able
+    # to swap the scene without an image rebuild is how a real-time-factor
+    # regression gets bisected against the world. slam/nav/demo do not forward
+    # this yet — they take sim.launch.py's default (house).
+    command: ros2 launch indoor_nav_bringup sim.launch.py world:=${WORLD:-house}
+
+  # Interactive mapping: stack only. You drive it (`make drive`) and save when
+  # the floor plan looks closed (`make save-map`), so unlike the slam profile
+  # there is no route script and nothing here decides when the run is over.
+  mapping:
+    <<: *app
+    profiles: [mapping]
+    # 8765 foxglove_bridge (the data), 8080 bundled Lichtblick (the page).
+    ports: ["8765:8765", "8080:8080"]
+    stdin_open: true
+    tty: true
+    volumes:
+      - ../src/indoor_nav_bringup/maps:/ws/maps
+      # Live-edit the dashboard without an image rebuild: viz_server re-reads
+      # the layout on every request, so editing either file and reloading the
+      # tab is enough.
+      - ../scripts:/ws/scripts:ro
+      - ../lichtblick/mapping-layout.json:/opt/lichtblick/mapping-layout.json:ro
+    command: >
+      ros2 launch indoor_nav_bringup mapping.launch.py
+      world:=${WORLD:-house} mode:=${MODE:-mapping} map_name:=${MAP_NAME:-map}
 
   slam:
     <<: *app

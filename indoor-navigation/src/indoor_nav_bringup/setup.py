@@ -29,6 +29,8 @@ setup(
             'drive_mapping_route = indoor_nav_bringup.drive_mapping_route:main',
             'send_goals = indoor_nav_bringup.send_goals:main',
             'demo_init = indoor_nav_bringup.demo_init:main',
+            'teleop_relay = indoor_nav_bringup.teleop_relay:main',
+            'map_manager = indoor_nav_bringup.map_manager:main',
         ],
     },
 )

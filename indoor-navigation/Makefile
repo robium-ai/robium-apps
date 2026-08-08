@@ -1,6 +1,13 @@
 COMPOSE = docker compose -f docker/compose.yaml
 
-.PHONY: build sim slam nav demo demo-smoke demo-image demo-deploy smoke check check-map down
+.PHONY: build sim mapping localize drive save-map load-map slam nav demo demo-smoke demo-image demo-deploy smoke check check-map rtf down
+
+# Session mode for the mapping profile (mapping|localization) and the map the
+# dashboard starts pointed at. Exported so compose interpolation sees them.
+MODE ?= mapping
+MAP_NAME ?= map
+export MODE
+export MAP_NAME
 
 # Preflight: catch the likely setup failures before any scenario runs.
 # (Bounded checks only; no timeout(1) — absent on macOS hosts.)
@@ -21,6 +28,60 @@ build:
 
 sim:
 	$(COMPOSE) --profile sim up --abort-on-container-exit
+
+# --- interactive dashboard: drive, map, save and navigate from the browser ---
+#
+#   make mapping   build a map     -> http://localhost:8080
+#   make localize  reuse a map     -> http://localhost:8080
+#
+# Genuinely different stacks, not a flag on one stack:
+#   mapping       sim + slam_toolbox + Nav2      (slam_toolbox owns map->odom)
+#   localize      sim + map_server + AMCL + Nav2 (AMCL owns map->odom)
+# Only one node can own map->odom, which is why this is a launch choice and not
+# a button. Save is enabled while mapping, Load while localizing, and each
+# refuses in the wrong mode with a message rather than half-working — the
+# Indicator panel shows which you are in. localize loads MAP_NAME at startup,
+# so the map is on screen immediately.
+#
+# Navigation needs no button in either mode: slam_toolbox publishes /map and
+# map->odom, Nav2 is already running, so clicking a goal in the 3D panel works.
+#
+# MAP_NAME=<name> sets the starting map name; it is also editable live from the
+# Parameters panel. Nothing here times out — `make down` ends the session.
+mapping:
+	@echo "dashboard -> http://localhost:8080   (bridge on :8765)"
+	$(COMPOSE) --profile mapping up --abort-on-container-exit
+
+localize:
+	@echo "dashboard -> http://localhost:8080   (localization mode; Load map to pick up MAP_NAME)"
+	MODE=localization $(COMPOSE) --profile mapping up --abort-on-container-exit
+
+# stamped:=true is REQUIRED, not a preference. The sim bridges /cmd_vel as
+# geometry_msgs/msg/TwistStamped; a plain Twist is dropped at the bridge with
+# no error printed anywhere, so the failure looks like "teleop runs fine but
+# the robot never moves". -it gives teleop the TTY it needs to read keys.
+drive:
+	@echo "Keys: u i o / j k l / m , .   q,z speed   anything else = stop   Ctrl-C to quit"
+	$(COMPOSE) --profile mapping exec -it mapping /entrypoint.sh \
+	  ros2 run teleop_twist_keyboard teleop_twist_keyboard \
+	  --ros-args -p stamped:=true -p use_sim_time:=true
+
+# Terminal equivalent of the dashboard's Save button — same service, so both
+# paths behave identically and honour the live map_name. Writes through the
+# bind mount, so map.pgm/map.yaml land in the repo rather than dying with the
+# container.
+save-map:
+	$(COMPOSE) --profile mapping exec -T mapping /entrypoint.sh \
+	  ros2 service call /mapping/save std_srvs/srv/Trigger
+	@$(MAKE) check-map
+
+# Terminal equivalent of the dashboard's Load button: switches map_server to
+# whatever map_name currently is. Localization sessions already load map_name
+# at launch, so this is only needed to CHANGE map without restarting. A mapping
+# session refuses it and says so.
+load-map:
+	$(COMPOSE) --profile mapping exec -T mapping /entrypoint.sh \
+	  ros2 service call /mapping/load std_srvs/srv/Trigger
 
 slam:
 	$(COMPOSE) --profile slam up --abort-on-container-exit
@@ -85,6 +146,46 @@ demo-deploy:
 
 check-map:
 	python3 tests/check_map.py src/indoor_nav_bringup/maps/map.yaml
+
+# Real-time-factor probe. Boots the sim scenario alone — no SLAM, no Nav2, no
+# saved map — so it works before the house map exists, then samples gz's own
+# real_time_factor next to the container's CPU utilisation.
+#
+# The two numbers are only useful together, because they answer different
+# questions. RTF says whether the sim keeps up with wall-clock; CPU% says
+# whether it is compute-bound. RTF 1.0 at 300%-of-1000% means idle cores and
+# headroom to spend on a nicer camera. RTF 0.5 at 990% means the cores are
+# already saturated and the only remaining lever is rendering less — lower
+# resolution, lower rate, fewer lidar samples. RTF 0.5 at 300% would mean
+# something is serialising and more CPU would not help at all.
+#
+# WORLD=arena runs the cheap pillar scene for comparison, which is how a
+# regression gets attributed to the world rather than to anything else.
+# (Bounded shell loops, not timeout(1) — absent on macOS hosts.)
+WORLD ?= house
+export WORLD
+RTF_SAMPLES ?= 6
+rtf:
+	@$(COMPOSE) --profile sim up -d sim
+	@echo "world=$(WORLD): waiting for gz world stats (up to ~2 min)..."
+	@n=0; until $(COMPOSE) --profile sim exec -T sim /entrypoint.sh gz topic -l 2>/dev/null | grep -q '/stats'; do \
+	  n=$$((n+1)); \
+	  if [ $$n -ge 40 ]; then echo "TIMEOUT: gz never published world stats"; \
+	    $(COMPOSE) --profile sim logs --tail 40 sim; \
+	    $(COMPOSE) --profile "*" down --remove-orphans; exit 1; fi; \
+	  sleep 3; done
+	@echo "settling 20 s so boot transients do not skew the sample..."
+	@sleep 20
+	@cid=$$($(COMPOSE) --profile sim ps -q sim); \
+	 topic=$$($(COMPOSE) --profile sim exec -T sim /entrypoint.sh gz topic -l 2>/dev/null | grep '/stats' | head -1 | tr -d '\r'); \
+	 echo "--- world=$(WORLD)  stats topic=$$topic  (100% = 1 core, 1000% = all 10) ---"; \
+	 for i in $$(seq 1 $(RTF_SAMPLES)); do \
+	   rtf=$$($(COMPOSE) --profile sim exec -T sim /entrypoint.sh gz topic -e -t $$topic -n 1 2>/dev/null | awk '/real_time_factor/{print $$2}' | head -1); \
+	   cpu=$$(docker stats --no-stream --format '{{.CPUPerc}}' $$cid 2>/dev/null); \
+	   echo "  sample $$i: RTF=$${rtf:-?}  CPU=$${cpu:-?}"; \
+	 done
+	@$(COMPOSE) --profile "*" down --remove-orphans
+	@echo "RTF PROBE DONE"
 
 down:
 	$(COMPOSE) --profile "*" down --remove-orphans

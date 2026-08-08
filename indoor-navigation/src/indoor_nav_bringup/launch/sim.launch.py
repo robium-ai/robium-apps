@@ -10,7 +10,7 @@ server gz_args, so we include ros_gz_sim's gz_sim.launch.py ourselves with
   model other than plain burger it also starts ros_gz_image's image_bridge,
   which is what puts the robot's /camera/image_raw on ROS.
 Plus a static overhead_camera model (our own, spawned separately) with its
-own image_bridge for /overhead/image_raw — the arena view.
+own image_bridge for /overhead/image_raw — the top-down view of the floor plan.
 - robot_state_publisher.launch.py: rsp with the TB3 urdf.
 Plus foxglove_bridge on :8765. Everything runs with use_sim_time.
 Tasks 5/6 IncludeLaunchDescription this file.
@@ -25,6 +25,8 @@ from launch.actions import DeclareLaunchArgument
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+from launch.substitutions import PathJoinSubstitution
+from launch.substitutions import PythonExpression
 from launch_ros.actions import Node
 
 
@@ -33,7 +35,25 @@ def generate_launch_description():
     ros_gz_sim = get_package_share_directory('ros_gz_sim')
     bringup = get_package_share_directory('indoor_nav_bringup')
 
-    world = os.path.join(tb3_gazebo, 'worlds', 'turtlebot3_world.world')
+    # The house is the default environment: a ~15 x 10.6 m multi-room floor
+    # plan with doorways and furniture, so the SLAM/Nav2 run reads as indoor
+    # navigation rather than a lap around an arena of pillars. Both worlds are
+    # shipped by turtlebot3_gazebo and are byte-for-byte identical apart from
+    # the model they include (plus `<shadows>0</shadows>`, which the house
+    # adds and which is cheaper, not costlier) — same ODE physics, same
+    # plugins, same two Fuel includes. The arena stays selectable as
+    # `world:=arena`: every camera and lidar frame here is software-rendered
+    # (llvmpipe, no GPU), so a one-flag fallback to the cheap scene is what
+    # lets a real-time-factor regression be bisected against the world.
+    world_arg = DeclareLaunchArgument(
+        'world', default_value='house', choices=['house', 'arena'],
+        description='simulated environment: house (default) or arena')
+    world = PathJoinSubstitution([
+        tb3_gazebo, 'worlds',
+        PythonExpression([
+            "'turtlebot3_house.world' if '", LaunchConfiguration('world'),
+            "' == 'house' else 'turtlebot3_world.world'"]),
+    ])
 
     set_resource_path = AppendEnvironmentVariable(
         'GZ_SIM_RESOURCE_PATH', os.path.join(tb3_gazebo, 'models'))
@@ -56,15 +76,20 @@ def generate_launch_description():
     # ros_gz parameter_bridge from turtlebot3_burger_cam_bridge.yaml. That
     # launch also starts ros_gz_image's image_bridge for any model other than
     # plain burger, which is what puts /camera/image_raw on ROS for us.
+    # (-2.0, -0.5) is upstream's default spawn for BOTH turtlebot3_world.launch.py
+    # and turtlebot3_house.launch.py, and it lands in interior free space in the
+    # house (verified against the model's collision geometry at the lidar plane),
+    # so the world swap does not move the robot. That matters downstream: the
+    # saved map's origin is the SLAM start pose, so `map = world + (2.0, 0.5)`
+    # still holds and every frame-conversion comment stays true.
     spawn = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(tb3_gazebo, 'launch', 'spawn_turtlebot3.launch.py')),
         launch_arguments={'x_pose': '-2.0', 'y_pose': '-0.5'}.items(),
     )
 
-    # Static overhead view of the arena. Spawned as its own model rather than
-    # baked into the world so the upstream turtlebot3_world.world stays
-    # untouched.
+    # Static top-down view of the floor plan. Spawned as its own model rather
+    # than baked into the world so the upstream world files stay untouched.
     overhead = Node(
         package='ros_gz_sim', executable='create',
         arguments=['-name', 'overhead_camera', '-file',
@@ -102,6 +127,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        world_arg,
         bridge_port,
         set_resource_path,
         set_own_resource_path,

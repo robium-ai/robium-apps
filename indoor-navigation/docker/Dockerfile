@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       ros-jazzy-turtlebot3-navigation2 \
       ros-jazzy-foxglove-bridge \
       ros-jazzy-ros-gz \
+      ros-jazzy-teleop-twist-keyboard \
       python3-colcon-common-extensions \
     && rm -rf /var/lib/apt/lists/*
 
@@ -74,15 +75,24 @@ COPY docker/entrypoint.sh /entrypoint.sh
 # Bundled viewer: the demo gateway serves /opt/lichtblick on non-API GETs.
 COPY --from=lichtblick /src /opt/lichtblick
 COPY lichtblick/nav-layout.json /opt/lichtblick/nav-layout.json
+COPY lichtblick/mapping-layout.json /opt/lichtblick/mapping-layout.json
 RUN python3 - <<'PYEOF'
 from pathlib import Path
 idx = Path('/opt/lichtblick/index.html')
 html = idx.read_text()
 token = '/*LICHTBLICK_SUITE_DEFAULT_LAYOUT_PLACEHOLDER*/'
 assert token in html, 'Lichtblick default-layout placeholder missing: upstream image changed, re-verify'
+
+# Keep the UNINJECTED page as a template. Injection is a one-shot string
+# replace that consumes the placeholder, so baking nav-layout into index.html
+# would leave no way to serve a different layout later. The mapping dashboard
+# needs a different one, and scripts/viz_server.py injects it per request from
+# this template. Cheap to keep: one HTML file, not a second copy of the bundle.
+Path('/opt/lichtblick/index.template.html').write_text(html)
+
 layout = Path('/opt/lichtblick/nav-layout.json').read_text()
 idx.write_text(html.replace(token, layout))
-print('lichtblick default layout injected')
+print('lichtblick default layout injected (template preserved)')
 PYEOF
 
 # Keep the 3D panel's publish topics advertised.
