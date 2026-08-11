@@ -1,0 +1,105 @@
+{
+  "configById": {
+    "Teleop!drive": {
+      "topic": "/cmd_vel",
+      "publishRate": 5,
+      "upButton": { "field": "linear-x", "value": 0.15 },
+      "downButton": { "field": "linear-x", "value": -0.15 },
+      "leftButton": { "field": "angular-z", "value": 0.4 },
+      "rightButton": { "field": "angular-z", "value": -0.4 }
+    },
+    "Publish!undock": {
+      "topicName": "/teleop/undock",
+      "datatype": "std_msgs/msg/Empty",
+      "buttonText": "UNDOCK",
+      "buttonColor": "#f59e0b",
+      "advancedView": false,
+      "value": "{}"
+    },
+    "Publish!dock": {
+      "topicName": "/teleop/dock",
+      "datatype": "std_msgs/msg/Empty",
+      "buttonText": "DOCK",
+      "buttonColor": "#3b82f6",
+      "advancedView": false,
+      "value": "{}"
+    },
+    "3D!view": {
+      "cameraState": {
+        "perspective": true,
+        "distance": 6,
+        "targetOffset": [0, 0, 0],
+        "thetaOffset": 0,
+        "phi": 50,
+        "fovy": 45,
+        "near": 0.5,
+        "far": 5000
+      },
+      "followMode": "follow-pose",
+      "followTf": "base_link",
+      "scene": {
+        "transforms": {
+          "showLabel": false
+        }
+      },
+      "transforms": {},
+      "topics": {
+        "/scan": {
+          "visible": true,
+          "colorField": "intensity",
+          "colorMode": "flat",
+          "flatColor": "#e04040",
+          "pointSize": 4
+        },
+        "/robot_description": {
+          "visible": true
+        }
+      }
+    },
+    "RawMessages!battery": {
+      "topicPath": "/battery_state.percentage"
+    },
+    "RawMessages!dock": {
+      "topicPath": "/dock_status.is_docked"
+    },
+    "RawMessages!hazard": {
+      "topicPath": "/hazard_detection"
+    }
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "layout": {
+    "direction": "row",
+    "first": {
+      "direction": "column",
+      "first": "Teleop!drive",
+      "second": {
+        "direction": "row",
+        "first": "Publish!undock",
+        "second": "Publish!dock",
+        "splitPercentage": 50
+      },
+      "splitPercentage": 68
+    },
+    "second": {
+      "direction": "row",
+      "first": "3D!view",
+      "second": {
+        "direction": "column",
+        "first": "RawMessages!battery",
+        "second": {
+          "direction": "column",
+          "first": "RawMessages!dock",
+          "second": "RawMessages!hazard",
+          "splitPercentage": 50
+        },
+        "splitPercentage": 33
+      },
+      "splitPercentage": 70
+    },
+    "splitPercentage": 30
+  }
+}

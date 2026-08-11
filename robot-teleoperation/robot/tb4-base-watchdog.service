@@ -1,0 +1,16 @@
+# Deployed on the Pi as /etc/systemd/system/tb4-base-watchdog.service
+# Auto-recovers the Create 3 base app when it wedges (POST /api/restart-app).
+[Unit]
+Description=TB4 Create 3 base-app watchdog (auto restart-app when /cmd_vel loses its subscriber)
+After=turtlebot4.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+ExecStart=/usr/bin/env bash /home/ubuntu/tb4-teleop/tb4-base-watchdog.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

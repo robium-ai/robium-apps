@@ -1,0 +1,30 @@
+[project]
+name = "go2-locomotion"
+version = "0.1.0"
+description = "Unitree Go2 quadruped locomotion via Isaac Lab reinforcement learning (RunPod GPU)"
+readme = "README.md"
+authors = [{ name = "robium", email = "admin@robium.ai" }]
+# The Mac-side wrapper (config.py command builders + their tests) is pure stdlib.
+# Isaac Sim / Isaac Lab are NOT pip dependencies here — they are installed on the
+# RunPod pod from the Isaac Sim container + `./isaaclab.sh --install` (brief §3),
+# and pin their own Python. So this project stays dependency-light on purpose;
+# do not add `isaacsim`/`isaaclab` here (they would never resolve on macOS).
+requires-python = ">=3.10"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.11.8,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+# The `gpu` smoke test needs a real GPU + Isaac Lab and CANNOT run on the Mac.
+# Deselect it by default so `make test` runs only the Mac-testable config guards;
+# run the pass-bar deliberately on the pod with `make smoke`. This mirrors
+# vla-trial's `slow`-marker split — a smoke that can't fake-pass on the wrong host.
+markers = [
+    "gpu: needs a GPU pod with Isaac Lab; deselected by default, run via `make smoke`",
+]
+addopts = "-m 'not gpu'"

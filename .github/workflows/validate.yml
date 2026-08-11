@@ -1,0 +1,24 @@
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  robium-app-yaml:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: robium-ai/robium
+          path: .robium-cli
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # Single source of truth: the robium CLI's schema validator
+      # (robium-ai app validate). Requires robium#67 on main to go green.
+      - run: node .robium-cli/cli/bin/robium.js app validate --dir .
+      # The hosted-demo session contract (stdlib-only, no ROS/Docker).
+      - run: python3 shared/demo-gateway/test_gateway.py

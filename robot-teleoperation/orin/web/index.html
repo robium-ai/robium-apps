@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>tb4-teleop console</title>
+  <style>
+    * { box-sizing: border-box; }
+    /* Fill exactly one viewport — no page scroll; panels flex to fit. */
+    html, body { height: 100%; }
+    body { font-family: system-ui, sans-serif; margin: 0; background: #111; color: #eee;
+           -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+           display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+    header { padding: .6rem 1rem; display: flex; align-items: center; gap: .6rem; flex: none; }
+    h1 { font-size: 1rem; margin: 0; }
+    #status { width: 12px; height: 12px; border-radius: 50%; background: #888; flex: none; }
+    #status[data-state="connected"] { background: #33cc55; }
+    #status[data-state="error"], #status[data-state="disconnected"] { background: #cc3333; }
+    main { display: flex; gap: 1rem; padding: 1rem; flex: 1 1 auto; min-height: 0; }
+    .video { flex: 1 1 auto; min-height: 0; display: flex; }
+    .controls { flex: 0 0 300px; }
+    .panel { background: #1c1c1c; border-radius: 10px; padding: 1rem; }
+    /* object-fit: contain so the camera scales down to fit its box, never overflows. */
+    #webcam { width: 100%; height: 100%; max-height: 100%; object-fit: contain;
+              border-radius: 6px; background: #000; display: block; }
+
+    /* directional pad */
+    .dpad { display: grid; grid-template-columns: repeat(3, 84px); grid-auto-rows: 84px;
+            gap: .5rem; justify-content: center; margin: 0 auto .75rem; touch-action: none; }
+    .dpad button { border: 0; border-radius: 12px; background: #2b6; color: #fff; font-size: 1.8rem;
+                   box-shadow: 0 3px 10px rgba(0,0,0,.45); }
+    .dpad button:active { background: #38d67e; }
+    .dpad .spacer { visibility: hidden; }
+
+    .row { display: flex; gap: .6rem; margin-top: .6rem; }
+    .row button { flex: 1; min-height: 52px; font-size: 1rem; border: 0; border-radius: 10px; color: #fff; }
+    #undock { background: #d9822b; } #dock { background: #2b6cd9; }
+
+    /* phone: stack video over controls, bigger pad */
+    @media (max-width: 760px) {
+      main { flex-direction: column; padding: .6rem; gap: .6rem; }
+      .controls { flex: none; }
+      .dpad { grid-template-columns: repeat(3, 92px); grid-auto-rows: 92px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span id="status" data-state="connecting" title="connecting"></span>
+    <h1>tb4-teleop console</h1>
+  </header>
+  <main>
+    <section class="panel video"><img id="webcam" alt="webcam" /></section>
+    <section class="panel controls">
+      <div class="dpad">
+        <span class="spacer"></span><button id="fwd">▲</button><span class="spacer"></span>
+        <button id="left">◀</button><span class="spacer"></span><button id="right">▶</button>
+        <span class="spacer"></span><button id="back">▼</button><span class="spacer"></span>
+      </div>
+      <div class="row"><button id="undock">UNDOCK</button><button id="dock">DOCK</button></div>
+    </section>
+  </main>
+  <script src="env.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

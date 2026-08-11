@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+outputs/
+# Isaac Lab writes runs (checkpoints, videos, TensorBoard) under its own logs/
+# on the pod — never committed from here.
+logs/
+*.mp4
+*.pt
+*.onnx
+# Local read-only copy of Isaac Lab source (sparse clone of isaac-sim/IsaacLab,
+# latest main) for browsing the Go2 velocity task configs/reward math. Not our
+# code; never committed. Re-clone from GitHub if deleted.
+reference/

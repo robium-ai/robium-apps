@@ -1,0 +1,46 @@
+schema_version: "1"
+id: quadruped-locomotion
+name: Quadruped locomotion (Go2 + Isaac Lab RL)
+summary: Train a Unitree Go2 to walk from scratch with rsl_rl PPO on a cloud NVIDIA GPU, then pilot the trained policy live in the browser.
+version: 1.0.0
+status: stable
+license: MIT
+tags: [reinforcement-learning, isaac-lab, isaac-sim, go2, gpu-cloud]
+
+runtime:
+  kind: remote-gpu         # RunPod L4 pod; the Mac is a thin SSH/browser client
+  entrypoint: make smoke   # runs ON the pod; Mac-side guards are `make test`
+
+verbs:
+  build: make sync
+  smoke: make smoke        # pod-side; must not fake-pass off-GPU
+  check: make check
+  test: make test          # Mac-side pure-Python config guards only
+
+scenarios:
+  list-envs:
+    command: make list-envs
+    summary: pod-side, confirm the Go2 task id exists before trusting config
+  train:
+    command: make train
+    summary: SMOKE-profile training by hand (mechanics, not a walking policy)
+  train-full:
+    command: make train-full
+    summary: the real ~20-40 min walking policy with rollout video capture
+  play:
+    command: make play
+    summary: roll out the latest checkpoint and capture a walking-Go2 MP4
+
+requirements:
+  hardware: []
+  gpu: remote              # NVIDIA required; no macOS path for Isaac Lab
+  network: required        # RunPod SSH + NGC image pulls
+
+demo:
+  default_scenario: play
+  hosted: false            # live panel ran from the pod; no orchestrator config yet
+  estimated_startup_seconds: 300
+
+artifacts:
+  thumbnail: null
+  case_study: null

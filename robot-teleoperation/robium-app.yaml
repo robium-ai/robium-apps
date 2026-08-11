@@ -1,0 +1,39 @@
+schema_version: "1"
+id: robot-teleoperation
+name: Robot teleoperation (real TurtleBot 4)
+summary: Drive a real TurtleBot 4 from a browser via foxglove_bridge, with dock/undock buttons and live LiDAR/battery/hazards.
+version: 1.0.0
+status: stable
+license: MIT
+tags: [teleoperation, turtlebot4, ros2, foxglove, hardware]
+
+runtime:
+  kind: hardware
+  entrypoint: make bridge   # then open Foxglove per `make teleop` instructions
+
+verbs:
+  demo: make bridge
+  smoke: make smoke         # hardware-in-the-loop; needs the robot reachable
+  check: make check
+
+scenarios:
+  teleop:
+    command: make teleop
+    summary: print the Foxglove connection and layout-import instructions
+  orin-serve:
+    command: make orin-serve
+    summary: phase-2 Orin web console (docker compose)
+
+requirements:
+  hardware: [turtlebot4]
+  gpu: none
+  network: required        # robot on the same Wi-Fi; ROBOT=<ip> overridable
+
+demo:
+  default_scenario: demo
+  hosted: false            # real hardware; no hosted instances
+  estimated_startup_seconds: 20
+
+artifacts:
+  thumbnail: null
+  case_study: null

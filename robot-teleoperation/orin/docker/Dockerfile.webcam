@@ -1,0 +1,7 @@
+FROM alpine:3.20 AS build
+RUN apk add --no-cache build-base linux-headers libevent-dev libbsd-dev libjpeg-turbo-dev git
+RUN git clone --depth 1 https://github.com/pikvm/ustreamer /src && make -C /src
+FROM alpine:3.20
+RUN apk add --no-cache libevent libbsd libjpeg-turbo
+COPY --from=build /src/ustreamer /usr/local/bin/ustreamer
+ENTRYPOINT ["/usr/local/bin/ustreamer"]

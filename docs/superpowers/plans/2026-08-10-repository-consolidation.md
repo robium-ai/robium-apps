@@ -90,11 +90,14 @@ Run:
 ```bash
 git diff --check
 make -C quadruped-locomotion check
-make -C robot-teleoperation check
-python3 -m unittest shared/demo-gateway/test_gateway.py
+make -C robot-teleoperation orin-test
+python3 shared/demo-gateway/test_gateway.py
 ```
 
-Expected: each command exits 0. If a hardware/cloud app's `check` target is static-only, record that limitation without claiming a hardware runtime pass.
+Expected: each command exits 0. `robot-teleoperation make check` is a live
+reachability probe and is not run as an offline migration gate; its hardware
+pass remains the last verified result recorded in the app documentation. The
+quadruped check is static-only and does not claim a GPU runtime pass.
 
 - [ ] **Step 6: Commit migrated applications**
 

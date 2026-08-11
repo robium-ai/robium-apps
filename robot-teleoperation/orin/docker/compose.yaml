@@ -1,0 +1,25 @@
+services:
+  console:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "${CONSOLE_PORT:-8080}:80"
+    environment:
+      ROBOT_HOST: ${ROBOT_HOST:-192.0.2.10}
+      ROBOT_WS_PORT: ${ROBOT_WS_PORT:-8765}
+      ROBOT_WS_URL: ${ROBOT_WS_URL:-}
+      WEBCAM_STREAM_URL: ${WEBCAM_STREAM_URL:-}
+    restart: unless-stopped
+  webcam:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.webcam
+    ports:
+      - "8081:8081"
+    devices:
+      - "${WEBCAM_DEVICE:-/dev/video0}:/dev/video0"
+    command: ["--host=0.0.0.0", "--port=8081", "--device=/dev/video0",
+              "--resolution=${WEBCAM_RES:-424x240}", "--desired-fps=${WEBCAM_FPS:-12}",
+              "--format=MJPEG", "--drop-same-frames=30"]
+    restart: unless-stopped
