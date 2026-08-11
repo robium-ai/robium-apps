@@ -28,26 +28,23 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
-def world_path(tb3_gazebo, world_name):
+def world_path(bringup, tb3_gazebo, world_name):
     """Resolve the app's two supported upstream TurtleBot3 worlds."""
-    filenames = {
-        'house': 'turtlebot3_house.world',
-        'arena': 'turtlebot3_world.world',
-    }
-    try:
-        filename = filenames[world_name]
-    except KeyError as exc:
-        raise ValueError('world must be house or arena') from exc
-    return os.path.join(tb3_gazebo, 'worlds', filename)
+    if world_name == 'house':
+        return os.path.join(bringup, 'worlds', 'turtlebot3_house.world')
+    if world_name == 'arena':
+        return os.path.join(tb3_gazebo, 'worlds', 'turtlebot3_world.world')
+    raise ValueError('world must be house or arena')
 
 
-def gazebo_actions(context, tb3_gazebo, ros_gz_sim):
+def gazebo_actions(context, bringup, tb3_gazebo, ros_gz_sim):
     """Create one server and, for native mode, one attached GUI client."""
     gui_value = LaunchConfiguration('gui').perform(context).lower()
     if gui_value not in ('true', 'false'):
         raise ValueError('gui must be true or false')
     world = world_path(
-        tb3_gazebo, LaunchConfiguration('world').perform(context).lower())
+        bringup, tb3_gazebo,
+        LaunchConfiguration('world').perform(context).lower())
     server_flags = ('-r -s -v2 ' if gui_value == 'true'
                     else '-r -s --headless-rendering -v2 ')
     actions = [IncludeLaunchDescription(
@@ -67,6 +64,7 @@ def gazebo_actions(context, tb3_gazebo, ros_gz_sim):
 def generate_launch_description():
     tb3_gazebo = get_package_share_directory('turtlebot3_gazebo')
     ros_gz_sim = get_package_share_directory('ros_gz_sim')
+    bringup = get_package_share_directory('indoor_nav_bringup')
 
     # The house is the default environment: a ~15 x 10.6 m multi-room floor
     # plan with doorways and furniture, so the SLAM/Nav2 run reads as indoor
@@ -88,7 +86,7 @@ def generate_launch_description():
     set_resource_path = AppendEnvironmentVariable(
         'GZ_SIM_RESOURCE_PATH', os.path.join(tb3_gazebo, 'models'))
     gazebo = OpaqueFunction(
-        function=gazebo_actions, args=[tb3_gazebo, ros_gz_sim])
+        function=gazebo_actions, args=[bringup, tb3_gazebo, ros_gz_sim])
 
     # Spawns TURTLEBOT3_MODEL (burger_cam via container env) and starts the
     # ros_gz parameter_bridge from turtlebot3_burger_cam_bridge.yaml. That

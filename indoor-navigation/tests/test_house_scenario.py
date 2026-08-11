@@ -8,6 +8,8 @@ import yaml
 
 APP_ROOT = Path(__file__).resolve().parents[1]
 MAP_YAML = APP_ROOT / 'src' / 'indoor_nav_bringup' / 'maps' / 'map.yaml'
+HOUSE_WORLD = (APP_ROOT / 'src' / 'indoor_nav_bringup' / 'worlds' /
+               'turtlebot3_house.world')
 
 
 def read_pgm(path):
@@ -34,6 +36,13 @@ def read_pgm(path):
 
 
 class HouseScenarioTests(unittest.TestCase):
+    def test_default_house_world_is_self_contained(self):
+        world = HOUSE_WORLD.read_text()
+        self.assertIn('model://turtlebot3_house', world)
+        self.assertIn('<model name="ground_plane">', world)
+        self.assertIn('<light type="directional" name="sun">', world)
+        self.assertNotIn('fuel.gazebosim.org', world)
+
     def test_house_map_covers_initial_pose_and_default_goals(self):
         send_goals = importlib.import_module('indoor_nav_bringup.send_goals')
         mapping_route = importlib.import_module(

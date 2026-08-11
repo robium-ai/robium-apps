@@ -46,9 +46,12 @@ class LaunchModeTests(unittest.TestCase):
         headless = LaunchContext()
         headless.launch_configurations.update(world='house', gui='false')
         headless_actions = module.gazebo_actions(
-            headless, '/packages/turtlebot3_gazebo', '/packages/ros_gz_sim')
+            headless, '/packages/indoor_nav_bringup',
+            '/packages/turtlebot3_gazebo', '/packages/ros_gz_sim')
         headless_args = dict(headless_actions[0].launch_arguments)
         self.assertIn('turtlebot3_house.world',
+                      render_parts(headless, headless_args['gz_args']))
+        self.assertIn('/packages/indoor_nav_bringup/worlds/',
                       render_parts(headless, headless_args['gz_args']))
         self.assertIn('--headless-rendering', ''.join(headless_args['gz_args']))
         self.assertFalse(any(isinstance(action, ExecuteProcess)
@@ -57,7 +60,8 @@ class LaunchModeTests(unittest.TestCase):
         native = LaunchContext()
         native.launch_configurations.update(world='arena', gui='true')
         native_actions = module.gazebo_actions(
-            native, '/packages/turtlebot3_gazebo', '/packages/ros_gz_sim')
+            native, '/packages/indoor_nav_bringup',
+            '/packages/turtlebot3_gazebo', '/packages/ros_gz_sim')
         native_args = dict(native_actions[0].launch_arguments)
         rendered = render_parts(native, native_args['gz_args'])
         self.assertIn('turtlebot3_world.world', rendered)
