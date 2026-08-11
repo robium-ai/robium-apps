@@ -4,11 +4,12 @@ A robot explores a world it has never seen, builds a map of it, then drives
 itself to any goal you click — the classical autonomous-navigation pipeline
 (SLAM → save the map → localize → plan → drive), running entirely in
 simulation on a laptop. No GPU, no robot, no ROS installation on your
-machine: everything runs headless inside one Docker image, and you watch it
-live in your browser.
+machine. The portable path runs headless inside one Docker image; Apple
+Silicon Macs can also run the same ROS/Gazebo stack from an app-local
+Pixi/RoboStack environment with a native Metal-rendered Gazebo window.
 
 **Stack:** ROS 2 Jazzy · Nav2 · slam_toolbox · Gazebo Harmonic · TurtleBot 3
-· Docker · Foxglove
+· Docker or Pixi/RoboStack · Lichtblick
 
 ## What you'll see
 
@@ -20,13 +21,29 @@ live in your browser.
 - All of it headless at real-time speed (RTF ≈ 1.0, software rendering), with
   live map/laser/path visualization in the browser.
 
-## Prerequisites
+## Native macOS (Apple Silicon)
+
+The native path opens Gazebo for the simulator scene and Lichtblick for ROS
+state, mapping controls, navigation goals, and the robot-mounted camera. It
+does not install Homebrew packages or a system ROS distribution.
+
+```bash
+make native-setup  # one-time app-local dependency + viewer install
+make demo-native   # build, launch Gazebo + Lichtblick, stay in foreground
+```
+
+Press Ctrl-C to stop the owned process group. If a terminal was interrupted
+before cleanup, run `make native-down`. All generated state remains under
+`experiments/native-macos/` and is ignored by Git. This path supports macOS
+arm64; use Docker for portable and Cloud Run-compatible execution.
+
+## Docker prerequisites
 
 - Docker (Desktop or compatible). Apple Silicon and other arm64 hosts work
   out of the box; the image is built from `ros:jazzy-ros-base-noble`.
 - A browser. No local ROS, no display server, no accounts needed.
 
-## Try it in 2 commands
+## Docker: try it in 2 commands
 
 ```bash
 make build   # one-time image build (about 10 min cold)
@@ -47,6 +64,10 @@ pose, so world (-2.0, -0.5) = map (0, 0).
 
 ## Other scenarios
 
+- `make mapping` — interactive SLAM, teleop, save/reset controls, and robot
+  camera at http://localhost:8080
+- `make localize` — AMCL localization on a saved map with load controls and
+  clicked Nav2 goals at http://localhost:8080
 - `make smoke` — the pass bar: launches the full nav scenario headless,
   sends two goals, exits 0 on success (~90 s once built)
 - `make sim` — bringup only; `make slam` — rebuild the map; `make nav` —
@@ -87,5 +108,3 @@ Cloud Run (`demo-nav-trial`, robium-prod, per-visitor instances, GZ_RELAY
 unicast discovery), where robium.ai/demos/nav-trial hands each visitor a
 private instance and embeds the instance-served viewer. Requires robium
 GCP credentials — not needed for anything else in this app.
-An archived IDE-workspace flavor of this demo (file tree, editor, PTY
-terminal) lives in the private development repo.

@@ -33,7 +33,7 @@ This is the architect skill's **navigation golden path** (`ros2` + `nav2` + `gaz
 | SLAM | **slam_toolbox** | Jazzy binary (`ros-jazzy-slam-toolbox`, 2.8.x) | The Nav2-recommended and only officially supported ROS 2 SLAM library; online-async mode + `map_saver_cli` covers the drive→map→save milestone. Cartographer (the old TB3 default) rejected: effectively unmaintained upstream. |
 | Navigation | **Nav2** (AMCL + planner/controller servers, `nav2_simple_commander` for goals) | Jazzy binaries | The classical nav stack for a mobile base; no learning component → no training framework (decision-tree 3, "No" branch). Goals sent programmatically via the `nav2_simple_commander` Python API (`NavigateToPose`), which is also what the smoke test drives. |
 | Visualization | **Foxglove** (browser) via `foxglove_bridge` | `ros-jazzy-foxglove-bridge` (3.x, MIT) | Headless Docker + macOS host → no X display → RViz2 rejected per the skill's headless rule. Bridge runs in-container (WebSocket :8765); the Foxglove web app connects from the Mac's browser. Fallback if Foxglove's account/free-tier terms bite: Lichtblick (open-source fork), same WebSocket protocol. |
-| Environment | **Docker** (arm64, compose) | `ros:jazzy` base (multi-arch, arm64 confirmed) | Mandated twice: macOS cannot run ROS 2 + Gazebo natively (platform gotcha), and the requirement says Docker. uv/venv rejected — not viable for a full ROS 2 + Gazebo stack on macOS. Native `linux/arm64` images throughout; no amd64 emulation. |
+| Environment | **Docker** (portable/deploy) + **Pixi/RoboStack** (native macOS arm64) | `ros:jazzy` Linux image; locked community-native Jazzy packages for local Metal visualization | Docker remains the supported portable path. The native path is isolated under the app and verified on Apple Silicon without modifying system libraries. |
 
 ## 3. Module breakdown
 
@@ -116,7 +116,16 @@ one compose network — no zenoh/gRPC needed at this scale (`integration` skill 
 
 ## 5. Environment strategy
 
-- **Docker only** (macOS host makes native impossible; requirement mandates it anyway).
+The portable and deployment path is the single ROS 2 Docker image described
+below. Apple Silicon development also has an app-local native path locked by
+`experiments/native-macos/pixi.lock`: Pixi installs RoboStack Jazzy, Gazebo
+Harmonic, Nav2, TurtleBot 3, and the bridge beneath the application directory;
+the launcher redirects HOME, caches, temporary files, colcon build/install,
+ROS logs, Gazebo logs, and the bundled viewer into that same ignored runtime.
+No Homebrew package or system ROS install is required. Native Gazebo renders
+through Metal while Lichtblick remains the complementary ROS-state dashboard.
+
+- **Docker is the portable/deployment default; Pixi/RoboStack is the optional native Apple Silicon path.**
   One image: `ros:jazzy` (arm64) + apt layers: `ros-jazzy-turtlebot3*`,
   `ros-jazzy-navigation2` + `ros-jazzy-nav2-bringup`, `ros-jazzy-slam-toolbox`,
   `ros-jazzy-foxglove-bridge`, `ros-jazzy-ros-gz` (pulls Gazebo Harmonic from the OSRF repo).

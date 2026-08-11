@@ -1,6 +1,6 @@
 COMPOSE = docker compose -f docker/compose.yaml
 
-.PHONY: build sim mapping localize drive save-map load-map slam nav demo demo-smoke demo-image demo-deploy smoke check check-map rtf down
+.PHONY: build sim mapping localize drive save-map load-map slam nav demo native-setup demo-native native-down demo-smoke demo-image demo-deploy smoke check check-map rtf down
 
 # Session mode for the mapping profile (mapping|localization) and the map the
 # dashboard starts pointed at. Exported so compose interpolation sees them.
@@ -91,6 +91,17 @@ nav:
 
 demo:
 	$(COMPOSE) --profile demo up --abort-on-container-exit
+
+# Native Apple Silicon path: dependencies, build products, logs, and viewer
+# assets remain below experiments/native-macos.
+native-setup:
+	python3 scripts/native_setup.py
+
+demo-native:
+	python3 scripts/native_demo.py run
+
+native-down:
+	python3 scripts/native_demo.py down
 
 # Demo gate: boot the demo scenario, assert the gateway tunnels the Foxglove
 # WebSocket, serves the bundled viewer, /status reaches ready, session

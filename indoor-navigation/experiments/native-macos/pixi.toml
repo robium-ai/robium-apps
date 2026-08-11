@@ -1,0 +1,22 @@
+[workspace]
+name = "indoor-navigation-native-macos"
+channels = [
+  "https://prefix.dev/conda-forge",
+  "https://prefix.dev/robostack-jazzy",
+]
+platforms = ["osx-arm64"]
+
+[dependencies]
+python = "3.12.*"
+setuptools = "<80"
+colcon-common-extensions = "*"
+rosdep = "*"
+ros-jazzy-ros-base = "*"
+ros-jazzy-rmw-cyclonedds-cpp = "*"
+ros-jazzy-navigation2 = "*"
+ros-jazzy-nav2-bringup = "*"
+ros-jazzy-slam-toolbox = "*"
+ros-jazzy-turtlebot3-gazebo = "*"
+ros-jazzy-turtlebot3-navigation2 = "*"
+ros-jazzy-foxglove-bridge = "*"
+ros-jazzy-ros-gz = "*"
