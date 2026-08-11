@@ -6,8 +6,8 @@
 
 v2 keeps v1's direction and principles and reconciles them with what already
 exists: the `robium-ai` CLI (npm, `cli/` in the robium monorepo), the five
-shipped apps in robium-internal-apps, REGISTRY.md, the learnings loop, the
-promotion model, and the demo-gateway/orchestrator/bundled-viewer hosting
+shipped apps in robium-apps, REGISTRY.md, the learnings loop, and the
+demo-gateway/orchestrator/bundled-viewer hosting
 pattern proven by indoor-navigation.
 
 ## 1. Vision and principles
@@ -33,11 +33,10 @@ and adapt it.
 
 ## 2. Where apps live and how they are structured
 
-Apps live one-per-directory in **robium-internal-apps** (private proving
-ground). Polished apps are **promoted** to the public **robium-apps** showcase
-as single clean commits; promotion is a copy, so every app is written
-promotion-ready (README and paths make sense standalone). `REGISTRY.md` at the
-internal repo root is the human catalog: quick-index row + card per app,
+Apps live one-per-directory in the public **robium-apps** repository, which is
+both the development home and showcase. Every app remains release-ready:
+README and paths make sense from a clean clone. `REGISTRY.md` at the repo root
+is the human catalog: quick-index row + card per app,
 updated in the SAME commit as the app change.
 
 Required files per app (merge of v1's tree and the shipped apps' shape):
@@ -64,10 +63,11 @@ version and checksum.
 **Decision rule, not a blanket default.** Pick the runtime by what the app
 touches, following the robium environments skill:
 
-- **ROS 2 / Gazebo / sim-heavy apps: Docker-first.** macOS cannot run these
-  natively; one image, compose profiles as scenarios, all nodes of a scenario
-  in one container (DDS multicast does not cross containers on macOS).
-  Example: indoor-navigation.
+- **ROS 2 / Gazebo / sim-heavy apps: choose native or Docker by platform.**
+  On Apple Silicon, RoboStack + Pixi can keep native Gazebo and ROS 2 isolated
+  inside the app while exposing the native Metal-backed GUI. Keep a headless
+  Docker path for Linux, CI, and Cloud Run. When Docker is used on macOS, keep
+  ROS nodes that rely on DDS discovery in one container.
 - **Python/ML apps (LeRobot, MuJoCo, training/eval): uv-first.**
   `uv sync` + `uv run ...`, Python pinned, `uv.lock` committed. Docker is a
   documented exception when it would cost the accelerator (containers lose
@@ -216,11 +216,10 @@ Required: `schema_version`, `id` (== directory name), `name`, `summary`,
 3. **Reference-ready:** `make smoke` green from a clean clone, metadata and
    docs complete, REGISTRY.md card landed in the same commit, learnings
    captured throughout.
-4. **Published:** promoted to the public robium-apps showcase; website card
-   live; hosted demo (if any) verified.
+4. **Published:** public robium-apps change reviewed; website card live;
+   hosted demo (if any) verified.
 5. **Maintained or archived:** registry `verified` dates on re-verification;
-   archived apps stay runnable with a shelved note (pattern:
-   indoor-navigation-workspace) rather than silently rotting.
+   archived apps are removed or clearly marked rather than silently rotting.
 
 ## 7. UX and visualization guidelines
 
@@ -318,18 +317,17 @@ Roadmap (status as of 2026-08-05):
 - **v1 — shipped:** `robium-app.yaml` schema agreed; yaml files on all five
   shipped apps plus the archived workspace flavor; `robium-ai app
   list|describe|run|check`; `make check` per app, honestly scoped for
-  hardware/remote-GPU apps. (robium#67, robium-internal-apps#2)
+  hardware/remote-GPU apps. (robium#67)
 - **v1.1 — shipped:** `app validate` (per-field errors, --json) run by apps
   CI on every push/PR; `app new <id> --from <app>` scaffold-by-copy;
   website catalog ingestion from yaml (fetch-apps.mjs, /apps page);
   orchestrator configs derived from the yamls' demo.orchestrator sections
   (sync-demos.mjs, drift check in site smoke). (robium#67,
-  robium-internal-apps#2, robium-website#11)
+  robium-website#11)
 - **v1.2 — shipped:** hosted-demo contract extracted to the vendorable
   shared/demo-gateway package (env-configured, stdlib contract test in CI);
   compatibility badges machine-derived from the metadata; the LiveDemo
-  island reusable by any gateway-contract demo. (robium-internal-apps#2,
-  robium-website#11)
+  island reusable by any gateway-contract demo. (robium-website#11)
 - **Later:** scenario registry, benchmark datasets, community galleries,
   cross-app composition, only after the core is reliable.
 

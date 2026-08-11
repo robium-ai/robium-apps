@@ -18,13 +18,13 @@ Pixi/RoboStack environment with a native Metal-rendered Gazebo window.
 - **Autonomous navigation:** Nav2 localizes on the saved map (AMCL), plans a
   path around obstacles, and drives goals — sent programmatically or by
   clicking in Foxglove.
-- All of it headless at real-time speed (RTF ≈ 1.0, software rendering), with
-  live map/laser/path visualization in the browser.
+- Native Gazebo on Apple Silicon, or headless simulation in Docker, with live
+  map/laser/path visualization in the browser.
 
 ## Native macOS (Apple Silicon)
 
 The native path opens Gazebo for the simulator scene and Lichtblick for ROS
-state, mapping controls, navigation goals, and the robot-mounted camera. It
+state, navigation goals, and the robot-mounted camera. It
 does not install Homebrew packages or a system ROS distribution.
 
 ```bash

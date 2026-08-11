@@ -1,9 +1,9 @@
-# Polish playbook — validate & polish each app for public promotion
+# Polish playbook — validate & polish each public app
 
 One agent per app, each in its own worktree on a `polish/<app-name>` branch.
 The goal per app: **validated** (real smoke pass, no drift) and **polished**
 (public-ready docs, generic naming, no stale paths, no secrets) so the human
-can promote it to the public robium-apps repo as one clean commit.
+can publish it confidently in the public robium-apps repo.
 
 `indoor-navigation` completed this pass on 2026-08-03 — use it as the
 reference for what done looks like (its README is the template for yours).

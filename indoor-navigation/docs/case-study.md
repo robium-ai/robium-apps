@@ -1,6 +1,6 @@
 ---
-title: What it took to make Nav2 reliable in Docker on a Mac
-summary: Four integration failures we found while building a repeatable SLAM-to-navigation loop with ROS 2 Jazzy, Gazebo Harmonic, and TurtleBot 3.
+title: What it took to make Nav2 reliable on a Mac
+summary: The integration failures we found while building native and containerized SLAM-to-navigation loops with ROS 2 Jazzy, Gazebo Harmonic, and TurtleBot 3.
 kind: engineering-story
 voice: team
 author: Robium team
@@ -35,10 +35,12 @@ the application works.
 
 ## The result we chose to test
 
-The application runs on Apple Silicon in Docker Desktop, without an NVIDIA
-GPU or a native ROS installation. Gazebo renders headlessly through Mesa, and
-a bundled [Lichtblick](https://github.com/lichtblick-suite/lichtblick) viewer
-shows the ROS data in a browser.
+The application now has two reproducible paths. On Apple Silicon, Pixi and
+RoboStack keep ROS 2 and Gazebo inside the app directory while Gazebo opens as
+a native window. On Linux, CI, and Cloud Run, Docker runs Gazebo headlessly
+through Mesa. Both paths use the bundled
+[Lichtblick](https://github.com/lichtblick-suite/lichtblick) viewer for ROS
+state and the TurtleBot's own camera feed.
 
 There are two related workflows:
 
@@ -86,27 +88,31 @@ Nav2, `slam_toolbox`, and the TurtleBot 3 Burger Cam.
 
 The choices were intentionally ordinary. This project was about integrating
 the standard navigation path, not evaluating planners or training a policy.
-The Burger provides the lidar and odometry the task needs without adding a
-camera to a software-rendered simulation. Jazzy and Harmonic are a supported
-ROS/Gazebo pairing, and the TurtleBot packages supply the model, world, and a
-useful starting configuration for Nav2.
+The Burger Cam provides lidar, odometry, and a robot-mounted camera. Its camera
+is deliberately reduced to 320 pixels wide at 10 Hz so the headless path stays
+practical while the native path still shows the robot's viewpoint. The
+TurtleBot packages supply the model, furnished-house geometry, and a useful
+starting configuration for Nav2.
 
-Docker was less optional. ROS 2 and Gazebo do not run natively on macOS, and
-the application needed to work from a clean checkout. One image therefore
-contains the simulator, ROS packages, application launch files, saved map,
-tests, and browser viewer. Compose profiles expose the individual scenarios:
-simulation, SLAM, navigation, demo, and test.
+Docker remains the portable headless artifact, but it is no longer required
+for the interactive Apple Silicon experience. The native path uses a locked
+Pixi/RoboStack environment under `experiments/native-macos`; the Docker image
+contains the equivalent simulator, ROS packages, launch files, saved map,
+tests, and browser viewer. Compose profiles still expose simulation, SLAM,
+navigation, demo, and test scenarios.
 
 For an interactive run, the public path is deliberately short:
 
 ```bash
-make build
-make demo
+make native-setup  # one time on Apple Silicon
+make demo-native
 ```
 
-The viewer is then available on port 8765 with the map, scan, transforms,
-costmaps, and planned path already arranged. The footage above is from this
-simulation; the application has not been tested on a physical TurtleBot.
+Gazebo and the viewer open automatically. The viewer shows the map, scan,
+transforms, costmaps, plan, and robot camera; Gazebo shows the furnished house
+and robot directly. `make build && make demo` remains the Docker equivalent.
+The footage above is simulation; the application has not been tested on a
+physical TurtleBot.
 
 ## Failure 1: two processes owned SLAM
 

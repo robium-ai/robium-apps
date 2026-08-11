@@ -138,7 +138,7 @@ carried the pipeline; frictions became learnings
 
 ## Next steps
 
-Promotion to the public robium-apps showcase; re-enabling the hosted demo
+Publishing updates to the public robium-apps showcase; re-enabling the hosted demo
 once the website island supports plain HTTP apps with container-level
 sessions; and using this app as the bootstrap base
 (`robium-ai app new <id> --from imitation-manipulation`) for the next
