@@ -39,6 +39,7 @@ RENDERER_FAILURES = (
     'RenderTextureMetalId is not supported by current render engine',
     'Segmentation fault',
 )
+SCAN_TIMEOUT_SECONDS = 45.0
 
 
 def _pixi_shell_command(paths: NativePaths, program: str, *arguments: str) -> list[str]:
@@ -180,18 +181,34 @@ def _tee_output(process: subprocess.Popen, log_path: Path,
                 renderer_failed.set()
 
 
-def _require_scan(paths: NativePaths) -> None:
-    try:
-        result = subprocess.run(
-            scan_health_command(paths), cwd=paths.app_root,
-            env=native_environment(paths), capture_output=True, text=True,
-            timeout=45, check=False)
-    except subprocess.TimeoutExpired as error:
-        raise NativeError('/scan did not publish within 45 seconds') from error
-    compact = result.stdout.replace(' ', '')
-    if result.returncode != 0 or 'ranges:\n-' not in compact:
-        detail = (result.stderr or result.stdout).strip()[-500:]
-        raise NativeError(f'/scan health check failed: {detail}')
+def wait_for_scan(paths: NativePaths, process: subprocess.Popen,
+                  renderer_failed: threading.Event, deadline: float) -> None:
+    """Wait through transient ROS discovery until a real scan arrives."""
+    last_detail = 'topic not discovered'
+    while time.monotonic() < deadline:
+        if process.poll() is not None:
+            raise NativeError(
+                'native ROS launch exited during scan readiness '
+                f'({process.returncode})')
+        if renderer_failed.is_set():
+            raise NativeError('Gazebo renderer initialization failed')
+        try:
+            result = subprocess.run(
+                scan_health_command(paths), cwd=paths.app_root,
+                env=native_environment(paths), capture_output=True, text=True,
+                timeout=min(5.0, max(0.1, deadline - time.monotonic())),
+                check=False)
+        except subprocess.TimeoutExpired:
+            last_detail = 'scan probe timed out'
+            continue
+        compact = result.stdout.replace(' ', '')
+        if result.returncode == 0 and 'ranges:\n-' in compact:
+            return
+        last_detail = (result.stderr or result.stdout).strip()[-500:]
+        time.sleep(0.25)
+    raise NativeError(
+        f'/scan did not publish within {SCAN_TIMEOUT_SECONDS:.0f} seconds: '
+        f'{last_detail}')
 
 
 def run_demo(paths: NativePaths) -> int:
@@ -221,7 +238,9 @@ def run_demo(paths: NativePaths) -> int:
         opened = subprocess.run(['/usr/bin/open', url], check=False)
         if opened.returncode != 0:
             print(f'browser did not open automatically; open {url}', file=sys.stderr)
-        _require_scan(paths)
+        wait_for_scan(
+            paths, process, renderer_failed,
+            time.monotonic() + SCAN_TIMEOUT_SECONDS)
         print(f'native demo ready: Gazebo + {url}', flush=True)
         while process.poll() is None:
             if renderer_failed.is_set():

@@ -4,6 +4,8 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -50,6 +52,24 @@ class NativeDemoTests(unittest.TestCase):
 
         self.assertTrue(renderer_failure(
             'RenderTextureMetalId is not supported by current render engine'))
+
+    @mock.patch('scripts.native_demo.subprocess.run')
+    def test_scan_wait_retries_transient_type_discovery(self, run):
+        from scripts.native_demo import wait_for_scan
+
+        run.side_effect = [
+            subprocess.CompletedProcess(
+                [], 1, '',
+                'Could not determine the type for the passed topic'),
+            subprocess.CompletedProcess([], 0, 'ranges:\n- 1.0\n', ''),
+        ]
+        process = mock.Mock()
+        process.poll.return_value = None
+
+        wait_for_scan(
+            self.paths, process, threading.Event(), time.monotonic() + 1)
+
+        self.assertEqual(run.call_count, 2)
 
     def test_stop_targets_only_validated_process_group(self):
         from scripts.native_demo import stop_owned_process
