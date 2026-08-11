@@ -6,7 +6,7 @@ the robot's SLAM STARTING pose, not the Gazebo world origin. The robot spawns
 at world (-2.0, -0.5), which is map (0, 0) yaw 0 — that is the initial pose
 sent to AMCL below. All goals (--goals and DEFAULT_GOALS) are in MAP frame;
 to convert a Gazebo world coordinate: (mx, my) = (wx + 2.0, wy + 0.5).
-Default goals are known-good free cells from the Task 5 SLAM run.
+Default goals are known-good free cells in the generated house map.
 """
 import argparse
 import sys
@@ -17,7 +17,7 @@ from geometry_msgs.msg import PoseStamped
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 
 INITIAL_POSE = (0.0, 0.0)  # map frame == SLAM start == world (-2.0, -0.5)
-DEFAULT_GOALS = '3.7,0.5;0.3,0.5'  # map frame
+DEFAULT_GOALS = '3.4,0.8;5.1,1.8'  # map frame, hallway doorway and east room
 
 
 def make_pose(nav, x, y):

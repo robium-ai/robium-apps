@@ -15,8 +15,6 @@ setup(
         (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
         (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
         (os.path.join('share', package_name, 'maps'), glob('maps/*')),
-        (os.path.join('share', package_name, 'models', 'overhead_camera'),
-         glob('models/overhead_camera/*')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,

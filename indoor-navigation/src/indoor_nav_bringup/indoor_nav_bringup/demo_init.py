@@ -2,7 +2,7 @@
 
 Sets AMCL's initial pose (the documented interactive-bringup abort otherwise),
 waits for Nav2, measures RTF, then loops forever: subscribes /rosout and
-writes /tmp/demo_status.json every 2 s for the gateway's /status endpoint.
+writes the configured status JSON every 2 s for the gateway's /status endpoint.
 """
 import json
 import os
@@ -16,7 +16,10 @@ from nav_msgs.msg import Odometry
 from rcl_interfaces.msg import Log
 
 INITIAL_POSE = (0.0, 0.0)  # map frame == SLAM start == world (-2.0, -0.5)
-STATUS_PATH = '/tmp/demo_status.json'
+STATUS_PATH = os.environ.get('DEMO_STATUS_PATH', '/tmp/demo_status.json')
+SHUTDOWN_MODE = os.environ.get('DEMO_SHUTDOWN_MODE', 'pid1')
+if SHUTDOWN_MODE not in ('pid1', 'parent'):
+    raise ValueError('DEMO_SHUTDOWN_MODE must be pid1 or parent')
 LOG_KEEP = 40
 START = time.time()
 # Boot watchdog: gz-transport discovery over GZ_RELAY loses a sticky
@@ -25,6 +28,17 @@ START = time.time()
 # ready. Detect it and exit cleanly (SIGINT to PID 1): Cloud Run starts a
 # fresh instance on the viewer's auto-reconnect, re-rolling the race.
 ODOM_DEADLINE_S = 120.0
+
+
+def signal_shutdown(mode):
+    """Interrupt the container init or the native launch parent."""
+    if mode == 'pid1':
+        target = 1
+    elif mode == 'parent':
+        target = os.getppid()
+    else:
+        raise ValueError('DEMO_SHUTDOWN_MODE must be pid1 or parent')
+    os.kill(target, signal.SIGINT)
 
 
 def write_status(nav, ready, rtf, log_ring):
@@ -72,7 +86,7 @@ def main():
             print('DEMO BOOT RETRY: no /odom within deadline, restarting',
                   flush=True)
             time.sleep(0.5)
-            os.kill(1, signal.SIGINT)
+            signal_shutdown(SHUTDOWN_MODE)
             time.sleep(30)
             return 1
 

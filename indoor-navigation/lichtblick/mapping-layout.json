@@ -114,11 +114,6 @@
     "RawMessages!maps": {
       "topicPath": "/maps/available.data"
     },
-    "Image!overhead": {
-      "imageMode": {
-        "imageTopic": "/overhead/image_raw"
-      }
-    },
     "Image!robotcam": {
       "imageMode": {
         "imageTopic": "/camera/image_raw"
@@ -166,12 +161,7 @@
       },
       "splitPercentage": 58
     },
-    "second": {
-      "direction": "row",
-      "first": "Image!overhead",
-      "second": "Image!robotcam",
-      "splitPercentage": 50
-    },
+    "second": "Image!robotcam",
     "splitPercentage": 74
   }
 }

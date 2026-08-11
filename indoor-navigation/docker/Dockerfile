@@ -42,7 +42,7 @@ RUN . /opt/ros/${ROS_DISTRO}/setup.sh \
 # turtlebot3_burger_cam ships a `wideanglecamera` (fisheye, hfov 3.183 rad) with
 # a 512x512 env_texture — a six-face cubemap rendered every frame at 30 Hz. On
 # llvmpipe that dominates the whole simulation: measured RTF 1.15 with only the
-# overhead camera, 0.17 once this sensor is added. Nav2's controller and the
+# robot camera, 0.17 once this sensor is added. Nav2's controller and the
 # smoke timeouts both assume RTF near 1.0, so the fisheye is not affordable.
 #
 # A pinhole camera at 10 Hz costs one render pass instead of six and looks the

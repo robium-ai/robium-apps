@@ -8,7 +8,7 @@ Routes:
       a fresh instance because this one is busy).
   * GET  /status?session=UUID     -> 200 JSON (contract in the plan header);
       409 if the instance is claimed by a different session.
-  * POST /shutdown?session=UUID   -> 200 + SIGTERM PID 1 (container exits);
+  * POST /shutdown?session=UUID   -> 200 + SIGINT launch process;
       403 on session mismatch.
   * GET  /                        -> 302 to the bundled Lichtblick viewer
       with ds params targeting this host; other GETs serve /opt/lichtblick.
@@ -30,13 +30,20 @@ from urllib.parse import parse_qs, quote, urlsplit
 _origin = contextvars.ContextVar('origin', default='https://robium.ai')
 
 PORT = int(os.environ.get('PORT', '8765'))
-BRIDGE = ('127.0.0.1', 8766)
-STATUS_PATH = '/tmp/demo_status.json'
+BRIDGE = (
+    os.environ.get('DEMO_BRIDGE_HOST', '127.0.0.1'),
+    int(os.environ.get('DEMO_BRIDGE_PORT', '8766')),
+)
+STATUS_PATH = os.environ.get('DEMO_STATUS_PATH', '/tmp/demo_status.json')
 SESSION_SECONDS = 1800
 FLEET_BUDGET = 5  # keep in sync with Cloud Run --max-instances
 FLEET_CACHE_S = 30
 WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
-STATIC_ROOT = '/opt/lichtblick'  # bundled Lichtblick web build (Dockerfile)
+STATIC_ROOT = os.path.realpath(
+    os.environ.get('DEMO_STATIC_ROOT', '/opt/lichtblick'))
+SHUTDOWN_MODE = os.environ.get('DEMO_SHUTDOWN_MODE', 'pid1')
+if SHUTDOWN_MODE not in ('pid1', 'parent'):
+    raise ValueError('DEMO_SHUTDOWN_MODE must be pid1 or parent')
 MIME = {
     '.html': 'text/html; charset=utf-8', '.js': 'application/javascript',
     '.css': 'text/css', '.json': 'application/json', '.map': 'application/json',
@@ -159,6 +166,17 @@ def read_status_file():
     except (OSError, json.JSONDecodeError):
         return {'start': time.time(), 'ready': False, 'rtf': None,
                 'nodes': 0, 'log': ['stack booting…']}
+
+
+def signal_shutdown(mode):
+    """Interrupt the container init or the native launch parent."""
+    if mode == 'pid1':
+        target = 1
+    elif mode == 'parent':
+        target = os.getppid()
+    else:
+        raise ValueError('DEMO_SHUTDOWN_MODE must be pid1 or parent')
+    os.kill(target, signal.SIGINT)
 
 
 async def pipe(reader, writer):
@@ -311,10 +329,9 @@ async def handle(reader, writer):
         await writer.drain()
         writer.close()
         await asyncio.sleep(0.2)
-        # SIGINT, not SIGTERM: PID 1 (ros2 launch) has no SIGTERM handler
-        # installed, and unhandled signals to PID 1 are ignored by the
-        # kernel — SIGINT triggers launch's real shutdown (verified).
-        os.kill(1, signal.SIGINT)
+        # Docker defaults to PID 1. Native mode targets this process's launch
+        # parent and can never signal the host's PID 1.
+        signal_shutdown(SHUTDOWN_MODE)
         return
 
     if method == 'GET':

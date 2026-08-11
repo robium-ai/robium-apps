@@ -82,7 +82,7 @@ works. Neither proves that a velocity command reaches the robot.
 
 We started with the desired behavior and the host constraints. A
 Robium-assisted architecture pass selected ROS 2 Jazzy, Gazebo Harmonic,
-Nav2, `slam_toolbox`, and the TurtleBot 3 Burger.
+Nav2, `slam_toolbox`, and the TurtleBot 3 Burger Cam.
 
 The choices were intentionally ordinary. This project was about integrating
 the standard navigation path, not evaluating planners or training a policy.

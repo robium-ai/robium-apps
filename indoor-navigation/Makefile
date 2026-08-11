@@ -124,7 +124,7 @@ demo-smoke:
 	test "$$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:8765/fs/list?session=smoke&path=src")" = "404"
 	test "$$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:8765/pty?session=smoke")" = "404"
 	test "$$(curl -s -o /dev/null --path-as-is -w '%{http_code}' "http://localhost:8765/../etc/passwd")" = "404"
-	$(COMPOSE) exec demo /entrypoint.sh ros2 run indoor_nav_bringup send_goals --goals "0.3,0.5" --timeout 120
+	$(COMPOSE) exec demo /entrypoint.sh ros2 run indoor_nav_bringup send_goals --goals "3.4,0.8" --timeout 120
 	curl -s -X POST "http://localhost:8765/shutdown?session=smoke" | grep -q bye
 	n=0; until [ -z "$$($(COMPOSE) ps -q demo)" ] || [ "$$(docker inspect -f '{{.State.Running}}' $$($(COMPOSE) ps -q demo) 2>/dev/null)" != "true" ]; do \
 	  n=$$((n+1)); [ $$n -ge 10 ] && echo "SHUTDOWN TIMEOUT" && exit 1; sleep 2; done

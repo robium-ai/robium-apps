@@ -40,9 +40,13 @@ def generate_launch_description():
     remappings = [('/tf', 'tf'), ('/tf_static', 'tf_static')]
 
     bridge_port = DeclareLaunchArgument('bridge_port', default_value='8765')
+    gui = DeclareLaunchArgument('gui', default_value='false')
     sim = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(pkg, 'launch', 'sim.launch.py')),
-        launch_arguments={'bridge_port': LaunchConfiguration('bridge_port')}.items())
+        launch_arguments={
+            'bridge_port': LaunchConfiguration('bridge_port'),
+            'gui': LaunchConfiguration('gui'),
+        }.items())
 
     def server(package, executable, name, extra_remaps=(), extra_params=()):
         return Node(
@@ -93,4 +97,4 @@ def generate_launch_description():
             }]),
     ]
 
-    return LaunchDescription([bridge_port, sim] + nav2_nodes)
+    return LaunchDescription([bridge_port, gui, sim] + nav2_nodes)

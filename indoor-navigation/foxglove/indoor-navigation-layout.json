@@ -4,11 +4,7 @@
       "cameraState": {
         "perspective": false,
         "distance": 8,
-        "targetOffset": [
-          1.5,
-          0,
-          0
-        ],
+        "targetOffset": [1.5, 0, 0],
         "thetaOffset": 0,
         "phi": 60,
         "fovy": 45,
@@ -38,10 +34,7 @@
         "/plan": {
           "visible": true,
           "lineWidth": 0.05,
-          "gradient": [
-            "#00e04d",
-            "#00e04d"
-          ]
+          "gradient": ["#00e04d", "#00e04d"]
         },
         "/global_costmap/costmap": {
           "visible": true,
@@ -68,11 +61,6 @@
     "RawMessages!goalecho": {
       "topicPath": "/goal_pose"
     },
-    "Image!overhead": {
-      "imageMode": {
-        "imageTopic": "/overhead/image_raw"
-      }
-    },
     "Image!robotcam": {
       "imageMode": {
         "imageTopic": "/camera/image_raw"
@@ -89,15 +77,10 @@
     "first": "3D!navtrial",
     "second": {
       "direction": "column",
-      "first": "Image!overhead",
-      "second": {
-        "direction": "column",
-        "first": "Image!robotcam",
-        "second": "RawMessages!goalecho",
-        "splitPercentage": 62
-      },
-      "splitPercentage": 38
+      "first": "Image!robotcam",
+      "second": "RawMessages!goalecho",
+      "splitPercentage": 72
     },
-    "splitPercentage": 62
+    "splitPercentage": 68
   }
 }
