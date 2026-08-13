@@ -19,6 +19,16 @@ applications repository and no promotion-copy workflow.
 4. Preserve the reference-library role: if an existing app resembles new work,
    bootstrap from its structure, environment, and test shape before diverging.
 
+## Maintainer collaboration preference
+
+For feature work in this repository, present one rough design or plan for
+approval. After the maintainer approves that direction, proceed through
+implementation and verification without additional conversational approval
+gates. Prefer delivering working software that the maintainer can try, then
+iterate from concrete feedback. Pause only when a missing choice would
+materially change the result, the scope needs to expand, or safety/external
+authority requires confirmation.
+
 ## Parallel work isolation (permanent policy)
 
 One app per agent, each in its own worktree/branch (`promote/<app-name>`):
