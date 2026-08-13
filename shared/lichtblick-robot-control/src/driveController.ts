@@ -20,20 +20,19 @@ export class DriveController {
   public constructor(options: DriveControllerOptions) {
     this.config = options.config;
     this.publish = options.publish;
-    this.setIntervalFn = options.setInterval ?? ((callback, ms) => window.setInterval(callback, ms));
+    this.setIntervalFn =
+      options.setInterval ?? ((callback, ms) => globalThis.setInterval(callback, ms));
     this.clearIntervalFn =
-      options.clearInterval ?? ((handle) => window.clearInterval(handle as number));
+      options.clearInterval ?? ((handle) => globalThis.clearInterval(handle as number));
   }
 
   public press(direction: Direction): void {
     this.held.add(direction);
     this.publishCurrent();
-    if (this.intervalHandle == undefined) {
-      this.intervalHandle = this.setIntervalFn(
-        () => this.publishCurrent(),
-        1000 / this.config.publishRateHz,
-      );
-    }
+    this.intervalHandle ??= this.setIntervalFn(
+      () => this.publishCurrent(),
+      1000 / this.config.publishRateHz,
+    );
   }
 
   public release(direction: Direction): void {
@@ -47,7 +46,11 @@ export class DriveController {
   public stop(): void {
     this.held.clear();
     this.clearTimer();
-    this.publish({ ...ZERO_TWIST, linear: { ...ZERO_TWIST.linear }, angular: { ...ZERO_TWIST.angular } });
+    this.publish({
+      ...ZERO_TWIST,
+      linear: { ...ZERO_TWIST.linear },
+      angular: { ...ZERO_TWIST.angular },
+    });
   }
 
   public dispose(): void {

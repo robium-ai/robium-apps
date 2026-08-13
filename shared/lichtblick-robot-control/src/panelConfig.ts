@@ -50,7 +50,7 @@ export function normalizeConfig(value: unknown): PanelConfig {
   const config = { ...DEFAULT_CONFIG };
   for (const key of stringKeys) {
     if (typeof candidate[key] === "string") {
-      (config[key] as string) = candidate[key] as string;
+      (config[key] as string) = candidate[key];
     }
   }
   for (const key of ["linearSpeed", "angularSpeed", "publishRateHz"] as const) {
@@ -71,7 +71,7 @@ export function parseAvailableMaps(message: unknown): string[] {
     typeof message === "string"
       ? message
       : typeof message === "object" && message != undefined && "data" in message
-        ? String((message as { data: unknown }).data)
+        ? String(message.data)
         : "";
   return [...new Set(raw.split(/[\n,;]/).map((name) => name.trim()))]
     .filter((name) => name.toLowerCase() !== "none" && validateMapName(name))

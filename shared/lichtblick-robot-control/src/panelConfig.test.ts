@@ -39,10 +39,11 @@ test("rejects map names that can escape the maps directory", () => {
 });
 
 test("parses, validates, deduplicates, and sorts available maps", () => {
-  assert.deepEqual(
-    parseAvailableMaps("zeta\nnone\nhouse\nhouse\n../escape\nalpha\n"),
-    ["alpha", "house", "zeta"],
-  );
+  assert.deepEqual(parseAvailableMaps("zeta\nnone\nhouse\nhouse\n../escape\nalpha\n"), [
+    "alpha",
+    "house",
+    "zeta",
+  ]);
   assert.deepEqual(parseAvailableMaps({ data: "office, lobby;warehouse" }), [
     "lobby",
     "office",

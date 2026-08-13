@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { DriveController } from "./driveController";
-import { DEFAULT_CONFIG } from "./panelConfig";
 import { ZERO_TWIST, type Twist } from "./messages";
+import { DEFAULT_CONFIG } from "./panelConfig";
 
 function fixture() {
   const published: Twist[] = [];
