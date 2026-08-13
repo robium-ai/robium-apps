@@ -1,0 +1,11 @@
+*
+!indoor-navigation/
+!indoor-navigation/**
+!shared/
+!shared/lichtblick-robot-control/
+!shared/lichtblick-robot-control/**
+**/node_modules/
+**/dist/
+**/*.foxe
+**/__pycache__/
+**/*.pyc

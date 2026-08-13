@@ -153,7 +153,7 @@ smoke:
 DEMO_IMAGE = us-central1-docker.pkg.dev/robium-prod/robium/demo-nav-trial:latest
 
 demo-image:
-	gcloud builds submit --project=robium-prod --config=cloudbuild.yaml .
+	gcloud builds submit --project=robium-prod --config=indoor-navigation/cloudbuild.yaml ..
 
 demo-deploy:
 	gcloud run deploy demo-nav-trial --image=$(DEMO_IMAGE) \

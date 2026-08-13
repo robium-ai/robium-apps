@@ -2,7 +2,16 @@ import lichtblick from "@lichtblick/eslint-plugin";
 import globals from "globals";
 
 export default [
-  { ignores: ["dist/**", "node_modules/**", "*.foxe", "config.ts", "eslint.config.mjs"] },
+  {
+    ignores: [
+      "deploy/**",
+      "dist/**",
+      "node_modules/**",
+      "*.foxe",
+      "config.ts",
+      "eslint.config.mjs",
+    ],
+  },
   ...lichtblick.configs.base,
   ...lichtblick.configs.react,
   ...lichtblick.configs.typescript,

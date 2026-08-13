@@ -3,7 +3,7 @@ steps:
     args:
       - build
       - -f
-      - docker/Dockerfile
+      - indoor-navigation/docker/Dockerfile
       - -t
       - us-central1-docker.pkg.dev/robium-prod/robium/demo-nav-trial:latest
       - .

@@ -7,6 +7,14 @@
 # lichtblick :latest index digest pinned 2026-08-03
 FROM --platform=linux/amd64 ghcr.io/lichtblick-suite/lichtblick@sha256:e29673ab12265fe84a62fed0835606d8789168fe9b3395a2997d97f002ed1e9d AS lichtblick
 
+FROM node:22-bookworm-slim AS robot-control
+
+WORKDIR /extension
+COPY shared/lichtblick-robot-control/package.json shared/lichtblick-robot-control/package-lock.json ./
+RUN npm ci
+COPY shared/lichtblick-robot-control/ ./
+RUN npm run package
+
 FROM ros:jazzy-ros-base-noble
 
 ENV ROS_DISTRO=jazzy
@@ -25,9 +33,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /ws
-COPY src ./src
-COPY tests ./tests
-COPY scripts ./scripts
+COPY indoor-navigation/src ./src
+COPY indoor-navigation/tests ./tests
+COPY indoor-navigation/scripts ./scripts
 
 # rosdep before build, every time (ros2 skill key directive).
 RUN . /opt/ros/${ROS_DISTRO}/setup.sh \
@@ -70,12 +78,18 @@ sdf.write_text(text)
 print('turtlebot3_burger_cam camera: wideangle@30Hz -> pinhole@10Hz')
 PYEOF
 
-COPY docker/entrypoint.sh /entrypoint.sh
+COPY indoor-navigation/docker/entrypoint.sh /entrypoint.sh
 
 # Bundled viewer: the demo gateway serves /opt/lichtblick on non-API GETs.
 COPY --from=lichtblick /src /opt/lichtblick
-COPY lichtblick/nav-layout.json /opt/lichtblick/nav-layout.json
-COPY lichtblick/mapping-layout.json /opt/lichtblick/mapping-layout.json
+COPY indoor-navigation/lichtblick/nav-layout.json /opt/lichtblick/nav-layout.json
+COPY indoor-navigation/lichtblick/mapping-layout.json /opt/lichtblick/mapping-layout.json
+COPY --from=robot-control /extension/robium.robot-control-0.1.0.foxe /opt/lichtblick/robium/robot-control.foxe
+COPY shared/lichtblick-robot-control/package.json /opt/lichtblick/robium/package.json
+COPY shared/lichtblick-robot-control/README.md /opt/lichtblick/robium/README.md
+COPY shared/lichtblick-robot-control/CHANGELOG.md /opt/lichtblick/robium/CHANGELOG.md
+COPY shared/lichtblick-robot-control/deploy/preinstall-extension.mjs /opt/lichtblick/robium/preinstall-extension.mjs
+RUN python3 /ws/scripts/bundle_default_extension.py /opt/lichtblick/index.html
 RUN python3 - <<'PYEOF'
 from pathlib import Path
 idx = Path('/opt/lichtblick/index.html')

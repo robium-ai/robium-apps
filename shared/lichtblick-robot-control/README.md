@@ -19,6 +19,11 @@ robot-control** to a layout. Browser installation is stored in IndexedDB for tha
 
 Desktop Lichtblick users can instead run `npm run local-install`.
 
+The indoor-navigation app consumes this same package at image-build time and
+preinstalls it before the bundled Lichtblick application starts. That app's
+users therefore get the right-side panel by default; the manual flow above is
+for reuse in other projects.
+
 ## Default ROS interfaces
 
 | Purpose | Interface |

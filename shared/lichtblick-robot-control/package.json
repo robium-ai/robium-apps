@@ -17,7 +17,7 @@
     "lint": "eslint --report-unused-disable-directives .",
     "local-install": "lichtblick-extension install",
     "package": "lichtblick-extension package",
-    "test": "tsx --test src/*.test.*"
+    "test": "tsx --test src/*.test.* && node --test deploy/*.test.mjs"
   },
   "devDependencies": {
     "@lichtblick/eslint-plugin": "2.0.8",
@@ -29,6 +29,7 @@
     "create-lichtblick-extension": "1.1.0",
     "css-loader": "7.1.2",
     "eslint": "9.38.0",
+    "fake-indexeddb": "6.2.4",
     "globals": "15.14.0",
     "jsdom": "27.0.0",
     "prettier": "3.3.3",

@@ -76,20 +76,36 @@ pose, so world (-2.0, -0.5) = map (0, 0).
 - `make check-map` — host-side map sanity check (`tests/check_map.py`)
 - `make down` — tear down all profiles' containers
 
-### Install the reusable control panel
+### Test the default control panel
 
 The mapping layout reserves its right 28% for the **Robium Robot Control**
-Lichtblick extension. Build and verify the extension from this app with:
+Lichtblick extension. The Docker image builds and preinstalls it automatically;
+there is no drag-and-drop installation step for indoor-navigation.
+
+Start either operating mode:
+
+```bash
+make mapping                 # build a map
+make localize MAP_NAME=map   # localize against an existing map
+```
+
+Open http://localhost:8080. The right rail should immediately show Robot
+Control with WASD, mapping, map-loading, Go Home, and Stop Robot controls. To
+prove the default works independently of any previous browser installation,
+open http://127.0.0.1:8080 in a private window; that is a clean browser origin.
+
+For an automated extension build/test gate, run:
 
 ```bash
 make control-extension-check
 ```
 
 The command prints the absolute path to
-`shared/lichtblick-robot-control/robium.robot-control-0.1.0.foxe`. Drag that
-file onto the Lichtblick browser window (or open it from the file picker) and
-confirm installation once per browser origin. The committed mapping layout
-then supplies the app defaults automatically.
+`shared/lichtblick-robot-control/robium.robot-control-0.1.0.foxe`. That artifact
+remains reusable in other Lichtblick projects: drag it onto another project's
+browser viewer (or use Lichtblick's file picker) and confirm installation once
+for that browser origin. Indoor-navigation's committed layout supplies its ROS
+defaults automatically.
 
 The panel provides hold-to-drive WASD/arrow controls, mapping start/save,
 available-map loading for localization, Stop Robot, and an intentionally

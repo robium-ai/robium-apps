@@ -4,8 +4,8 @@
 # skill gotcha). Single-host sim demo => one supervisable unit per scenario.
 x-app: &app
   build:
-    context: ..
-    dockerfile: docker/Dockerfile
+    context: ../..
+    dockerfile: indoor-navigation/docker/Dockerfile
   image: indoor-navigation:latest
   environment:
     ROS_DOMAIN_ID: "42"

@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Deliver a reusable `.foxe` Robot Control panel and integrate it as indoor-navigation's right-side mapping control rail.
+**Goal:** Deliver a reusable `.foxe` Robot Control panel, integrate it as indoor-navigation's right-side mapping control rail, and preinstall it in the bundled viewer.
 
-**Architecture:** A shared TypeScript/React extension contains pure configuration, map parsing, drive-state, and adapter logic around `PanelExtensionContext`; indoor-navigation supplies ROS defaults through layout state. The existing `teleop_relay` and `map_manager` remain the robot-side boundary.
+**Architecture:** A shared TypeScript/React extension contains pure configuration, map parsing, drive-state, and adapter logic around `PanelExtensionContext`; indoor-navigation supplies ROS defaults through layout state. The Docker build packages that shared source, copies the `.foxe` into the viewer, and runs a tested browser bootstrap before Lichtblick starts so a clean profile already contains the extension. The existing `teleop_relay` and `map_manager` remain the robot-side boundary.
 
 **Tech Stack:** TypeScript, React 18, `@lichtblick/suite`, `create-lichtblick-extension`, Node's test runner through `tsx`, Python `unittest`, Docker/ROS 2 Jazzy live smoke.
 
@@ -17,6 +17,7 @@
 - Load never claims to switch a mapping graph into localization.
 - Stop is a motion-command stop, not an emergency stop.
 - No generated `dist/`, `node_modules/`, or `.foxe` artifact is committed.
+- The bundled viewer must install the extension before Lichtblick's main script starts; a clean browser profile must not show an unknown panel.
 - Follow TDD: each production behavior begins with a test that fails for the intended missing behavior.
 
 ---
@@ -264,3 +265,63 @@ make mapping
 git add shared/lichtblick-robot-control indoor-navigation REGISTRY.md
 git commit -m "docs(indoor-navigation): document Lichtblick control extension"
 ```
+
+### Task 5: Make the extension zero-install in indoor-navigation
+
+**Files:**
+- Test: `shared/lichtblick-robot-control/deploy/preinstall-extension.test.js`
+- Create: `shared/lichtblick-robot-control/deploy/preinstall-extension.js`
+- Test: `indoor-navigation/tests/test_lichtblick_bundle.py`
+- Create: `indoor-navigation/scripts/bundle_default_extension.py`
+- Modify: `shared/lichtblick-robot-control/package.json`
+- Modify: `shared/lichtblick-robot-control/package-lock.json`
+- Modify: `indoor-navigation/docker/Dockerfile`
+- Modify: `indoor-navigation/docker/compose.yaml`
+- Modify: `indoor-navigation/cloudbuild.yaml`
+- Modify: `indoor-navigation/Makefile`
+- Modify: `indoor-navigation/README.md`
+
+**Interfaces:**
+- Produces: `installDefaultExtension({ indexedDB, fetch, baseUrl })`, which stores the packaged `.foxe` and synchronized metadata in Lichtblick's `lichtblick-extensions-local` database.
+- Produces: `bundle_default_extension.py INDEX_HTML`, which replaces Lichtblick's deferred main script with a bootstrap that awaits extension installation and always starts the original main script.
+- Produces: a repository-root Docker build context so the indoor-navigation image can package `shared/lichtblick-robot-control` without duplicating it.
+
+- [x] **Step 1: Write failing browser-storage tests**
+
+Use `fake-indexeddb` and literal package fixtures to prove a clean database receives matching `metadata` and `extensions` records, the binary content remains a `Uint8Array`, and a second load upgrades the stored version/content.
+
+- [x] **Step 2: Run the storage test and confirm it fails because the deploy module is missing**
+
+Run: `npm test --prefix shared/lichtblick-robot-control`
+
+- [x] **Step 3: Implement the minimal preinstaller and make the storage test pass**
+
+- [x] **Step 4: Write a failing bundle-rewrite test**
+
+Give the Python helper a minimal Lichtblick HTML fixture and assert that the original `defer` script is replaced by an awaited preinstall call followed by creation of the exact original main script. Also assert that zero or multiple main scripts are rejected.
+
+- [x] **Step 5: Run the bundle test and confirm the helper is missing**
+
+Run: `python3 -m unittest indoor-navigation.tests.test_lichtblick_bundle -v`
+
+- [x] **Step 6: Implement the bundle helper and make its tests pass**
+
+- [x] **Step 7: Package the shared extension during the Docker build**
+
+Change the Docker build context to the robium-apps root, use a Node builder stage to run `npm ci` and `npm run package`, copy the `.foxe`, package metadata, README, changelog, and preinstaller into `/opt/lichtblick/robium/`, then run the bundle helper before the existing default-layout injection.
+
+- [x] **Step 8: Run extension and host-side app tests**
+
+Run: `make control-extension-check` and the dependency-free indoor-navigation unittest suite.
+
+- [x] **Step 9: Build the image and inspect its viewer contract**
+
+Assert the five `/opt/lichtblick/robium/` assets exist, `index.template.html` contains the preinstall bootstrap, and the original main bundle is still referenced by that bootstrap.
+
+- [x] **Step 10: Verify a clean browser profile**
+
+Start `make mapping`, clear site storage for `http://localhost:8080`, reload, and assert the right rail renders `Robot Control`, movement buttons, and mapping controls without manual `.foxe` installation or an unknown-panel error.
+
+- [x] **Step 11: Run the robotics smoke gate and commit**
+
+Run: `make smoke`, then commit only the zero-install implementation, tests, plan, and documentation.
