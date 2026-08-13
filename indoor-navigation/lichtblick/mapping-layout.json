@@ -58,110 +58,39 @@
         "poseEstimateThetaDeviation": 0.26
       }
     },
-    "Indicator!state": {
-      "path": "/mapping/state.data",
-      "style": "background",
-      "fallbackColor": "#5a5a5a",
-      "fallbackLabel": "waiting for /mapping/state",
-      "rules": [
-        {
-          "operator": "=",
-          "rawValue": "MAPPING",
-          "color": "#2e7d32",
-          "label": "MAPPING - save enabled, load refused"
-        },
-        {
-          "operator": "=",
-          "rawValue": "LOCALIZATION",
-          "color": "#1565c0",
-          "label": "LOCALIZING (AMCL) - load enabled, save refused"
-        }
-      ]
-    },
-    "Teleop!drive": {
-      "topic": "/cmd_vel_teleop",
-      "publishRate": 10,
-      "upButton": { "field": "linear-x", "value": 0.2 },
-      "downButton": { "field": "linear-x", "value": -0.2 },
-      "leftButton": { "field": "angular-z", "value": 0.8 },
-      "rightButton": { "field": "angular-z", "value": -0.8 }
-    },
-    "CallService!reset": {
-      "serviceName": "/mapping/reset",
-      "requestPayload": "{}",
-      "layout": "vertical",
-      "buttonText": "Start fresh",
-      "buttonTooltip": "Clear the map and start mapping over from here (mapping sessions only)",
-      "buttonColor": "#b23c3c"
-    },
-    "CallService!save": {
-      "serviceName": "/mapping/save",
-      "requestPayload": "{}",
-      "layout": "vertical",
-      "buttonText": "Save map",
-      "buttonTooltip": "Write map_name as .pgm/.yaml - mapping continues",
-      "buttonColor": "#2e7d32"
-    },
-    "CallService!load": {
-      "serviceName": "/mapping/load",
-      "requestPayload": "{}",
-      "layout": "vertical",
-      "buttonText": "Load map",
-      "buttonTooltip": "Switch map_server to map_name (localization sessions only)",
-      "buttonColor": "#1565c0"
-    },
-    "Parameters!mapname": {},
-    "RawMessages!maps": {
-      "topicPath": "/maps/available.data"
-    },
     "Image!robotcam": {
       "imageMode": {
         "imageTopic": "/camera/image_raw"
       }
+    },
+    "Robium Robot Control.robot-control!control": {
+      "version": 1,
+      "teleopTopic": "/cmd_vel_teleop",
+      "mappingStateTopic": "/mapping/state",
+      "availableMapsTopic": "/maps/available",
+      "mapNameParameter": "/map_manager.map_name",
+      "startMappingService": "/mapping/reset",
+      "stopMappingService": "/mapping/save",
+      "loadMapService": "/mapping/load",
+      "goHomeService": "",
+      "navigationStopService": "",
+      "linearSpeed": 0.2,
+      "angularSpeed": 0.8,
+      "publishRateHz": 10
     }
   },
   "globalVariables": {},
   "userNodes": {},
   "playbackConfig": { "speed": 1 },
   "layout": {
-    "direction": "column",
+    "direction": "row",
     "first": {
-      "direction": "row",
+      "direction": "column",
       "first": "3D!dash",
-      "second": {
-        "direction": "column",
-        "first": {
-          "direction": "column",
-          "first": "Indicator!state",
-          "second": "Teleop!drive",
-          "splitPercentage": 20
-        },
-        "second": {
-          "direction": "column",
-          "first": {
-            "direction": "row",
-            "first": "CallService!save",
-            "second": {
-              "direction": "row",
-              "first": "CallService!load",
-              "second": "CallService!reset",
-              "splitPercentage": 50
-            },
-            "splitPercentage": 34
-          },
-          "second": {
-            "direction": "column",
-            "first": "Parameters!mapname",
-            "second": "RawMessages!maps",
-            "splitPercentage": 55
-          },
-          "splitPercentage": 32
-        },
-        "splitPercentage": 46
-      },
-      "splitPercentage": 58
+      "second": "Image!robotcam",
+      "splitPercentage": 78
     },
-    "second": "Image!robotcam",
-    "splitPercentage": 74
+    "second": "Robium Robot Control.robot-control!control",
+    "splitPercentage": 72
   }
 }

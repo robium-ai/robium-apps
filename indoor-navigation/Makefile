@@ -1,6 +1,8 @@
 COMPOSE = docker compose -f docker/compose.yaml
+CONTROL_EXTENSION = ../shared/lichtblick-robot-control
+CONTROL_EXTENSION_ARTIFACT = $(CONTROL_EXTENSION)/robium.robot-control-0.1.0.foxe
 
-.PHONY: build sim mapping localize drive save-map load-map slam nav demo native-setup demo-native native-down demo-smoke demo-image demo-deploy smoke check check-map rtf down
+.PHONY: build sim mapping localize drive save-map load-map slam nav demo native-setup demo-native native-down demo-smoke demo-image demo-deploy smoke check check-map control-extension control-extension-check rtf down
 
 # Session mode for the mapping profile (mapping|localization) and the map the
 # dashboard starts pointed at. Exported so compose interpolation sees them.
@@ -25,6 +27,19 @@ check:
 
 build:
 	$(COMPOSE) build sim
+
+control-extension:
+	npm ci --prefix $(CONTROL_EXTENSION)
+	npm run package --prefix $(CONTROL_EXTENSION)
+	@echo "Control extension: $(abspath $(CONTROL_EXTENSION_ARTIFACT))"
+
+control-extension-check:
+	npm ci --prefix $(CONTROL_EXTENSION)
+	npm test --prefix $(CONTROL_EXTENSION)
+	npm run lint --prefix $(CONTROL_EXTENSION)
+	npm run build --prefix $(CONTROL_EXTENSION)
+	npm run package --prefix $(CONTROL_EXTENSION)
+	@echo "Control extension: $(abspath $(CONTROL_EXTENSION_ARTIFACT))"
 
 sim:
 	$(COMPOSE) --profile sim up --abort-on-container-exit
