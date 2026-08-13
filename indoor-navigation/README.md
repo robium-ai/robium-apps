@@ -76,6 +76,28 @@ pose, so world (-2.0, -0.5) = map (0, 0).
 - `make check-map` — host-side map sanity check (`tests/check_map.py`)
 - `make down` — tear down all profiles' containers
 
+### Install the reusable control panel
+
+The mapping layout reserves its right 28% for the **Robium Robot Control**
+Lichtblick extension. Build and verify the extension from this app with:
+
+```bash
+make control-extension-check
+```
+
+The command prints the absolute path to
+`shared/lichtblick-robot-control/robium.robot-control-0.1.0.foxe`. Drag that
+file onto the Lichtblick browser window (or open it from the file picker) and
+confirm installation once per browser origin. The committed mapping layout
+then supplies the app defaults automatically.
+
+The panel provides hold-to-drive WASD/arrow controls, mapping start/save,
+available-map loading for localization, Stop Robot, and an intentionally
+disabled Go Home button until a service is configured. Stop Robot sends zero
+velocity; it is not a hardware emergency stop. Loading a map does not change
+a running mapping launch graph into localization—start `make localize` for the
+localization stack.
+
 External viewers still work too: with any scenario running, connect
 Foxglove or a local Lichtblick to `ws://localhost:8765` (during `make demo`
 the same port serves both the viewer and the WebSocket). The committed

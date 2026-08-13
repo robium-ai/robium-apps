@@ -32,7 +32,7 @@ This is the architect skill's **navigation golden path** (`ros2` + `nav2` + `gaz
 | Robot | **TurtleBot 3 Burger Cam** | `turtlebot3_gazebo` (Jazzy binary) | The upstream model supplies lidar, odometry, and the robot-mounted camera used by the dashboard. The camera is tuned to a modest frame rate and resolution for the CPU-rendered Cloud Run path, while native macOS Gazebo renders through the local graphics stack. Switching models remains one `TURTLEBOT3_MODEL` environment variable. |
 | SLAM | **slam_toolbox** | Jazzy binary (`ros-jazzy-slam-toolbox`, 2.8.x) | The Nav2-recommended and only officially supported ROS 2 SLAM library; online-async mode + `map_saver_cli` covers the drive→map→save milestone. Cartographer (the old TB3 default) rejected: effectively unmaintained upstream. |
 | Navigation | **Nav2** (AMCL + planner/controller servers, `nav2_simple_commander` for goals) | Jazzy binaries | The classical nav stack for a mobile base; no learning component → no training framework (decision-tree 3, "No" branch). Goals sent programmatically via the `nav2_simple_commander` Python API (`NavigateToPose`), which is also what the smoke test drives. |
-| Visualization | **Foxglove** (browser) via `foxglove_bridge` | `ros-jazzy-foxglove-bridge` (3.x, MIT) | Headless Docker + macOS host → no X display → RViz2 rejected per the skill's headless rule. Bridge runs in-container (WebSocket :8765); the Foxglove web app connects from the Mac's browser. Fallback if Foxglove's account/free-tier terms bite: Lichtblick (open-source fork), same WebSocket protocol. |
+| Visualization | **Lichtblick** (browser) via `foxglove_bridge` | bundled web viewer + reusable `.foxe` control extension | Headless Docker + macOS host → no X display → RViz2 rejected per the skill's headless rule. The bridge runs beside the robot/sim and Lichtblick uses its Foxglove WebSocket protocol. The mapping layout docks the shared Robium Robot Control extension on the right. |
 | Environment | **Docker** (portable/deploy) + **Pixi/RoboStack** (native macOS arm64) | `ros:jazzy` Linux image; locked community-native Jazzy packages for local Metal visualization | Docker remains the supported portable path. The native path is isolated under the app and verified on Apple Silicon without modifying system libraries. |
 
 ## 3. Module breakdown
@@ -110,6 +110,23 @@ Single robot, single host — short plan. Key ROS 2 interfaces (all bridged from
 | `/map` | `nav_msgs/OccupancyGrid` | latched/1 Hz | slam_toolbox during mapping; `map_server` during nav |
 | `navigate_to_pose` | Nav2 action | on demand | driven by `send_goals.py` / smoke test via `nav2_simple_commander` |
 | Foxglove WebSocket | `foxglove_bridge` | — | container port 8765 published to host; browser connects to `ws://localhost:8765` |
+
+### Lichtblick control extension boundary
+
+`shared/lichtblick-robot-control/` is deliberately outside the app so other
+ROS 2 applications can package the same panel and override its saved settings.
+The panel publishes plain `geometry_msgs/msg/Twist` to `/cmd_vel_teleop`; the
+existing app-side `teleop_relay` remains responsible for deadman enforcement
+and conversion to the simulator's stamped `/cmd_vel` contract. Mapping actions
+set `/map_manager.map_name`, wait for the live parameter stream to acknowledge
+the value, and only then call `/mapping/reset`, `/mapping/save`, or
+`/mapping/load`. The panel observes mode and disables invalid UI paths, but the
+ROS services remain the authoritative lifecycle gate.
+
+The `.foxe` is installed once into Lichtblick Web's per-origin IndexedDB using
+drag/open; generated bundles stay untracked. `make control-extension-check`
+runs the extension tests, lint, build, and package gate and prints the artifact
+path.
 
 Frames: standard `map → odom → base_link → base_scan`. Transport is plain DDS topics inside
 one compose network — no zenoh/gRPC needed at this scale (`integration` skill owns any change).
