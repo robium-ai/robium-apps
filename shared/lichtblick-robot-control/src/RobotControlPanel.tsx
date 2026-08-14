@@ -3,7 +3,12 @@ import React, { useCallback, useEffect, useMemo, useState, useSyncExternalStore 
 import type { DriveController } from "./driveController";
 import type { AdapterSnapshot, MapActionConfigKey } from "./lichtblickAdapter";
 import type { Direction } from "./messages";
-import { validateMapName, type PanelConfig } from "./panelConfig";
+import {
+  SIMULATION_WORLDS,
+  validateMapName,
+  type PanelConfig,
+  type SimulationWorld,
+} from "./panelConfig";
 
 export type ControlPanelAdapter = {
   readonly snapshot: AdapterSnapshot;
@@ -11,6 +16,7 @@ export type ControlPanelAdapter = {
   subscribe(listener: () => void): () => void;
   updateConfig(patch: Partial<Pick<PanelConfig, "linearSpeed" | "angularSpeed">>): void;
   runMapAction(mapName: string, action: MapActionConfigKey): Promise<void>;
+  runSimulationAction(world: SimulationWorld): Promise<void>;
   callConfiguredService(key: "goHomeService" | "navigationStopService"): Promise<void>;
 };
 
@@ -79,8 +85,11 @@ export function RobotControlPanel({
     () => adapter.snapshot,
     () => adapter.snapshot,
   );
-  const [mapName, setMapName] = useState(snapshot.selectedParameter ?? "");
+  const [mapName, setMapName] = useState(snapshot.selectedParameter ?? "map");
   const [selectedMap, setSelectedMap] = useState("");
+  const [selectedWorld, setSelectedWorld] = useState<SimulationWorld>(
+    snapshot.world === "UNKNOWN" ? "house" : snapshot.world,
+  );
   const validMapName = validateMapName(mapName.trim());
   const mapping = snapshot.mode === "MAPPING";
 
@@ -89,6 +98,12 @@ export function RobotControlPanel({
       setMapName(snapshot.selectedParameter);
     }
   }, [mapName, snapshot.selectedParameter]);
+
+  useEffect(() => {
+    if (snapshot.world !== "UNKNOWN") {
+      setSelectedWorld(snapshot.world);
+    }
+  }, [snapshot.world]);
 
   useEffect(() => {
     const keyDown = (event: KeyboardEvent) => {
@@ -258,6 +273,33 @@ export function RobotControlPanel({
             onClick={() => runMapAction(selectedMap, "loadMapService")}
           >
             Load &amp; localize
+          </button>
+        </div>
+      </section>
+
+      <section className="control-card" aria-labelledby="simulation-heading">
+        <h2 id="simulation-heading">Simulation</h2>
+        <div className="simulation-row">
+          <select
+            id="simulation-world"
+            aria-label="Simulation world"
+            value={selectedWorld}
+            onChange={(event) => setSelectedWorld(event.target.value as SimulationWorld)}
+          >
+            {SIMULATION_WORLDS.map((world) => (
+              <option value={world.value} key={world.value}>
+                {world.label}
+              </option>
+            ))}
+          </select>
+          <button
+            className="primary-action"
+            type="button"
+            aria-label="Restart simulation"
+            disabled={snapshot.busy || !snapshot.canCallServices}
+            onClick={() => void adapter.runSimulationAction(selectedWorld).catch(() => undefined)}
+          >
+            Restart simulation
           </button>
         </div>
       </section>

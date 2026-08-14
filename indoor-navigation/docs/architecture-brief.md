@@ -117,11 +117,15 @@ Single robot, single host — short plan. Key ROS 2 interfaces (all bridged from
 ROS 2 applications can package the same panel and override its saved settings.
 The panel publishes plain `geometry_msgs/msg/Twist` to `/cmd_vel_teleop`; the
 existing app-side `teleop_relay` remains responsible for deadman enforcement
-and conversion to the simulator's stamped `/cmd_vel` contract. Mapping actions
-set `/map_manager.map_name`, wait for the live parameter stream to acknowledge
-the value, and only then call `/mapping/reset`, `/mapping/save`, or
-`/mapping/load`. The panel observes mode and disables invalid UI paths, but the
-ROS services remain the authoritative lifecycle gate.
+and conversion to the simulator's stamped `/cmd_vel` contract. The persistent
+`session_manager` owns restartable Gazebo and navigation process groups. It
+starts only Gazebo at boot (`IDLE`), then launches exactly one SLAM or
+map_server/AMCL child stack through `/mapping/start`, `/mapping/stop`, and
+`/mapping/load`. Simulation selection sets `/session_manager.world` and calls
+`/simulation/restart`, which tears down navigation before swapping worlds.
+Maps live below `/ws/maps/<world>/`, and the advertised list is scoped to the
+active world. The panel observes mode and disables invalid UI paths, while ROS
+services remain the authoritative lifecycle gate.
 
 The `.foxe` is installed once into Lichtblick Web's per-origin IndexedDB using
 drag/open; generated bundles stay untracked. `make control-extension-check`

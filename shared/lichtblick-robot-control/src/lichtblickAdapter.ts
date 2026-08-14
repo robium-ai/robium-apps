@@ -10,9 +10,11 @@ import { DriveController } from "./driveController";
 import type { Twist } from "./messages";
 import {
   DEFAULT_CONFIG,
+  isSimulationWorld,
   normalizeConfig,
   parseAvailableMaps,
   type PanelConfig,
+  type SimulationWorld,
   validateMapName,
 } from "./panelConfig";
 
@@ -23,6 +25,7 @@ export type AdapterSnapshot = {
   config: PanelConfig;
   mode: MappingMode;
   maps: string[];
+  world: SimulationWorld | "UNKNOWN";
   selectedParameter?: string;
   colorScheme: "dark" | "light";
   canPublish: boolean;
@@ -40,10 +43,13 @@ const STRING_CONFIG_SETTINGS: ReadonlyArray<readonly [StringConfigKey, string]> 
   ["teleopTopic", "Teleop topic"],
   ["mappingStateTopic", "Mapping state topic"],
   ["availableMapsTopic", "Available maps topic"],
+  ["simulationStateTopic", "Simulation state topic"],
   ["mapNameParameter", "Map-name parameter"],
+  ["worldParameter", "Simulation-world parameter"],
   ["startMappingService", "Start mapping service"],
   ["stopMappingService", "Stop mapping service"],
   ["loadMapService", "Load map service"],
+  ["restartSimulationService", "Restart simulation service"],
   ["goHomeService", "Go home service"],
   ["navigationStopService", "Navigation stop service"],
 ];
@@ -53,6 +59,7 @@ function isStringConfigKey(key: string | undefined): key is StringConfigKey {
 }
 
 type PendingParameter = {
+  parameter: string;
   expected: string;
   resolve: () => void;
   reject: (error: Error) => void;
@@ -85,6 +92,11 @@ function normalizeMode(message: unknown): MappingMode {
   return "UNKNOWN";
 }
 
+function normalizeWorld(message: unknown): SimulationWorld | "UNKNOWN" {
+  const world = stringMessageData(message).trim();
+  return isSimulationWorld(world) ? world : "UNKNOWN";
+}
+
 export class LichtblickAdapter {
   private config: PanelConfig;
   private driveController: DriveController;
@@ -105,6 +117,7 @@ export class LichtblickAdapter {
       config: this.config,
       mode: "UNKNOWN",
       maps: [],
+      world: "UNKNOWN",
       colorScheme: "dark",
       canPublish: context.publish != undefined && context.advertise != undefined,
       canCallServices: context.callService != undefined,
@@ -172,12 +185,33 @@ export class LichtblickAdapter {
 
     this.setStatus(undefined, true);
     try {
-      await this.setMapNameAndWait(trimmedName);
-      await this.context.callService(service, {});
+      await this.setParameterAndWait(this.config.mapNameParameter, trimmedName);
+      this.requireServiceSuccess(await this.context.callService(service, {}));
       this.setStatus(
         { kind: "success", message: `Requested ${actionKeyLabel(actionKey)}.` },
         false,
       );
+    } catch (error) {
+      const normalized = error instanceof Error ? error : new Error(String(error));
+      this.setStatus({ kind: "error", message: normalized.message }, false);
+      throw normalized;
+    }
+  }
+
+  public async runSimulationAction(world: SimulationWorld): Promise<void> {
+    if (!isSimulationWorld(world)) {
+      throw new Error("Select a supported simulation world.");
+    }
+    if (this.context.callService == undefined) {
+      throw new Error("This connection does not support service calls.");
+    }
+    this.setStatus(undefined, true);
+    try {
+      await this.setParameterAndWait(this.config.worldParameter, world);
+      this.requireServiceSuccess(
+        await this.context.callService(this.config.restartSimulationService, {}),
+      );
+      this.setStatus({ kind: "success", message: "Simulation restart requested." }, false);
     } catch (error) {
       const normalized = error instanceof Error ? error : new Error(String(error));
       this.setStatus({ kind: "error", message: normalized.message }, false);
@@ -194,7 +228,7 @@ export class LichtblickAdapter {
     }
     this.setStatus(undefined, true);
     try {
-      await this.context.callService(service, {});
+      this.requireServiceSuccess(await this.context.callService(service, {}));
       this.setStatus(
         {
           kind: "success",
@@ -241,6 +275,7 @@ export class LichtblickAdapter {
     this.context.subscribe([
       { topic: this.config.mappingStateTopic },
       { topic: this.config.availableMapsTopic },
+      { topic: this.config.simulationStateTopic },
     ]);
   }
 
@@ -251,6 +286,8 @@ export class LichtblickAdapter {
         next = { ...next, mode: normalizeMode(event.message) };
       } else if (event.topic === this.config.availableMapsTopic) {
         next = { ...next, maps: parseAvailableMaps(event.message) };
+      } else if (event.topic === this.config.simulationStateTopic) {
+        next = { ...next, world: normalizeWorld(event.message) };
       }
     }
     const selectedParameter = renderState.parameters?.get(this.config.mapNameParameter);
@@ -262,7 +299,14 @@ export class LichtblickAdapter {
       next = { ...next, colorScheme: renderState.colorScheme };
     }
     this.state = next;
-    if (selectedMapName != undefined && this.pendingParameter?.expected === selectedMapName) {
+    const selectedWorld = renderState.parameters?.get(this.config.worldParameter);
+    if (
+      this.pendingParameter != undefined &&
+      ((this.pendingParameter.parameter === this.config.mapNameParameter &&
+        selectedMapName === this.pendingParameter.expected) ||
+        (this.pendingParameter.parameter === this.config.worldParameter &&
+          selectedWorld === this.pendingParameter.expected))
+    ) {
       const pending = this.pendingParameter;
       this.pendingParameter = undefined;
       clearTimeout(pending.timeout);
@@ -271,7 +315,7 @@ export class LichtblickAdapter {
     this.emit();
   }
 
-  private setMapNameAndWait(mapName: string): Promise<void> {
+  private setParameterAndWait(parameter: string, value: string): Promise<void> {
     if (this.pendingParameter != undefined) {
       return Promise.reject(new Error("Another map action is already in progress."));
     }
@@ -280,9 +324,9 @@ export class LichtblickAdapter {
         this.pendingParameter = undefined;
         reject(new Error("Timed out waiting for map-name parameter acknowledgement."));
       }, this.parameterTimeoutMs);
-      this.pendingParameter = { expected: mapName, resolve, reject, timeout };
+      this.pendingParameter = { parameter, expected: value, resolve, reject, timeout };
       try {
-        this.context.setParameter(this.config.mapNameParameter, mapName);
+        this.context.setParameter(parameter, value);
       } catch (error) {
         clearTimeout(timeout);
         this.pendingParameter = undefined;
@@ -294,6 +338,18 @@ export class LichtblickAdapter {
   private setStatus(status: AdapterSnapshot["status"], busy: boolean): void {
     this.state = { ...this.state, status, busy };
     this.emit();
+  }
+
+  private requireServiceSuccess(response: unknown): void {
+    if (
+      typeof response === "object" &&
+      response != undefined &&
+      "success" in response &&
+      response.success === false
+    ) {
+      const message = "message" in response ? String(response.message) : "Service refused action.";
+      throw new Error(message);
+    }
   }
 
   private emit(): void {

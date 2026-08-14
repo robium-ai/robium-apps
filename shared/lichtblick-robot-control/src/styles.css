@@ -65,6 +65,13 @@ select {
   gap: 6px;
 }
 
+.simulation-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 6px;
+  margin-top: 5px;
+}
+
 .panel-header,
 .section-heading {
   justify-content: space-between;

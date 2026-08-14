@@ -13,7 +13,7 @@ npm run lint
 npm run package
 ```
 
-The package command creates `robium.robot-control-0.1.0.foxe`. In Lichtblick Web, drag the `.foxe` onto
+The package command creates `robium.robot-control-0.2.0.foxe`. In Lichtblick Web, drag the `.foxe` onto
 the viewer (or open it with the file picker), confirm installation, and add **Robium Robot Control →
 robot-control** to a layout. Browser installation is stored in IndexedDB for that browser origin.
 
@@ -31,10 +31,13 @@ for reuse in other projects.
 | Manual velocity | `/cmd_vel_teleop` (`geometry_msgs/msg/Twist`) |
 | Mapping state | `/mapping/state` |
 | Available maps | `/maps/available` |
-| Map-name parameter | `/map_manager.map_name` |
-| Start mapping | `/mapping/reset` |
-| Stop/save mapping | `/mapping/save` |
+| Simulation state | `/simulation/state` |
+| Map-name parameter | `/session_manager.map_name` |
+| Simulation-world parameter | `/session_manager.world` |
+| Start mapping | `/mapping/start` |
+| Stop/save mapping | `/mapping/stop` |
 | Load for localization | `/mapping/load` |
+| Restart simulation | `/simulation/restart` |
 
 All interfaces can be changed in the panel settings sidebar. Go Home remains disabled until a
 service is configured. The Stop Robot button always sends zero velocity and can optionally call a
@@ -50,5 +53,5 @@ Manual commands publish at 10 Hz while held and publish zero on release, window 
 configuration change, or panel removal. **Stop Robot is a motion-command stop, not a certified
 emergency stop.** Keep a hardware emergency-stop path for real robots.
 
-Loading a map requests the configured load service; the panel does not switch a running mapping
-launch graph into localization by itself. The robot application owns that lifecycle.
+The panel requests lifecycle transitions through configured services. The robot
+application owns the simulator, mapping, and localization process lifecycle.

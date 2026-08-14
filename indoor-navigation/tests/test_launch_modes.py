@@ -5,6 +5,7 @@ from unittest import mock
 
 from launch import LaunchContext
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription
+from launch_ros.actions import Node
 from launch.utilities import perform_substitutions
 
 
@@ -34,6 +35,30 @@ def render_parts(context, parts):
 
 
 class LaunchModeTests(unittest.TestCase):
+    def test_sim_resolves_all_dashboard_worlds_to_pinned_assets_and_spawn_poses(self):
+        module = load_launch('sim.launch.py')
+        local = module.world_spec('/bringup', '/tb3', 'house')
+        tugbot = module.world_spec('/bringup', '/tb3', 'tugbot_warehouse')
+        industrial = module.world_spec('/bringup', '/tb3', 'industrial_warehouse')
+        living = module.world_spec('/bringup', '/tb3', 'living_room')
+
+        self.assertEqual(local, ('/bringup/worlds/turtlebot3_house.world', '-2.0', '-0.5'))
+        self.assertEqual(
+            tugbot,
+            ('https://fuel.gazebosim.org/1.0/OpenRobotics/worlds/'
+             'Tugbot%20in%20Warehouse/2', '0.0', '0.0'),
+        )
+        self.assertEqual(
+            industrial,
+            ('https://fuel.gazebosim.org/1.0/OpenRobotics/worlds/'
+             'industrial-warehouse/4', '0.0', '0.0'),
+        )
+        self.assertEqual(
+            living,
+            ('https://fuel.gazebosim.org/1.0/makerspet/worlds/living_room/1',
+             '1.8', '-1.8'),
+        )
+
     def test_sim_preserves_world_selection_and_native_client(self):
         module = load_launch('sim.launch.py')
         with mock.patch.object(
@@ -41,10 +66,10 @@ class LaunchModeTests(unittest.TestCase):
                 side_effect=lambda package: f'/packages/{package}'):
             description = module.generate_launch_description()
 
-        self.assertTrue({'world', 'gui'} <= declared_names(description))
+        self.assertTrue({'world', 'gui', 'bridge'} <= declared_names(description))
 
         headless = LaunchContext()
-        headless.launch_configurations.update(world='house', gui='false')
+        headless.launch_configurations.update(world='house', gui='false', bridge='true')
         headless_actions = module.gazebo_actions(
             headless, '/packages/indoor_nav_bringup',
             '/packages/turtlebot3_gazebo', '/packages/ros_gz_sim')
@@ -58,7 +83,7 @@ class LaunchModeTests(unittest.TestCase):
                              for action in headless_actions))
 
         native = LaunchContext()
-        native.launch_configurations.update(world='arena', gui='true')
+        native.launch_configurations.update(world='arena', gui='true', bridge='true')
         native_actions = module.gazebo_actions(
             native, '/packages/indoor_nav_bringup',
             '/packages/turtlebot3_gazebo', '/packages/ros_gz_sim')
@@ -71,6 +96,19 @@ class LaunchModeTests(unittest.TestCase):
         command = [perform_substitutions(native, part)
                    for part in client.process_description.cmd]
         self.assertEqual(command, ['gz', 'sim', '-g'])
+
+    def test_mapping_dashboard_starts_a_session_manager_without_a_map_stack(self):
+        module = load_launch('mapping.launch.py')
+        description = module.generate_launch_description()
+
+        self.assertTrue({'world', 'map_name'} <= declared_names(description))
+        self.assertFalse(any(isinstance(entity, IncludeLaunchDescription)
+                             for entity in description.entities))
+        nodes = [entity for entity in description.entities if isinstance(entity, Node)]
+        executables = {node.node_executable for node in nodes}
+        self.assertIn('session_manager', executables)
+        self.assertIn('teleop_relay', executables)
+        self.assertIn('foxglove_bridge', executables)
 
     def test_nav_and_demo_forward_gui(self):
         for filename in ('nav.launch.py', 'demo.launch.py'):

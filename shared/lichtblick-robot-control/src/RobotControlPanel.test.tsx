@@ -32,11 +32,13 @@ function renderPanel(mode: "MAPPING" | "LOCALIZATION" | "IDLE" | "UNKNOWN" = "MA
   const movement: Array<["press" | "release" | "stop", Direction?]> = [];
   const actions: unknown[][] = [];
   const updates: Array<Record<string, number>> = [];
+  let subscriber: (() => void) | undefined;
   const adapter = {
     snapshot: {
       config: DEFAULT_CONFIG,
       mode,
       maps: ["house", "office"],
+      world: "house",
       colorScheme: "dark",
       canPublish: true,
       canCallServices: true,
@@ -47,8 +49,16 @@ function renderPanel(mode: "MAPPING" | "LOCALIZATION" | "IDLE" | "UNKNOWN" = "MA
       release: (direction) => movement.push(["release", direction]),
       stop: () => movement.push(["stop"]),
     },
-    subscribe: () => () => undefined,
+    subscribe: (listener) => {
+      subscriber = listener;
+      return () => {
+        subscriber = undefined;
+      };
+    },
     runMapAction: async (...args) => {
+      actions.push(args);
+    },
+    runSimulationAction: async (...args) => {
       actions.push(args);
     },
     callConfiguredService: async (...args) => {
@@ -70,6 +80,7 @@ function renderPanel(mode: "MAPPING" | "LOCALIZATION" | "IDLE" | "UNKNOWN" = "MA
     movement,
     actions,
     updates,
+    notify: () => subscriber?.(),
     cleanup: () => {
       act(() => root!.unmount());
       Object.assign(globalThis, previous);
@@ -119,6 +130,7 @@ test("renders accessible WASD, mapping, home, and stop controls", () => {
     "Start mapping",
     "Stop mapping",
     "Load map",
+    "Restart simulation",
     "Go home",
     "Stop robot",
   ]) {
@@ -127,6 +139,60 @@ test("renders accessible WASD, mapping, home, and stop controls", () => {
   const home =
     fixture.dom.window.document.querySelector<HTMLButtonElement>('[aria-label="Go home"]');
   assert.equal(home?.disabled, true);
+  fixture.cleanup();
+});
+
+test("starts IDLE with a valid default map name and enabled mapping action", () => {
+  const fixture = renderPanel("IDLE");
+  const input = fixture.dom.window.document.querySelector<HTMLInputElement>("#map-name");
+  const start = fixture.dom.window.document.querySelector<HTMLButtonElement>(
+    '[aria-label="Start mapping"]',
+  );
+  assert.equal(input?.value, "map");
+  assert.equal(start?.disabled, false);
+  fixture.cleanup();
+});
+
+test("offers four simulation worlds and requests the selected restart", async () => {
+  const fixture = renderPanel("IDLE");
+  const select = fixture.dom.window.document.querySelector<HTMLSelectElement>("#simulation-world");
+  const restart = fixture.dom.window.document.querySelector<HTMLButtonElement>(
+    '[aria-label="Restart simulation"]',
+  );
+  assert.ok(select && restart);
+  assert.deepEqual(
+    [...select.options].map((option) => [option.value, option.text]),
+    [
+      ["house", "TurtleBot3 House"],
+      ["tugbot_warehouse", "Tugbot in Warehouse"],
+      ["industrial_warehouse", "Industrial Warehouse"],
+      ["living_room", "Living Room"],
+    ],
+  );
+  const valueSetter = Object.getOwnPropertyDescriptor(
+    fixture.dom.window.HTMLSelectElement.prototype,
+    "value",
+  )?.set;
+  assert.ok(valueSetter);
+  act(() => {
+    valueSetter.call(select, "living_room");
+    select.dispatchEvent(new fixture.dom.window.Event("change", { bubbles: true }));
+  });
+  await act(async () => restart.click());
+  assert.deepEqual(fixture.actions, [["living_room"]]);
+  fixture.cleanup();
+});
+
+test("synchronizes the selected world after a simulator restart", () => {
+  const fixture = renderPanel("IDLE");
+  const select = fixture.dom.window.document.querySelector<HTMLSelectElement>("#simulation-world");
+  assert.ok(select);
+  assert.equal(select.value, "house");
+  Object.assign(fixture.adapter, {
+    snapshot: { ...fixture.adapter.snapshot, world: "living_room" },
+  });
+  act(() => fixture.notify());
+  assert.equal(select.value, "living_room");
   fixture.cleanup();
 });
 
@@ -146,7 +212,7 @@ test("removes secondary copy while preserving accessible controls", () => {
 
 test("shows map options and gates load while the robot is mapping", () => {
   const fixture = renderPanel("MAPPING");
-  const options = [...fixture.dom.window.document.querySelectorAll("option")].map(
+  const options = [...fixture.dom.window.document.querySelectorAll("#available-map option")].map(
     (option) => option.textContent,
   );
   assert.deepEqual(options, ["Select a map", "house", "office"]);

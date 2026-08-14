@@ -3,10 +3,13 @@ export type PanelConfig = {
   teleopTopic: string;
   mappingStateTopic: string;
   availableMapsTopic: string;
+  simulationStateTopic: string;
   mapNameParameter: string;
+  worldParameter: string;
   startMappingService: string;
   stopMappingService: string;
   loadMapService: string;
+  restartSimulationService: string;
   goHomeService: string;
   navigationStopService: string;
   linearSpeed: number;
@@ -19,10 +22,13 @@ export const DEFAULT_CONFIG: PanelConfig = {
   teleopTopic: "/cmd_vel_teleop",
   mappingStateTopic: "/mapping/state",
   availableMapsTopic: "/maps/available",
-  mapNameParameter: "/map_manager.map_name",
-  startMappingService: "/mapping/reset",
-  stopMappingService: "/mapping/save",
+  simulationStateTopic: "/simulation/state",
+  mapNameParameter: "/session_manager.map_name",
+  worldParameter: "/session_manager.world",
+  startMappingService: "/mapping/start",
+  stopMappingService: "/mapping/stop",
   loadMapService: "/mapping/load",
+  restartSimulationService: "/simulation/restart",
   goHomeService: "",
   navigationStopService: "",
   linearSpeed: 0.2,
@@ -34,13 +40,29 @@ const stringKeys: (keyof PanelConfig)[] = [
   "teleopTopic",
   "mappingStateTopic",
   "availableMapsTopic",
+  "simulationStateTopic",
   "mapNameParameter",
+  "worldParameter",
   "startMappingService",
   "stopMappingService",
   "loadMapService",
+  "restartSimulationService",
   "goHomeService",
   "navigationStopService",
 ];
+
+export const SIMULATION_WORLDS = [
+  { value: "house", label: "TurtleBot3 House" },
+  { value: "tugbot_warehouse", label: "Tugbot in Warehouse" },
+  { value: "industrial_warehouse", label: "Industrial Warehouse" },
+  { value: "living_room", label: "Living Room" },
+] as const;
+
+export type SimulationWorld = (typeof SIMULATION_WORLDS)[number]["value"];
+
+export function isSimulationWorld(value: string): value is SimulationWorld {
+  return SIMULATION_WORLDS.some((world) => world.value === value);
+}
 
 export function normalizeConfig(value: unknown): PanelConfig {
   if (value == undefined || typeof value !== "object") {

@@ -12,10 +12,13 @@ test("uses the indoor-navigation ROS interfaces by default", () => {
   assert.equal(DEFAULT_CONFIG.teleopTopic, "/cmd_vel_teleop");
   assert.equal(DEFAULT_CONFIG.mappingStateTopic, "/mapping/state");
   assert.equal(DEFAULT_CONFIG.availableMapsTopic, "/maps/available");
-  assert.equal(DEFAULT_CONFIG.mapNameParameter, "/map_manager.map_name");
-  assert.equal(DEFAULT_CONFIG.startMappingService, "/mapping/reset");
-  assert.equal(DEFAULT_CONFIG.stopMappingService, "/mapping/save");
+  assert.equal(DEFAULT_CONFIG.simulationStateTopic, "/simulation/state");
+  assert.equal(DEFAULT_CONFIG.mapNameParameter, "/session_manager.map_name");
+  assert.equal(DEFAULT_CONFIG.worldParameter, "/session_manager.world");
+  assert.equal(DEFAULT_CONFIG.startMappingService, "/mapping/start");
+  assert.equal(DEFAULT_CONFIG.stopMappingService, "/mapping/stop");
   assert.equal(DEFAULT_CONFIG.loadMapService, "/mapping/load");
+  assert.equal(DEFAULT_CONFIG.restartSimulationService, "/simulation/restart");
   assert.equal(DEFAULT_CONFIG.linearSpeed, 0.2);
   assert.equal(DEFAULT_CONFIG.angularSpeed, 0.8);
   assert.equal(DEFAULT_CONFIG.publishRateHz, 10);

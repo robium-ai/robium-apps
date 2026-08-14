@@ -9,7 +9,7 @@ Detailed battle scars live in each app's architecture brief and in the sibling
 
 | App | Vertical | Stack | Sim | Env | Viz | Smoke |
 | --- | --- | --- | --- | --- | --- | --- |
-| [indoor-navigation](indoor-navigation/) | Classical ROS navigation | ROS 2 Jazzy + Nav2 + slam_toolbox | Gazebo Harmonic (native GUI or headless) | Pixi/RoboStack (macOS arm64) + Docker | Native Gazebo + bundled Lichtblick + reusable Robot Control `.foxe` | `make control-extension-check` + live mapping smoke verified 2026-08-12; `make smoke` is the Docker pass bar |
+| [indoor-navigation](indoor-navigation/) | Classical ROS navigation | ROS 2 Jazzy + Nav2 + slam_toolbox | Gazebo Harmonic; four selectable indoor worlds | Pixi/RoboStack (macOS arm64) + Docker | Native Gazebo + bundled Lichtblick + reusable Robot Control `.foxe` | Extension, IDLE/mapping/localization, four-world sensors, and two-goal smoke verified 2026-08-14 |
 | [imitation-manipulation](imitation-manipulation/) | Physical AI / ML manipulation | LeRobot 0.6.0 (ACT) | gym-pusht + PushShape variants | uv + Python 3.12 (MPS) + Docker (demo) | Gradio + Rerun (browser) | `make smoke` + `make demo-smoke` |
 | [vla-language-learning](vla-language-learning/) | Language-conditioned VLA (experimental) | LeRobot 0.6.0 + SmolVLA 450M | MuJoCo 3.10 (SO-101) | uv + Python 3.12 (MPS) + HF Jobs (GPU train) | Rerun (+ gradio_rerun demo UI) | `make smoke` |
 | [robot-teleoperation](robot-teleoperation/) | Real-robot teleoperation | ROS 2 Humble + foxglove_bridge | TurtleBot 4 hardware | Robot host + browser client | Foxglove (browser) | `make smoke` (hardware-in-the-loop) |

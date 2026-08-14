@@ -1,14 +1,12 @@
 COMPOSE = docker compose -f docker/compose.yaml
 CONTROL_EXTENSION = ../shared/lichtblick-robot-control
-CONTROL_EXTENSION_ARTIFACT = $(CONTROL_EXTENSION)/robium.robot-control-0.1.0.foxe
+CONTROL_EXTENSION_ARTIFACT = $(CONTROL_EXTENSION)/robium.robot-control-0.2.0.foxe
 
 .PHONY: build sim mapping localize drive save-map load-map slam nav demo native-setup demo-native native-down demo-smoke demo-image demo-deploy smoke check check-map control-extension control-extension-check rtf down
 
-# Session mode for the mapping profile (mapping|localization) and the map the
-# dashboard starts pointed at. Exported so compose interpolation sees them.
-MODE ?= mapping
+# Initial dashboard values. Mapping and localization are selected explicitly
+# from the control panel after the simulator starts in IDLE.
 MAP_NAME ?= map
-export MODE
 export MAP_NAME
 
 # Preflight: catch the likely setup failures before any scenario runs.
@@ -46,30 +44,17 @@ sim:
 
 # --- interactive dashboard: drive, map, save and navigate from the browser ---
 #
-#   make mapping   build a map     -> http://localhost:8080
-#   make localize  reuse a map     -> http://localhost:8080
-#
-# Genuinely different stacks, not a flag on one stack:
-#   mapping       sim + slam_toolbox + Nav2      (slam_toolbox owns map->odom)
-#   localize      sim + map_server + AMCL + Nav2 (AMCL owns map->odom)
-# Only one node can own map->odom, which is why this is a launch choice and not
-# a button. Save is enabled while mapping, Load while localizing, and each
-# refuses in the wrong mode with a message rather than half-working — the
-# Indicator panel shows which you are in. localize loads MAP_NAME at startup,
-# so the map is on screen immediately.
-#
-# Navigation needs no button in either mode: slam_toolbox publishes /map and
-# map->odom, Nav2 is already running, so clicking a goal in the 3D panel works.
-#
-# MAP_NAME=<name> sets the starting map name; it is also editable live from the
-# Parameters panel. Nothing here times out — `make down` ends the session.
+# `make mapping` starts Gazebo plus the dashboard supervisor in IDLE. It does
+# not start SLAM, map_server, AMCL, or publish /map. Start Mapping and Load &
+# Localize create the appropriate mutually-exclusive child stack. Changing the
+# simulation world restarts Gazebo and returns the navigation session to IDLE.
 mapping:
 	@echo "dashboard -> http://localhost:8080   (bridge on :8765)"
 	$(COMPOSE) --profile mapping up --abort-on-container-exit
 
 localize:
-	@echo "dashboard -> http://localhost:8080   (localization mode; Load map to pick up MAP_NAME)"
-	MODE=localization $(COMPOSE) --profile mapping up --abort-on-container-exit
+	@echo "Localization is selected from the dashboard; opening IDLE control panel."
+	$(COMPOSE) --profile mapping up --abort-on-container-exit
 
 # stamped:=true is REQUIRED, not a preference. The sim bridges /cmd_vel as
 # geometry_msgs/msg/TwistStamped; a plain Twist is dropped at the bridge with
@@ -87,8 +72,7 @@ drive:
 # container.
 save-map:
 	$(COMPOSE) --profile mapping exec -T mapping /entrypoint.sh \
-	  ros2 service call /mapping/save std_srvs/srv/Trigger
-	@$(MAKE) check-map
+	  ros2 service call /mapping/stop std_srvs/srv/Trigger
 
 # Terminal equivalent of the dashboard's Load button: switches map_server to
 # whatever map_name currently is. Localization sessions already load map_name
@@ -96,7 +80,7 @@ save-map:
 # session refuses it and says so.
 load-map:
 	$(COMPOSE) --profile mapping exec -T mapping /entrypoint.sh \
-	  ros2 service call /mapping/load std_srvs/srv/Trigger
+	  bash -lc 'ros2 param set /session_manager map_name "$(MAP_NAME)" && ros2 service call /mapping/load std_srvs/srv/Trigger'
 
 slam:
 	$(COMPOSE) --profile slam up --abort-on-container-exit

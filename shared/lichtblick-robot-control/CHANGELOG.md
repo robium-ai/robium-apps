@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 - 2026-08-14
+
+- Add a four-world simulation selector and restart action.
+- Support IDLE-first mapping, stop-and-save, and localization transitions.
+- Add persisted forward/turn speed sliders and compact narrow-rail styling.
+- Surface ROS Trigger refusals and synchronize the selected world from live state.
+
 ## 0.1.0 - 2026-08-12
 
 - Add reusable WASD/arrow-key velocity controls with release and focus-loss stopping.

@@ -64,6 +64,7 @@ test("subscribes, watches exact render fields, and acknowledges every render", (
   assert.deepEqual(fixture.calls.subscriptions[0], [
     { topic: "/mapping/state" },
     { topic: "/maps/available" },
+    { topic: "/simulation/state" },
   ]);
   fixture.render({
     currentFrame: [
@@ -76,6 +77,20 @@ test("subscribes, watches exact render fields, and acknowledges every render", (
   assert.equal(adapter.snapshot.mode, "MAPPING");
   assert.deepEqual(adapter.snapshot.maps, ["house", "office"]);
   assert.equal(adapter.snapshot.colorScheme, "dark");
+  adapter.dispose();
+});
+
+test("waits for the selected simulation world before requesting restart", async () => {
+  const fixture = makePanelContext();
+  const adapter = new LichtblickAdapter(fixture.context, DEFAULT_CONFIG);
+  const action = adapter.runSimulationAction("living_room");
+  assert.deepEqual(fixture.calls.parameters, [["/session_manager.world", "living_room"]]);
+  assert.deepEqual(fixture.calls.services, []);
+  fixture.render({
+    parameters: new Map([["/session_manager.world", "living_room"]]),
+  });
+  await action;
+  assert.deepEqual(fixture.calls.services, [{ service: "/simulation/restart", request: {} }]);
   adapter.dispose();
 });
 
@@ -94,11 +109,11 @@ test("waits for the selected map parameter before calling the service", async ()
   const fixture = makePanelContext();
   const adapter = new LichtblickAdapter(fixture.context, DEFAULT_CONFIG);
   const action = adapter.runMapAction("house", "stopMappingService");
-  assert.deepEqual(fixture.calls.parameters, [["/map_manager.map_name", "house"]]);
+  assert.deepEqual(fixture.calls.parameters, [["/session_manager.map_name", "house"]]);
   assert.deepEqual(fixture.calls.services, []);
-  fixture.render({ parameters: new Map([["/map_manager.map_name", "house"]]) });
+  fixture.render({ parameters: new Map([["/session_manager.map_name", "house"]]) });
   await action;
-  assert.deepEqual(fixture.calls.services, [{ service: "/mapping/save", request: {} }]);
+  assert.deepEqual(fixture.calls.services, [{ service: "/mapping/stop", request: {} }]);
   adapter.dispose();
 });
 
@@ -113,6 +128,20 @@ test("rejects a map action when parameter acknowledgement times out", async () =
   adapter.dispose();
 });
 
+test("surfaces a Trigger response that refuses an invalid state transition", async () => {
+  const fixture = makePanelContext();
+  fixture.context.callService = async () => ({
+    success: false,
+    message: "stop mapping requires an active mapping session",
+  });
+  const adapter = new LichtblickAdapter(fixture.context, DEFAULT_CONFIG);
+  const action = adapter.runMapAction("house", "stopMappingService");
+  fixture.render({ parameters: new Map([["/session_manager.map_name", "house"]]) });
+  await assert.rejects(action, /requires an active mapping session/);
+  assert.equal(adapter.snapshot.status?.kind, "error");
+  adapter.dispose();
+});
+
 test("surfaces service rejection and persists normalized settings", async () => {
   const fixture = makePanelContext();
   fixture.context.callService = async () => {
@@ -120,7 +149,7 @@ test("surfaces service rejection and persists normalized settings", async () => 
   };
   const adapter = new LichtblickAdapter(fixture.context, DEFAULT_CONFIG);
   const action = adapter.runMapAction("house", "startMappingService");
-  fixture.render({ parameters: new Map([["/map_manager.map_name", "house"]]) });
+  fixture.render({ parameters: new Map([["/session_manager.map_name", "house"]]) });
   await assert.rejects(action, /service unavailable/);
   adapter.updateConfig({ teleopTopic: "/robot/cmd_vel" });
   assert.equal(

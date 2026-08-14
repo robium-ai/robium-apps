@@ -23,18 +23,32 @@ from launch.actions import DeclareLaunchArgument
 from launch.actions import ExecuteProcess
 from launch.actions import IncludeLaunchDescription
 from launch.actions import OpaqueFunction
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
-def world_path(bringup, tb3_gazebo, world_name):
-    """Resolve the app's two supported upstream TurtleBot3 worlds."""
+FUEL_ROOT = 'https://fuel.gazebosim.org/1.0'
+
+
+def world_spec(bringup, tb3_gazebo, world_name):
+    """Resolve a world and a collision-free TurtleBot spawn pose."""
     if world_name == 'house':
-        return os.path.join(bringup, 'worlds', 'turtlebot3_house.world')
+        return (os.path.join(bringup, 'worlds', 'turtlebot3_house.world'),
+                '-2.0', '-0.5')
     if world_name == 'arena':
-        return os.path.join(tb3_gazebo, 'worlds', 'turtlebot3_world.world')
-    raise ValueError('world must be house or arena')
+        return (os.path.join(tb3_gazebo, 'worlds', 'turtlebot3_world.world'),
+                '-2.0', '-0.5')
+    if world_name == 'tugbot_warehouse':
+        return (f'{FUEL_ROOT}/OpenRobotics/worlds/'
+                'Tugbot%20in%20Warehouse/2', '0.0', '0.0')
+    if world_name == 'industrial_warehouse':
+        return (f'{FUEL_ROOT}/OpenRobotics/worlds/'
+                'industrial-warehouse/4', '0.0', '0.0')
+    if world_name == 'living_room':
+        return (f'{FUEL_ROOT}/makerspet/worlds/living_room/1', '1.8', '-1.8')
+    raise ValueError(f'unknown simulation world: {world_name}')
 
 
 def gazebo_actions(context, bringup, tb3_gazebo, ros_gz_sim):
@@ -42,7 +56,7 @@ def gazebo_actions(context, bringup, tb3_gazebo, ros_gz_sim):
     gui_value = LaunchConfiguration('gui').perform(context).lower()
     if gui_value not in ('true', 'false'):
         raise ValueError('gui must be true or false')
-    world = world_path(
+    world, _x, _y = world_spec(
         bringup, tb3_gazebo,
         LaunchConfiguration('world').perform(context).lower())
     server_flags = ('-r -s -v2 ' if gui_value == 'true'
@@ -61,6 +75,18 @@ def gazebo_actions(context, bringup, tb3_gazebo, ros_gz_sim):
     return actions
 
 
+def robot_actions(context, bringup, tb3_gazebo):
+    """Spawn the existing TurtleBot in free space for the selected world."""
+    _world, x_pose, y_pose = world_spec(
+        bringup, tb3_gazebo,
+        LaunchConfiguration('world').perform(context).lower())
+    return [IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(tb3_gazebo, 'launch', 'spawn_turtlebot3.launch.py')),
+        launch_arguments={'x_pose': x_pose, 'y_pose': y_pose}.items(),
+    )]
+
+
 def generate_launch_description():
     tb3_gazebo = get_package_share_directory('turtlebot3_gazebo')
     ros_gz_sim = get_package_share_directory('ros_gz_sim')
@@ -77,8 +103,10 @@ def generate_launch_description():
     # (llvmpipe, no GPU), so a one-flag fallback to the cheap scene is what
     # lets a real-time-factor regression be bisected against the world.
     world_arg = DeclareLaunchArgument(
-        'world', default_value='house', choices=['house', 'arena'],
-        description='simulated environment: house (default) or arena')
+        'world', default_value='house',
+        choices=['house', 'arena', 'tugbot_warehouse',
+                 'industrial_warehouse', 'living_room'],
+        description='local or pinned Gazebo Fuel environment')
     gui_arg = DeclareLaunchArgument(
         'gui', default_value='false', choices=['true', 'false'],
         description='open a native Gazebo GUI attached to the server')
@@ -98,11 +126,8 @@ def generate_launch_description():
     # so the world swap does not move the robot. That matters downstream: the
     # saved map's origin is the SLAM start pose, so `map = world + (2.0, 0.5)`
     # still holds and every frame-conversion comment stays true.
-    spawn = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(tb3_gazebo, 'launch', 'spawn_turtlebot3.launch.py')),
-        launch_arguments={'x_pose': '-2.0', 'y_pose': '-0.5'}.items(),
-    )
+    spawn = OpaqueFunction(
+        function=robot_actions, args=[bringup, tb3_gazebo])
 
     rsp = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -114,8 +139,12 @@ def generate_launch_description():
     # Port is a launch arg so the demo scenario can move the bridge behind
     # its gateway (demo: 8766 internal); every other scenario keeps 8765.
     bridge_port = DeclareLaunchArgument('bridge_port', default_value='8765')
+    bridge_arg = DeclareLaunchArgument(
+        'bridge', default_value='true', choices=['true', 'false'],
+        description='start foxglove_bridge (false under session_manager)')
     foxglove = Node(
         package='foxglove_bridge', executable='foxglove_bridge',
+        condition=IfCondition(LaunchConfiguration('bridge')),
         parameters=[{
             'port': LaunchConfiguration('bridge_port'),
             'use_sim_time': True,
@@ -127,6 +156,7 @@ def generate_launch_description():
         world_arg,
         gui_arg,
         bridge_port,
+        bridge_arg,
         set_resource_path,
         gazebo,
         spawn,

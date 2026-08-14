@@ -101,18 +101,27 @@ make control-extension-check
 ```
 
 The command prints the absolute path to
-`shared/lichtblick-robot-control/robium.robot-control-0.1.0.foxe`. That artifact
+`shared/lichtblick-robot-control/robium.robot-control-0.2.0.foxe`. That artifact
 remains reusable in other Lichtblick projects: drag it onto another project's
 browser viewer (or use Lichtblick's file picker) and confirm installation once
 for that browser origin. Indoor-navigation's committed layout supplies its ROS
 defaults automatically.
 
-The panel provides hold-to-drive WASD/arrow controls, mapping start/save,
-available-map loading for localization, Stop Robot, and an intentionally
-disabled Go Home button until a service is configured. Stop Robot sends zero
-velocity; it is not a hardware emergency stop. Loading a map does not change
-a running mapping launch graph into localization—start `make localize` for the
-localization stack.
+The panel starts in **IDLE**: Gazebo and the robot are running, but SLAM,
+map_server, AMCL, Nav2, and `/map` are not. **Start mapping** launches SLAM and
+Nav2 for the entered name; **Stop mapping** saves it beneath the selected
+world and tears that stack down; **Load & localize** launches map_server, AMCL,
+and Nav2 for a saved map. Only one navigation mode can run at a time.
+
+The compact Simulation card switches among TurtleBot3 House, Tugbot in
+Warehouse, Industrial Warehouse, and Living Room. Fuel worlds download on
+first use and remain in Gazebo's local cache. Restarting a world stops any
+mapping/localization session and returns to IDLE. Maps are grouped by world,
+so only maps created for the active environment appear in the list.
+
+Movement supports held WASD/arrow controls and adjustable forward/turn speed.
+Stop Robot sends zero velocity; it is not a hardware emergency stop. Go Home
+remains intentionally disabled until a service is configured.
 
 External viewers still work too: with any scenario running, connect
 Foxglove or a local Lichtblick to `ws://localhost:8765` (during `make demo`
