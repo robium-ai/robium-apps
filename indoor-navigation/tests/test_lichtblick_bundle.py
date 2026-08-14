@@ -16,11 +16,11 @@ class BundleDefaultExtensionTest(unittest.TestCase):
             '<body><div id="root"></div></body></html>'
         )
 
-        rewritten = rewrite_index(html)
+        rewritten = rewrite_index(html, revision="abc123")
 
         self.assertNotIn('<script defer="defer" src="main.abc123.js"></script>', rewritten)
         self.assertIn(
-            'import { installDefaultExtension } from "./robium/preinstall-extension.mjs";',
+            'import { installDefaultExtension } from "./robium/preinstall-extension.mjs?v=abc123";',
             rewritten,
         )
         self.assertIn("await installDefaultExtension({", rewritten)

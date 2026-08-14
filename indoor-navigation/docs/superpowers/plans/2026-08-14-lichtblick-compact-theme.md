@@ -28,30 +28,30 @@
 - Consumes: existing `.robot-control.light` / `.robot-control.dark` classes and unchanged component markup.
 - Produces: a dense, theme-native control panel that still exposes all existing accessible controls.
 
-- [ ] **Step 1: Record the failing visual contract**
+- [x] **Step 1: Record the failing visual contract**
 
 Build and launch the current extension in the bundled viewer. At a 2048×1152 application viewport, measure the Robot Control root and Quick Actions rectangle. Confirm that the Quick Actions bottom exceeds the visible panel bottom or is clipped and record the current computed root/card colors.
 
-- [ ] **Step 2: Replace hard-coded branding with theme-native tokens**
+- [x] **Step 2: Replace hard-coded branding with theme-native tokens**
 
 Set neutral light/dark `--bg`, `--card`, `--line`, `--text`, and `--muted` values; retain teal only for `--accent`; remove the radial/linear gradient and backdrop blur.
 
-- [ ] **Step 3: Reduce vertical density**
+- [x] **Step 3: Reduce vertical density**
 
 Reduce outer padding to 10px, card gap/padding to 8–10px, control height to 30–32px, WASD cells to 44–48px, heading sizes, pill padding, label margins, hint spacing, and shadow strength. Keep the existing narrow-panel stacking media query.
 
-- [ ] **Step 4: Run extension checks**
+- [x] **Step 4: Run extension checks**
 
 Run `make control-extension-check` from `indoor-navigation`. Expected: all component and storage tests, lint, build, and package pass.
 
-- [ ] **Step 5: Rebuild and verify the real viewer**
+- [x] **Step 5: Rebuild and verify the real viewer**
 
 Run `make build`, launch mapping, reload a clean browser origin, and repeat the exact geometry/color measurement. Expected: all nine controls and the Quick Actions bottom are within the visible panel, with neutral light-mode colors and remaining vertical space.
 
-- [ ] **Step 6: Run app and robotics regression gates**
+- [x] **Step 6: Run app and robotics regression gates**
 
 Run the five Lichtblick host tests, image asset contract, `git diff --check`, and `make smoke`. Expected: zero failures and two successful Nav2 goals.
 
-- [ ] **Step 7: Commit the compact theme**
+- [x] **Step 7: Commit the compact theme**
 
 Commit the CSS, spec, plan, and any documentation/evidence updates as `fix(indoor-navigation): compact Lichtblick controls`.

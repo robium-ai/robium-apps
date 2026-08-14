@@ -89,7 +89,8 @@ COPY shared/lichtblick-robot-control/package.json /opt/lichtblick/robium/package
 COPY shared/lichtblick-robot-control/README.md /opt/lichtblick/robium/README.md
 COPY shared/lichtblick-robot-control/CHANGELOG.md /opt/lichtblick/robium/CHANGELOG.md
 COPY shared/lichtblick-robot-control/deploy/preinstall-extension.mjs /opt/lichtblick/robium/preinstall-extension.mjs
-RUN python3 /ws/scripts/bundle_default_extension.py /opt/lichtblick/index.html
+RUN python3 /ws/scripts/bundle_default_extension.py /opt/lichtblick/index.html \
+      --revision-file /opt/lichtblick/robium/robot-control.foxe
 RUN python3 - <<'PYEOF'
 from pathlib import Path
 idx = Path('/opt/lichtblick/index.html')

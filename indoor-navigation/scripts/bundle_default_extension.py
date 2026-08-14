@@ -2,6 +2,7 @@
 """Start Lichtblick only after the bundled local extension is available."""
 
 import argparse
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -15,7 +16,7 @@ DEFERRED_SCRIPT = re.compile(
 )
 
 
-def rewrite_index(html: str) -> str:
+def rewrite_index(html: str, revision: str = "unversioned") -> str:
     matches = list(DEFERRED_SCRIPT.finditer(html))
     if len(matches) != 1:
         raise ValueError(
@@ -23,9 +24,12 @@ def rewrite_index(html: str) -> str:
             "upstream Lichtblick page changed"
         )
 
+    if re.fullmatch(r"[A-Za-z0-9_-]+", revision) is None:
+        raise ValueError("extension revision must be URL-safe")
+
     main_script = matches[0].group("src")
     bootstrap = f'''<script type="module">
-import {{ installDefaultExtension }} from "./robium/preinstall-extension.mjs";
+import {{ installDefaultExtension }} from "./robium/preinstall-extension.mjs?v={revision}";
 try {{
   await installDefaultExtension({{
     indexedDB: globalThis.indexedDB,
@@ -46,9 +50,11 @@ document.head.append(script);
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("index", type=Path)
+    parser.add_argument("--revision-file", required=True, type=Path)
     args = parser.parse_args()
     original = args.index.read_text(encoding="utf-8")
-    args.index.write_text(rewrite_index(original), encoding="utf-8")
+    revision = hashlib.sha256(args.revision_file.read_bytes()).hexdigest()[:16]
+    args.index.write_text(rewrite_index(original, revision=revision), encoding="utf-8")
     print(f"bundled extension bootstrap injected into {args.index}")
     return 0
 

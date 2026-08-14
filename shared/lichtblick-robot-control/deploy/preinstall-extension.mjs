@@ -19,7 +19,7 @@ function transactionDone(transaction) {
 }
 
 async function checkedResponse(fetchImpl, url) {
-  const result = await fetchImpl(url);
+  const result = await fetchImpl(url, { cache: "no-store" });
   if (!result.ok) {
     throw new Error(`Could not load bundled extension asset: ${url}`);
   }

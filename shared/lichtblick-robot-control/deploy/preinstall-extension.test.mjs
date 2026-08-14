@@ -102,3 +102,21 @@ test("refreshes a preinstalled extension when the bundled package changes", asyn
   assert.equal(extension.info.size, 2);
   assert.deepEqual(Array.from(extension.content), [2, 3]);
 });
+
+test("bypasses HTTP caches when refreshing bundled extension assets", async () => {
+  const indexedDB = new IDBFactory();
+  const fixtureFetch = makeFetch({ bytes: [1] });
+  const calls = [];
+
+  await installDefaultExtension({
+    indexedDB,
+    fetch: async (url, options) => {
+      calls.push({ url, options });
+      return await fixtureFetch(url);
+    },
+    baseUrl: "/robium/",
+  });
+
+  assert.equal(calls.length, 4);
+  assert.ok(calls.every((call) => call.options?.cache === "no-store"));
+});
