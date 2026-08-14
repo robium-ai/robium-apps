@@ -94,17 +94,7 @@ h2 {
   line-height: 1.1;
 }
 
-.eyebrow {
-  color: var(--accent);
-  font-size: 8px;
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: 0.11em;
-}
-
-.mode-pill,
-.connection-dot,
-.speed-readout {
+.mode-pill {
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 3px 6px;
@@ -117,8 +107,7 @@ h2 {
   text-transform: uppercase;
 }
 
-.mode-pill.mapping,
-.connection-dot.online {
+.mode-pill.mapping {
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
 }
@@ -134,6 +123,41 @@ h2 {
 
 .section-heading {
   margin-bottom: 4px;
+}
+
+.speed-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 5px;
+}
+
+.speed-control {
+  min-width: 0;
+  margin: 0;
+}
+
+.speed-control > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 3px;
+  margin-bottom: 1px;
+  white-space: nowrap;
+}
+
+.speed-control output {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.speed-control input[type="range"] {
+  min-height: 14px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  accent-color: var(--accent);
 }
 
 .drive-grid {
@@ -217,16 +241,6 @@ button:disabled {
   line-height: 1;
 }
 
-.drive-key small {
-  display: block;
-  margin-top: 1px;
-  color: var(--muted);
-  font-size: 7px;
-  font-weight: 600;
-  line-height: 1;
-  text-transform: capitalize;
-}
-
 label {
   display: block;
   margin: 3px 0 2px;
@@ -271,7 +285,6 @@ select:focus {
   background: var(--danger);
 }
 
-.hint,
 .field-error,
 .inline-warning {
   margin-top: 3px;
@@ -302,12 +315,9 @@ select:focus {
 }
 
 @media (max-width: 220px) {
-  .speed-readout {
-    display: none;
-  }
-
   .action-row,
-  .load-row {
+  .load-row,
+  .speed-controls {
     align-items: stretch;
     flex-direction: column;
   }

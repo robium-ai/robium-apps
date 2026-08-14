@@ -12,10 +12,10 @@ class LichtblickControlLayoutTest(unittest.TestCase):
     def setUpClass(cls):
         cls.layout = json.loads(LAYOUT_PATH.read_text(encoding="utf-8"))
 
-    def test_control_panel_is_docked_in_a_72_28_right_rail(self):
+    def test_control_panel_is_docked_in_a_76_24_right_rail(self):
         root = self.layout["layout"]
         self.assertEqual(root["direction"], "row")
-        self.assertEqual(root["splitPercentage"], 72)
+        self.assertEqual(root["splitPercentage"], 76)
         self.assertEqual(root["second"], "Robium Robot Control.robot-control!control")
 
         main = root["first"]

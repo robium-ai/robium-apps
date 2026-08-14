@@ -3,12 +3,13 @@ import React, { useCallback, useEffect, useMemo, useState, useSyncExternalStore 
 import type { DriveController } from "./driveController";
 import type { AdapterSnapshot, MapActionConfigKey } from "./lichtblickAdapter";
 import type { Direction } from "./messages";
-import { validateMapName } from "./panelConfig";
+import { validateMapName, type PanelConfig } from "./panelConfig";
 
 export type ControlPanelAdapter = {
   readonly snapshot: AdapterSnapshot;
   readonly drive: Pick<DriveController, "press" | "release" | "stop">;
   subscribe(listener: () => void): () => void;
+  updateConfig(patch: Partial<Pick<PanelConfig, "linearSpeed" | "angularSpeed">>): void;
   runMapAction(mapName: string, action: MapActionConfigKey): Promise<void>;
   callConfiguredService(key: "goHomeService" | "navigationStopService"): Promise<void>;
 };
@@ -64,7 +65,6 @@ function DriveButton({
       onLostPointerCapture={() => adapter.drive.release(direction)}
     >
       <span>{keyLabel}</span>
-      <small>{label.replace("Move ", "").replace("Turn ", "")}</small>
     </button>
   );
 }
@@ -147,45 +147,62 @@ export function RobotControlPanel({
   return (
     <main className={`robot-control ${snapshot.colorScheme}`}>
       <header className="panel-header">
-        <div>
-          <p className="eyebrow">ROBIUM / NAVIGATION</p>
-          <h1>Robot Control</h1>
-        </div>
+        <h1>Robot Control</h1>
         <span className={`mode-pill ${modeClass}`}>{snapshot.mode}</span>
       </header>
 
       <section className="control-card drive-card" aria-labelledby="drive-heading">
         <div className="section-heading">
-          <div>
-            <p className="eyebrow">MANUAL DRIVE</p>
-            <h2 id="drive-heading">Movement</h2>
-          </div>
-          <span className="speed-readout">
-            {snapshot.config.linearSpeed.toFixed(1)} m/s · {snapshot.config.angularSpeed.toFixed(1)}{" "}
-            rad/s
-          </span>
+          <h2 id="drive-heading">Movement</h2>
         </div>
         {!snapshot.canPublish && (
           <p className="inline-warning">Publishing is unavailable on this connection.</p>
         )}
+        <div className="speed-controls">
+          <label className="speed-control">
+            <span>
+              Forward <output>{snapshot.config.linearSpeed.toFixed(2)} m/s</output>
+            </span>
+            <input
+              type="range"
+              aria-label="Forward speed"
+              min="0.05"
+              max="0.5"
+              step="0.05"
+              value={snapshot.config.linearSpeed}
+              onInput={(event) =>
+                adapter.updateConfig({ linearSpeed: Number(event.currentTarget.value) })
+              }
+            />
+          </label>
+          <label className="speed-control">
+            <span>
+              Turn <output>{snapshot.config.angularSpeed.toFixed(1)} rad/s</output>
+            </span>
+            <input
+              type="range"
+              aria-label="Turn speed"
+              min="0.1"
+              max="1.5"
+              step="0.1"
+              value={snapshot.config.angularSpeed}
+              onInput={(event) =>
+                adapter.updateConfig({ angularSpeed: Number(event.currentTarget.value) })
+              }
+            />
+          </label>
+        </div>
         <div className="drive-grid" aria-label="Directional movement controls">
           <DriveButton adapter={adapter} direction="forward" label="Move forward" keyLabel="W" />
           <DriveButton adapter={adapter} direction="left" label="Turn left" keyLabel="A" />
           <DriveButton adapter={adapter} direction="backward" label="Move backward" keyLabel="S" />
           <DriveButton adapter={adapter} direction="right" label="Turn right" keyLabel="D" />
         </div>
-        <p className="hint">Hold a button or use WASD / arrow keys. Release always sends zero.</p>
       </section>
 
       <section className="control-card" aria-labelledby="mapping-heading">
         <div className="section-heading">
-          <div>
-            <p className="eyebrow">SLAM & LOCALIZATION</p>
-            <h2 id="mapping-heading">Maps</h2>
-          </div>
-          <span className={`connection-dot ${snapshot.canCallServices ? "online" : "offline"}`}>
-            {snapshot.canCallServices ? "ROS ready" : "read only"}
-          </span>
+          <h2 id="mapping-heading">Maps</h2>
         </div>
 
         <label htmlFor="map-name">New map name</label>
@@ -243,14 +260,10 @@ export function RobotControlPanel({
             Load &amp; localize
           </button>
         </div>
-        {mapping && <p className="hint">Stop mapping before loading a localization map.</p>}
       </section>
 
       <section className="control-card destination-card" aria-labelledby="destination-heading">
-        <div>
-          <p className="eyebrow">DESTINATION</p>
-          <h2 id="destination-heading">Quick actions</h2>
-        </div>
+        <h2 id="destination-heading">Quick actions</h2>
         <div className="action-row">
           <button
             type="button"
@@ -281,7 +294,6 @@ export function RobotControlPanel({
             Stop robot
           </button>
         </div>
-        <p className="hint">Motion stop sends zero velocity. It is not an emergency stop.</p>
       </section>
 
       {snapshot.status != undefined && (

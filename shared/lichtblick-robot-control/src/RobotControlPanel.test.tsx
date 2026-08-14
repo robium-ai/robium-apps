@@ -31,7 +31,8 @@ function renderPanel(mode: "MAPPING" | "LOCALIZATION" | "IDLE" | "UNKNOWN" = "MA
   });
   const movement: Array<["press" | "release" | "stop", Direction?]> = [];
   const actions: unknown[][] = [];
-  const adapter: ControlPanelAdapter = {
+  const updates: Array<Record<string, number>> = [];
+  const adapter = {
     snapshot: {
       config: DEFAULT_CONFIG,
       mode,
@@ -53,7 +54,8 @@ function renderPanel(mode: "MAPPING" | "LOCALIZATION" | "IDLE" | "UNKNOWN" = "MA
     callConfiguredService: async (...args) => {
       actions.push(args);
     },
-  };
+    updateConfig: (patch: Record<string, number>) => updates.push(patch),
+  } as ControlPanelAdapter & { updateConfig(patch: Record<string, number>): void };
   const rootElement = dom.window.document.querySelector("#root");
   assert.ok(rootElement);
   let root: Root;
@@ -67,6 +69,7 @@ function renderPanel(mode: "MAPPING" | "LOCALIZATION" | "IDLE" | "UNKNOWN" = "MA
     adapter,
     movement,
     actions,
+    updates,
     cleanup: () => {
       act(() => root!.unmount());
       Object.assign(globalThis, previous);
@@ -74,6 +77,37 @@ function renderPanel(mode: "MAPPING" | "LOCALIZATION" | "IDLE" | "UNKNOWN" = "MA
     },
   };
 }
+
+test("updates movement speeds through persisted panel config", () => {
+  const fixture = renderPanel();
+  const forward = fixture.dom.window.document.querySelector<HTMLInputElement>(
+    'input[aria-label="Forward speed"]',
+  );
+  const turn = fixture.dom.window.document.querySelector<HTMLInputElement>(
+    'input[aria-label="Turn speed"]',
+  );
+  assert.ok(forward && turn);
+  assert.deepEqual(
+    { min: forward.min, max: forward.max, step: forward.step, value: forward.value },
+    { min: "0.05", max: "0.5", step: "0.05", value: "0.2" },
+  );
+  assert.deepEqual(
+    { min: turn.min, max: turn.max, step: turn.step, value: turn.value },
+    { min: "0.1", max: "1.5", step: "0.1", value: "0.8" },
+  );
+
+  const valueSetter = Object.getOwnPropertyDescriptor(
+    fixture.dom.window.HTMLInputElement.prototype,
+    "value",
+  )?.set;
+  assert.ok(valueSetter);
+  act(() => {
+    valueSetter.call(forward, "0.35");
+    forward.dispatchEvent(new fixture.dom.window.Event("input", { bubbles: true }));
+  });
+  assert.deepEqual(fixture.updates, [{ linearSpeed: 0.35 }]);
+  fixture.cleanup();
+});
 
 test("renders accessible WASD, mapping, home, and stop controls", () => {
   const fixture = renderPanel();
@@ -93,6 +127,20 @@ test("renders accessible WASD, mapping, home, and stop controls", () => {
   const home =
     fixture.dom.window.document.querySelector<HTMLButtonElement>('[aria-label="Go home"]');
   assert.equal(home?.disabled, true);
+  fixture.cleanup();
+});
+
+test("removes secondary copy while preserving accessible controls", () => {
+  const fixture = renderPanel();
+  const document = fixture.dom.window.document;
+  assert.equal(document.querySelectorAll(".eyebrow").length, 0);
+  assert.equal(document.querySelectorAll(".drive-key small").length, 0);
+  assert.equal(document.querySelectorAll(".speed-readout").length, 0);
+  assert.equal(document.querySelectorAll(".connection-dot").length, 0);
+  assert.equal(document.querySelectorAll(".hint").length, 0);
+  for (const label of ["Move forward", "Turn left", "Move backward", "Turn right"]) {
+    assert.ok(document.querySelector(`[aria-label="${label}"]`), label);
+  }
   fixture.cleanup();
 });
 
