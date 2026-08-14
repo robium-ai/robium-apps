@@ -1,5 +1,8 @@
 import importlib.util
+import os
+import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest import mock
 
@@ -96,6 +99,51 @@ class LaunchModeTests(unittest.TestCase):
         command = [perform_substitutions(native, part)
                    for part in client.process_description.cmd]
         self.assertEqual(command, ['gz', 'sim', '-g'])
+
+    def test_living_room_launch_repairs_stale_fuel_model_version(self):
+        module = load_launch('sim.launch.py')
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            cache = Path(temporary_directory)
+            cached_world = (
+                cache / 'fuel.gazebosim.org' / 'makerspet' / 'worlds' /
+                'living_room' / '1' / 'living_room.sdf'
+            )
+            cached_world.parent.mkdir(parents=True)
+            cached_world.write_text(
+                '<sdf><world name="default"><state>'
+                '<model name="living_room"><pose>0 0 0 0 0 0</pose></model>'
+                '</state><model name="living_room"><static>0</static></model>'
+                '<uri>https://fuel.ignitionrobotics.org/1.0/'
+                'makerspet/models/tv_65in_emissive/4/files/material/script'
+                '</uri></world></sdf>'
+            )
+            context = LaunchContext()
+            context.launch_configurations.update(
+                world='living_room', gui='false', bridge='true')
+            with mock.patch.dict(os.environ, {'GZ_FUEL_CACHE_PATH': str(cache)}):
+                actions = module.gazebo_actions(
+                    context, '/bringup', '/tb3', '/ros_gz_sim')
+
+            arguments = dict(actions[0].launch_arguments)
+            rendered = render_parts(context, arguments['gz_args'])
+            repaired_world = cached_world.with_name('living_room.robium.sdf')
+            self.assertIn(str(repaired_world), rendered)
+            self.assertIn(
+                'tv_65in_emissive/1/files/material/script',
+                repaired_world.read_text(),
+            )
+            self.assertIn(
+                'tv_65in_emissive/4/files/material/script',
+                cached_world.read_text(),
+            )
+            repaired_root = ET.parse(repaired_world).getroot()
+            self.assertEqual(
+                repaired_root.findall(".//model[@name='living_room']"), [])
+            plugin_names = {
+                plugin.get('name') for plugin in repaired_root.findall('.//world/plugin')
+            }
+            self.assertIn('gz::sim::systems::Sensors', plugin_names)
+            self.assertIn('gz::sim::systems::Imu', plugin_names)
 
     def test_mapping_dashboard_starts_a_session_manager_without_a_map_stack(self):
         module = load_launch('mapping.launch.py')

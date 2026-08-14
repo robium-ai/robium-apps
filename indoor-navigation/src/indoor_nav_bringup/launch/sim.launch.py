@@ -15,6 +15,9 @@ Tasks 5/6 IncludeLaunchDescription this file.
 """
 
 import os
+from pathlib import Path
+import subprocess
+import xml.etree.ElementTree as ET
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
@@ -30,6 +33,22 @@ from launch_ros.actions import Node
 
 
 FUEL_ROOT = 'https://fuel.gazebosim.org/1.0'
+LIVING_ROOM_URL = f'{FUEL_ROOT}/makerspet/worlds/living_room/1'
+LIVING_ROOM_STALE_TV = (
+    'https://fuel.ignitionrobotics.org/1.0/makerspet/models/'
+    'tv_65in_emissive/4/files/material/'
+)
+LIVING_ROOM_CURRENT_TV = (
+    'https://fuel.ignitionrobotics.org/1.0/makerspet/models/'
+    'tv_65in_emissive/1/files/material/'
+)
+LIVING_ROOM_SYSTEMS = (
+    ('gz-sim-physics-system', 'gz::sim::systems::Physics'),
+    ('gz-sim-user-commands-system', 'gz::sim::systems::UserCommands'),
+    ('gz-sim-scene-broadcaster-system', 'gz::sim::systems::SceneBroadcaster'),
+    ('gz-sim-sensors-system', 'gz::sim::systems::Sensors'),
+    ('gz-sim-imu-system', 'gz::sim::systems::Imu'),
+)
 
 
 def world_spec(bringup, tb3_gazebo, world_name):
@@ -47,8 +66,50 @@ def world_spec(bringup, tb3_gazebo, world_name):
         return (f'{FUEL_ROOT}/OpenRobotics/worlds/'
                 'industrial-warehouse/4', '0.0', '0.0')
     if world_name == 'living_room':
-        return (f'{FUEL_ROOT}/makerspet/worlds/living_room/1', '1.8', '-1.8')
+        return (LIVING_ROOM_URL, '1.8', '-1.8')
     raise ValueError(f'unknown simulation world: {world_name}')
+
+
+def prepare_living_room_world():
+    """Return a local copy with the upstream world's stale TV URI repaired."""
+    cache_root = Path(os.environ.get(
+        'GZ_FUEL_CACHE_PATH', Path.home() / '.gz' / 'fuel'))
+    cached_world = (
+        cache_root / 'fuel.gazebosim.org' / 'makerspet' / 'worlds' /
+        'living_room' / '1' / 'living_room.sdf'
+    )
+    if not cached_world.is_file():
+        subprocess.run(
+            ['gz', 'fuel', 'download', '-u', LIVING_ROOM_URL],
+            check=True,
+            timeout=300,
+        )
+    if not cached_world.is_file():
+        raise RuntimeError(f'Fuel did not cache the Living Room world at {cached_world}')
+
+    repaired_world = cached_world.with_name('living_room.robium.sdf')
+    repaired = cached_world.read_text().replace(
+        LIVING_ROOM_STALE_TV, LIVING_ROOM_CURRENT_TV)
+    root = ET.fromstring(repaired)
+    for parent in root.iter():
+        for child in list(parent):
+            if child.tag == 'model' and child.get('name') == 'living_room':
+                parent.remove(child)
+    world = root.find('world')
+    if world is None:
+        raise RuntimeError('Living Room Fuel asset has no <world> element')
+    existing_plugins = {
+        plugin.get('name') for plugin in world.findall('plugin')
+    }
+    for filename, name in LIVING_ROOM_SYSTEMS:
+        if name in existing_plugins:
+            continue
+        plugin = ET.SubElement(
+            world, 'plugin', {'filename': filename, 'name': name})
+        if name == 'gz::sim::systems::Sensors':
+            ET.SubElement(plugin, 'render_engine').text = 'ogre2'
+    ET.ElementTree(root).write(repaired_world, encoding='unicode')
+    return str(repaired_world)
 
 
 def gazebo_actions(context, bringup, tb3_gazebo, ros_gz_sim):
@@ -56,9 +117,10 @@ def gazebo_actions(context, bringup, tb3_gazebo, ros_gz_sim):
     gui_value = LaunchConfiguration('gui').perform(context).lower()
     if gui_value not in ('true', 'false'):
         raise ValueError('gui must be true or false')
-    world, _x, _y = world_spec(
-        bringup, tb3_gazebo,
-        LaunchConfiguration('world').perform(context).lower())
+    world_name = LaunchConfiguration('world').perform(context).lower()
+    world, _x, _y = world_spec(bringup, tb3_gazebo, world_name)
+    if world_name == 'living_room':
+        world = prepare_living_room_world()
     server_flags = ('-r -s -v2 ' if gui_value == 'true'
                     else '-r -s --headless-rendering -v2 ')
     actions = [IncludeLaunchDescription(
