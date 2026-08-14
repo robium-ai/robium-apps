@@ -37,6 +37,14 @@ COPY indoor-navigation/src ./src
 COPY indoor-navigation/tests ./tests
 COPY indoor-navigation/scripts ./scripts
 
+# Furnished-home test environment. Keep the large MIT-licensed model tree out
+# of git, but pin the exact upstream revision and preserve its provenance in
+# the image beside the asset.
+ARG AWS_SMALL_HOUSE_COMMIT=ff9631ca6d1db9c1ba656498151464b5ab74aafe
+RUN python3 ./scripts/fetch_aws_small_house.py \
+      --commit "${AWS_SMALL_HOUSE_COMMIT}" \
+      --destination /opt/robium/worlds/aws-small-house
+
 # rosdep before build, every time (ros2 skill key directive).
 RUN . /opt/ros/${ROS_DISTRO}/setup.sh \
  && apt-get update \
