@@ -51,7 +51,7 @@ class SessionManager(Node):
     def __init__(self):
         super().__init__('session_manager')
         self.declare_parameter('map_name', 'map')
-        self.declare_parameter('world', 'house')
+        self.declare_parameter('world', 'furnished_house')
         self.declare_parameter('maps_root', '/ws/maps')
         self._lock = threading.RLock()
         group = ReentrantCallbackGroup()

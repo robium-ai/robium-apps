@@ -52,10 +52,8 @@ const stringKeys: (keyof PanelConfig)[] = [
 ];
 
 export const SIMULATION_WORLDS = [
-  { value: "house", label: "TurtleBot3 House" },
-  { value: "tugbot_warehouse", label: "Tugbot in Warehouse" },
-  { value: "industrial_warehouse", label: "Industrial Warehouse" },
-  { value: "furnished_house", label: "Furnished House" },
+  { value: "furnished_house", label: "House" },
+  { value: "tugbot_warehouse", label: "Warehouse" },
 ] as const;
 
 export type SimulationWorld = (typeof SIMULATION_WORLDS)[number]["value"];

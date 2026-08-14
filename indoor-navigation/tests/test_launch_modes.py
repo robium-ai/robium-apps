@@ -38,32 +38,24 @@ def render_parts(context, parts):
 
 
 class LaunchModeTests(unittest.TestCase):
-    def test_sim_resolves_all_dashboard_worlds_to_pinned_assets_and_spawn_poses(self):
+    def test_sim_resolves_only_house_and_warehouse_to_pinned_assets(self):
         module = load_launch('sim.launch.py')
-        local = module.world_spec('/bringup', '/tb3', 'house')
         tugbot = module.world_spec('/bringup', '/tb3', 'tugbot_warehouse')
-        industrial = module.world_spec('/bringup', '/tb3', 'industrial_warehouse')
-        try:
-            furnished = module.world_spec('/bringup', '/tb3', 'furnished_house')
-        except ValueError as error:
-            self.fail(f'Furnished House is not routed: {error}')
+        furnished = module.world_spec('/bringup', '/tb3', 'furnished_house')
 
-        self.assertEqual(local, ('/bringup/worlds/turtlebot3_house.world', '-2.0', '-0.5'))
         self.assertEqual(
             tugbot,
             ('https://fuel.gazebosim.org/1.0/OpenRobotics/worlds/'
              'Tugbot%20in%20Warehouse/2', '0.0', '0.0'),
         )
         self.assertEqual(
-            industrial,
-            ('https://fuel.gazebosim.org/1.0/OpenRobotics/worlds/'
-             'industrial-warehouse/4', '0.0', '0.0'),
-        )
-        self.assertEqual(
             furnished,
             ('/opt/robium/worlds/aws-small-house/worlds/small_house.world',
              '3.5', '1.0'),
         )
+        for removed in ('house', 'arena', 'industrial_warehouse'):
+            with self.subTest(world=removed), self.assertRaises(ValueError):
+                module.world_spec('/bringup', '/tb3', removed)
 
     def test_sim_preserves_world_selection_and_native_client(self):
         module = load_launch('sim.launch.py')
@@ -75,27 +67,27 @@ class LaunchModeTests(unittest.TestCase):
         self.assertTrue({'world', 'gui', 'bridge'} <= declared_names(description))
 
         headless = LaunchContext()
-        headless.launch_configurations.update(world='house', gui='false', bridge='true')
+        headless.launch_configurations.update(
+            world='furnished_house', gui='false', bridge='true')
         headless_actions = module.gazebo_actions(
             headless, '/packages/indoor_nav_bringup',
             '/packages/turtlebot3_gazebo', '/packages/ros_gz_sim')
         headless_args = dict(headless_actions[0].launch_arguments)
-        self.assertIn('turtlebot3_house.world',
-                      render_parts(headless, headless_args['gz_args']))
-        self.assertIn('/packages/indoor_nav_bringup/worlds/',
+        self.assertIn('small_house.robium.world',
                       render_parts(headless, headless_args['gz_args']))
         self.assertIn('--headless-rendering', ''.join(headless_args['gz_args']))
         self.assertFalse(any(isinstance(action, ExecuteProcess)
                              for action in headless_actions))
 
         native = LaunchContext()
-        native.launch_configurations.update(world='arena', gui='true', bridge='true')
+        native.launch_configurations.update(
+            world='tugbot_warehouse', gui='true', bridge='true')
         native_actions = module.gazebo_actions(
             native, '/packages/indoor_nav_bringup',
             '/packages/turtlebot3_gazebo', '/packages/ros_gz_sim')
         native_args = dict(native_actions[0].launch_arguments)
         rendered = render_parts(native, native_args['gz_args'])
-        self.assertIn('turtlebot3_world.world', rendered)
+        self.assertIn('Tugbot%20in%20Warehouse/2', rendered)
         self.assertNotIn('--headless-rendering', rendered)
         client = next(action for action in native_actions
                       if isinstance(action, ExecuteProcess))
@@ -168,6 +160,13 @@ class LaunchModeTests(unittest.TestCase):
         description = module.generate_launch_description()
 
         self.assertTrue({'world', 'map_name'} <= declared_names(description))
+        world_arg = next(
+            entity for entity in description.entities
+            if isinstance(entity, DeclareLaunchArgument) and entity.name == 'world')
+        self.assertEqual(
+            perform_substitutions(LaunchContext(), world_arg.default_value),
+            'furnished_house')
+        self.assertEqual(world_arg.choices, ['furnished_house', 'tugbot_warehouse'])
         self.assertFalse(any(isinstance(entity, IncludeLaunchDescription)
                              for entity in description.entities))
         nodes = [entity for entity in description.entities if isinstance(entity, Node)]

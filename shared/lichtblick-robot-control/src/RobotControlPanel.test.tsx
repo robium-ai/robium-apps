@@ -38,7 +38,7 @@ function renderPanel(mode: "MAPPING" | "LOCALIZATION" | "IDLE" | "UNKNOWN" = "MA
       config: DEFAULT_CONFIG,
       mode,
       maps: ["house", "office"],
-      world: "house",
+      world: "furnished_house",
       colorScheme: "dark",
       canPublish: true,
       canCallServices: true,
@@ -153,7 +153,7 @@ test("starts IDLE with a valid default map name and enabled mapping action", () 
   fixture.cleanup();
 });
 
-test("offers four simulation worlds and requests the selected restart", async () => {
+test("offers House and Warehouse and requests the selected restart", async () => {
   const fixture = renderPanel("IDLE");
   const select = fixture.dom.window.document.querySelector<HTMLSelectElement>("#simulation-world");
   const restart = fixture.dom.window.document.querySelector<HTMLButtonElement>(
@@ -163,10 +163,8 @@ test("offers four simulation worlds and requests the selected restart", async ()
   assert.deepEqual(
     [...select.options].map((option) => [option.value, option.text]),
     [
-      ["house", "TurtleBot3 House"],
-      ["tugbot_warehouse", "Tugbot in Warehouse"],
-      ["industrial_warehouse", "Industrial Warehouse"],
-      ["furnished_house", "Furnished House"],
+      ["furnished_house", "House"],
+      ["tugbot_warehouse", "Warehouse"],
     ],
   );
   const valueSetter = Object.getOwnPropertyDescriptor(
@@ -175,11 +173,11 @@ test("offers four simulation worlds and requests the selected restart", async ()
   )?.set;
   assert.ok(valueSetter);
   act(() => {
-    valueSetter.call(select, "furnished_house");
+    valueSetter.call(select, "tugbot_warehouse");
     select.dispatchEvent(new fixture.dom.window.Event("change", { bubbles: true }));
   });
   await act(async () => restart.click());
-  assert.deepEqual(fixture.actions, [["furnished_house"]]);
+  assert.deepEqual(fixture.actions, [["tugbot_warehouse"]]);
   fixture.cleanup();
 });
 
@@ -187,7 +185,7 @@ test("synchronizes the selected world after a simulator restart", () => {
   const fixture = renderPanel("IDLE");
   const select = fixture.dom.window.document.querySelector<HTMLSelectElement>("#simulation-world");
   assert.ok(select);
-  assert.equal(select.value, "house");
+  assert.equal(select.value, "furnished_house");
   Object.assign(fixture.adapter, {
     snapshot: { ...fixture.adapter.snapshot, world: "furnished_house" },
   });

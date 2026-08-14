@@ -32,7 +32,7 @@ class SessionProcessesTests(unittest.TestCase):
             self.events.append(('start', role))
             return process
 
-        self.sessions = SessionProcesses(factory, self.tmp.name, 'house')
+        self.sessions = SessionProcesses(factory, self.tmp.name, 'furnished_house')
 
     def tearDown(self):
         self.sessions.close()
@@ -40,9 +40,9 @@ class SessionProcessesTests(unittest.TestCase):
 
     def test_startup_runs_only_simulation_and_has_no_navigation_map_session(self):
         self.assertEqual(self.sessions.mode, 'IDLE')
-        self.assertEqual(self.sessions.world, 'house')
+        self.assertEqual(self.sessions.world, 'furnished_house')
         self.assertEqual([process.role for process in self.started], ['simulation'])
-        self.assertIn('world:=house', self.started[0].command)
+        self.assertIn('world:=furnished_house', self.started[0].command)
 
     def test_mapping_start_and_stop_save_before_navigation_terminates(self):
         self.sessions.start_mapping('floor_1')
@@ -58,7 +58,7 @@ class SessionProcessesTests(unittest.TestCase):
             self.events.append(('save', path))
 
         path = self.sessions.stop_mapping(save)
-        self.assertEqual(path, Path(self.tmp.name) / 'house' / 'floor_1')
+        self.assertEqual(path, Path(self.tmp.name) / 'furnished_house' / 'floor_1')
         self.assertEqual(saved, [path])
         self.assertLess(self.events.index(('save', path)), self.events.index(('stop', 'navigation')))
         self.assertEqual(self.sessions.mode, 'IDLE')
@@ -67,7 +67,7 @@ class SessionProcessesTests(unittest.TestCase):
         with self.assertRaisesRegex(FileNotFoundError, 'missing'):
             self.sessions.load_map('missing')
 
-        world_maps = Path(self.tmp.name) / 'house'
+        world_maps = Path(self.tmp.name) / 'furnished_house'
         world_maps.mkdir()
         (world_maps / 'office.yaml').write_text('image: office.pgm\n')
         self.sessions.load_map('office')
@@ -80,26 +80,28 @@ class SessionProcessesTests(unittest.TestCase):
         self.assertEqual(self.sessions.available_maps(), ['lobby', 'office'])
 
     def test_world_restart_stops_navigation_then_simulation_and_returns_idle(self):
-        world_maps = Path(self.tmp.name) / 'house'
+        world_maps = Path(self.tmp.name) / 'furnished_house'
         world_maps.mkdir()
         (world_maps / 'office.yaml').write_text('image: office.pgm\n')
         self.sessions.load_map('office')
         self.events.clear()
 
-        self.sessions.restart_simulation('furnished_house')
+        self.sessions.restart_simulation('tugbot_warehouse')
 
         self.assertEqual(
             self.events,
             [('stop', 'navigation'), ('stop', 'simulation'), ('start', 'simulation')],
         )
         self.assertEqual(self.sessions.mode, 'IDLE')
-        self.assertEqual(self.sessions.world, 'furnished_house')
-        self.assertIn('world:=furnished_house', self.started[-1].command)
+        self.assertEqual(self.sessions.world, 'tugbot_warehouse')
+        self.assertIn('world:=tugbot_warehouse', self.started[-1].command)
         self.assertEqual(self.sessions.available_maps(), [])
 
     def test_rejects_unknown_worlds_and_unsafe_map_names(self):
-        with self.assertRaisesRegex(ValueError, 'unknown world'):
-            self.sessions.restart_simulation('mars')
+        for world in ('house', 'arena', 'industrial_warehouse', 'mars'):
+            with self.subTest(world=world), self.assertRaisesRegex(
+                    ValueError, 'unknown world'):
+                self.sessions.restart_simulation(world)
         with self.assertRaisesRegex(ValueError, 'map name'):
             self.sessions.start_mapping('../escape')
 

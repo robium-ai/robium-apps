@@ -88,7 +88,7 @@ export function RobotControlPanel({
   const [mapName, setMapName] = useState(snapshot.selectedParameter ?? "map");
   const [selectedMap, setSelectedMap] = useState("");
   const [selectedWorld, setSelectedWorld] = useState<SimulationWorld>(
-    snapshot.world === "UNKNOWN" ? "house" : snapshot.world,
+    snapshot.world === "UNKNOWN" ? "furnished_house" : snapshot.world,
   );
   const validMapName = validateMapName(mapName.trim());
   const mapping = snapshot.mode === "MAPPING";

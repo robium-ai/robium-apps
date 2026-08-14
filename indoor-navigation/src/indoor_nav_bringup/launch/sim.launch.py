@@ -45,18 +45,9 @@ FURNISHED_HOUSE_SYSTEMS = (
 
 def world_spec(bringup, tb3_gazebo, world_name):
     """Resolve a world and a collision-free TurtleBot spawn pose."""
-    if world_name == 'house':
-        return (os.path.join(bringup, 'worlds', 'turtlebot3_house.world'),
-                '-2.0', '-0.5')
-    if world_name == 'arena':
-        return (os.path.join(tb3_gazebo, 'worlds', 'turtlebot3_world.world'),
-                '-2.0', '-0.5')
     if world_name == 'tugbot_warehouse':
         return (f'{FUEL_ROOT}/OpenRobotics/worlds/'
                 'Tugbot%20in%20Warehouse/2', '0.0', '0.0')
-    if world_name == 'industrial_warehouse':
-        return (f'{FUEL_ROOT}/OpenRobotics/worlds/'
-                'industrial-warehouse/4', '0.0', '0.0')
     if world_name == 'furnished_house':
         return (str(AWS_SMALL_HOUSE_ROOT / 'worlds' / 'small_house.world'),
                 '3.5', '1.0')
@@ -161,21 +152,10 @@ def generate_launch_description():
     ros_gz_sim = get_package_share_directory('ros_gz_sim')
     bringup = get_package_share_directory('indoor_nav_bringup')
 
-    # The house is the default environment: a ~15 x 10.6 m multi-room floor
-    # plan with doorways and furniture, so the SLAM/Nav2 run reads as indoor
-    # navigation rather than a lap around an arena of pillars. Both worlds are
-    # shipped by turtlebot3_gazebo and are byte-for-byte identical apart from
-    # the model they include (plus `<shadows>0</shadows>`, which the house
-    # adds and which is cheaper, not costlier) — same ODE physics, same
-    # plugins, same two Fuel includes. The arena stays selectable as
-    # `world:=arena`: every camera and lidar frame here is software-rendered
-    # (llvmpipe, no GPU), so a one-flag fallback to the cheap scene is what
-    # lets a real-time-factor regression be bisected against the world.
     world_arg = DeclareLaunchArgument(
-        'world', default_value='house',
-        choices=['house', 'arena', 'tugbot_warehouse',
-                 'industrial_warehouse', 'furnished_house'],
-        description='local or pinned Gazebo Fuel environment')
+        'world', default_value='furnished_house',
+        choices=['furnished_house', 'tugbot_warehouse'],
+        description='House or Warehouse simulation environment')
     gui_arg = DeclareLaunchArgument(
         'gui', default_value='false', choices=['true', 'false'],
         description='open a native Gazebo GUI attached to the server')
