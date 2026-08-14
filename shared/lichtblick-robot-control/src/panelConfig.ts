@@ -55,7 +55,7 @@ export const SIMULATION_WORLDS = [
   { value: "house", label: "TurtleBot3 House" },
   { value: "tugbot_warehouse", label: "Tugbot in Warehouse" },
   { value: "industrial_warehouse", label: "Industrial Warehouse" },
-  { value: "living_room", label: "Living Room" },
+  { value: "furnished_house", label: "Furnished House" },
 ] as const;
 
 export type SimulationWorld = (typeof SIMULATION_WORLDS)[number]["value"];

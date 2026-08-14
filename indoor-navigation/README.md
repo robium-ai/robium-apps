@@ -101,7 +101,7 @@ make control-extension-check
 ```
 
 The command prints the absolute path to
-`shared/lichtblick-robot-control/robium.robot-control-0.2.0.foxe`. That artifact
+`shared/lichtblick-robot-control/robium.robot-control-0.3.0.foxe`. That artifact
 remains reusable in other Lichtblick projects: drag it onto another project's
 browser viewer (or use Lichtblick's file picker) and confirm installation once
 for that browser origin. Indoor-navigation's committed layout supplies its ROS
@@ -114,8 +114,10 @@ world and tears that stack down; **Load & localize** launches map_server, AMCL,
 and Nav2 for a saved map. Only one navigation mode can run at a time.
 
 The compact Simulation card switches among TurtleBot3 House, Tugbot in
-Warehouse, Industrial Warehouse, and Living Room. Fuel worlds download on
-first use and remain in Gazebo's local cache. Restarting a world stops any
+Warehouse, Industrial Warehouse, and Furnished House. The two industrial Fuel
+worlds download on first use and remain in Gazebo's local cache. Furnished
+House is the MIT-licensed AWS RoboMaker Small House asset, pinned and prepared
+for modern Gazebo when the Docker image is built. Restarting a world stops any
 mapping/localization session and returns to IDLE. Maps are grouped by world,
 so only maps created for the active environment appear in the list.
 

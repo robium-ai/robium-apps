@@ -166,7 +166,7 @@ test("offers four simulation worlds and requests the selected restart", async ()
       ["house", "TurtleBot3 House"],
       ["tugbot_warehouse", "Tugbot in Warehouse"],
       ["industrial_warehouse", "Industrial Warehouse"],
-      ["living_room", "Living Room"],
+      ["furnished_house", "Furnished House"],
     ],
   );
   const valueSetter = Object.getOwnPropertyDescriptor(
@@ -175,11 +175,11 @@ test("offers four simulation worlds and requests the selected restart", async ()
   )?.set;
   assert.ok(valueSetter);
   act(() => {
-    valueSetter.call(select, "living_room");
+    valueSetter.call(select, "furnished_house");
     select.dispatchEvent(new fixture.dom.window.Event("change", { bubbles: true }));
   });
   await act(async () => restart.click());
-  assert.deepEqual(fixture.actions, [["living_room"]]);
+  assert.deepEqual(fixture.actions, [["furnished_house"]]);
   fixture.cleanup();
 });
 
@@ -189,10 +189,10 @@ test("synchronizes the selected world after a simulator restart", () => {
   assert.ok(select);
   assert.equal(select.value, "house");
   Object.assign(fixture.adapter, {
-    snapshot: { ...fixture.adapter.snapshot, world: "living_room" },
+    snapshot: { ...fixture.adapter.snapshot, world: "furnished_house" },
   });
   act(() => fixture.notify());
-  assert.equal(select.value, "living_room");
+  assert.equal(select.value, "furnished_house");
   fixture.cleanup();
 });
 

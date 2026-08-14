@@ -83,11 +83,11 @@ test("subscribes, watches exact render fields, and acknowledges every render", (
 test("waits for the selected simulation world before requesting restart", async () => {
   const fixture = makePanelContext();
   const adapter = new LichtblickAdapter(fixture.context, DEFAULT_CONFIG);
-  const action = adapter.runSimulationAction("living_room");
-  assert.deepEqual(fixture.calls.parameters, [["/session_manager.world", "living_room"]]);
+  const action = adapter.runSimulationAction("furnished_house");
+  assert.deepEqual(fixture.calls.parameters, [["/session_manager.world", "furnished_house"]]);
   assert.deepEqual(fixture.calls.services, []);
   fixture.render({
-    parameters: new Map([["/session_manager.world", "living_room"]]),
+    parameters: new Map([["/session_manager.world", "furnished_house"]]),
   });
   await action;
   assert.deepEqual(fixture.calls.services, [{ service: "/simulation/restart", request: {} }]);

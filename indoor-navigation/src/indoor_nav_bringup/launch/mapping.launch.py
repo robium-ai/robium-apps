@@ -9,7 +9,8 @@ from launch_ros.actions import Node
 def generate_launch_description():
     world_arg = DeclareLaunchArgument(
         'world', default_value='house',
-        choices=['house', 'tugbot_warehouse', 'industrial_warehouse', 'living_room'])
+        choices=['house', 'tugbot_warehouse', 'industrial_warehouse',
+                 'furnished_house'])
     map_name_arg = DeclareLaunchArgument('map_name', default_value='map')
 
     session = Node(
