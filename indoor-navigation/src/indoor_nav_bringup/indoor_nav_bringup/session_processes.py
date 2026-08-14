@@ -8,7 +8,7 @@ WORLD_NAMES = (
     'house',
     'tugbot_warehouse',
     'industrial_warehouse',
-    'living_room',
+    'furnished_house',
 )
 MAP_NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$')
 

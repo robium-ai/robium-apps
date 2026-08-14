@@ -86,15 +86,15 @@ class SessionProcessesTests(unittest.TestCase):
         self.sessions.load_map('office')
         self.events.clear()
 
-        self.sessions.restart_simulation('living_room')
+        self.sessions.restart_simulation('furnished_house')
 
         self.assertEqual(
             self.events,
             [('stop', 'navigation'), ('stop', 'simulation'), ('start', 'simulation')],
         )
         self.assertEqual(self.sessions.mode, 'IDLE')
-        self.assertEqual(self.sessions.world, 'living_room')
-        self.assertIn('world:=living_room', self.started[-1].command)
+        self.assertEqual(self.sessions.world, 'furnished_house')
+        self.assertIn('world:=furnished_house', self.started[-1].command)
         self.assertEqual(self.sessions.available_maps(), [])
 
     def test_rejects_unknown_worlds_and_unsafe_map_names(self):

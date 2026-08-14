@@ -43,7 +43,10 @@ class LaunchModeTests(unittest.TestCase):
         local = module.world_spec('/bringup', '/tb3', 'house')
         tugbot = module.world_spec('/bringup', '/tb3', 'tugbot_warehouse')
         industrial = module.world_spec('/bringup', '/tb3', 'industrial_warehouse')
-        living = module.world_spec('/bringup', '/tb3', 'living_room')
+        try:
+            furnished = module.world_spec('/bringup', '/tb3', 'furnished_house')
+        except ValueError as error:
+            self.fail(f'Furnished House is not routed: {error}')
 
         self.assertEqual(local, ('/bringup/worlds/turtlebot3_house.world', '-2.0', '-0.5'))
         self.assertEqual(
@@ -57,9 +60,9 @@ class LaunchModeTests(unittest.TestCase):
              'industrial-warehouse/4', '0.0', '0.0'),
         )
         self.assertEqual(
-            living,
-            ('https://fuel.gazebosim.org/1.0/makerspet/worlds/living_room/1',
-             '1.8', '-1.8'),
+            furnished,
+            ('/opt/robium/worlds/aws-small-house/worlds/small_house.world',
+             '3.5', '1.0'),
         )
 
     def test_sim_preserves_world_selection_and_native_client(self):
@@ -100,50 +103,38 @@ class LaunchModeTests(unittest.TestCase):
                    for part in client.process_description.cmd]
         self.assertEqual(command, ['gz', 'sim', '-g'])
 
-    def test_living_room_launch_repairs_stale_fuel_model_version(self):
-        module = load_launch('sim.launch.py')
+    def test_furnished_house_launch_adds_modern_gazebo_systems(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
-            cache = Path(temporary_directory)
-            cached_world = (
-                cache / 'fuel.gazebosim.org' / 'makerspet' / 'worlds' /
-                'living_room' / '1' / 'living_room.sdf'
-            )
-            cached_world.parent.mkdir(parents=True)
-            cached_world.write_text(
-                '<sdf><world name="default"><state>'
-                '<model name="living_room"><pose>0 0 0 0 0 0</pose></model>'
-                '</state><model name="living_room"><static>0</static></model>'
-                '<uri>https://fuel.ignitionrobotics.org/1.0/'
-                'makerspet/models/tv_65in_emissive/4/files/material/script'
-                '</uri></world></sdf>'
-            )
+            asset = Path(temporary_directory) / 'aws-small-house'
+            source_world = asset / 'worlds' / 'small_house.world'
+            source_world.parent.mkdir(parents=True)
+            (asset / 'models').mkdir()
+            source_world.write_text('<sdf version="1.6"><world name="default"/></sdf>')
+            with mock.patch.dict(os.environ, {'AWS_SMALL_HOUSE_ROOT': str(asset)}):
+                module = load_launch('sim.launch.py')
             context = LaunchContext()
             context.launch_configurations.update(
-                world='living_room', gui='false', bridge='true')
-            with mock.patch.dict(os.environ, {'GZ_FUEL_CACHE_PATH': str(cache)}):
+                world='furnished_house', gui='false', bridge='true')
+            try:
                 actions = module.gazebo_actions(
                     context, '/bringup', '/tb3', '/ros_gz_sim')
+            except ValueError as error:
+                self.fail(f'Furnished House launch is not implemented: {error}')
 
             arguments = dict(actions[0].launch_arguments)
             rendered = render_parts(context, arguments['gz_args'])
-            repaired_world = cached_world.with_name('living_room.robium.sdf')
-            self.assertIn(str(repaired_world), rendered)
-            self.assertIn(
-                'tv_65in_emissive/1/files/material/script',
-                repaired_world.read_text(),
-            )
-            self.assertIn(
-                'tv_65in_emissive/4/files/material/script',
-                cached_world.read_text(),
-            )
-            repaired_root = ET.parse(repaired_world).getroot()
-            self.assertEqual(
-                repaired_root.findall(".//model[@name='living_room']"), [])
+            prepared_world = source_world.with_name('small_house.robium.world')
+            self.assertIn(str(prepared_world), rendered)
+            repaired_root = ET.parse(prepared_world).getroot()
             plugin_names = {
                 plugin.get('name') for plugin in repaired_root.findall('.//world/plugin')
             }
             self.assertIn('gz::sim::systems::Sensors', plugin_names)
             self.assertIn('gz::sim::systems::Imu', plugin_names)
+            self.assertEqual(
+                source_world.read_text(),
+                '<sdf version="1.6"><world name="default"/></sdf>',
+            )
 
     def test_mapping_dashboard_starts_a_session_manager_without_a_map_stack(self):
         module = load_launch('mapping.launch.py')
