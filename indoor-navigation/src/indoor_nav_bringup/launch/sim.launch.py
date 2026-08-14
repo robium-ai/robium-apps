@@ -72,6 +72,38 @@ def prepare_furnished_house_world(source_world):
     world = root.find('world')
     if world is None:
         raise RuntimeError('AWS Small House asset has no <world> element')
+
+    shoe_model = (
+        source_world.parent.parent / 'models' /
+        'aws_robomaker_residential_ShoeRack_01' / 'model.sdf'
+    )
+    if not shoe_model.is_file():
+        raise RuntimeError(f'AWS Small House shoe-rack model is missing: {shoe_model}')
+    shoe_root = ET.parse(shoe_model)
+    inertia = shoe_root.getroot().find('.//inertia')
+    if inertia is None:
+        raise RuntimeError('AWS Small House shoe-rack model has no inertia')
+    ixx = inertia.findall('ixx')
+    izz = inertia.findall('izz')
+    if len(ixx) == 2 and not izz:
+        ixx[1].tag = 'izz'
+        shoe_root.write(shoe_model, encoding='unicode')
+    elif len(ixx) != 1 or len(izz) != 1:
+        raise RuntimeError('AWS Small House shoe-rack inertia changed; re-verify patch')
+
+    # The ROS 2 branch's portrait meshes climb one directory beyond the asset
+    # root. Gazebo Classic happened to find those files through its working
+    # directory; modern Gazebo resolves them relative to each DAE instead.
+    # Keep the pinned source self-contained by correcting that legacy path.
+    models_root = source_world.parent.parent / 'models'
+    for mesh in models_root.rglob('*'):
+        if not mesh.is_file() or mesh.suffix.lower() != '.dae':
+            continue
+        contents = mesh.read_text()
+        corrected = contents.replace('../../../../photos/', '../../../photos/')
+        if corrected != contents:
+            mesh.write_text(corrected)
+
     existing_plugins = {
         plugin.get('name') for plugin in world.findall('plugin')
     }

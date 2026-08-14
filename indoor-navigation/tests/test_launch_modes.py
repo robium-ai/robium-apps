@@ -108,7 +108,26 @@ class LaunchModeTests(unittest.TestCase):
             asset = Path(temporary_directory) / 'aws-small-house'
             source_world = asset / 'worlds' / 'small_house.world'
             source_world.parent.mkdir(parents=True)
-            (asset / 'models').mkdir()
+            shoe_model = (
+                asset / 'models' / 'aws_robomaker_residential_ShoeRack_01' /
+                'model.sdf'
+            )
+            shoe_model.parent.mkdir(parents=True)
+            shoe_model.write_text(
+                '<sdf><model><link><inertial><inertia>'
+                '<ixx>0.02</ixx><iyy>0.04</iyy><ixx>0.02</ixx>'
+                '</inertia></inertial></link></model></sdf>'
+            )
+            portrait_mesh = (
+                asset / 'models' / 'aws_robomaker_residential_PortraitA_01' /
+                'meshes' / 'portrait.dae'
+            )
+            portrait_mesh.parent.mkdir(parents=True)
+            portrait_mesh.write_text(
+                '<COLLADA><image><init_from>'
+                '../../../../photos/PortraitA_01.jpg'
+                '</init_from></image></COLLADA>'
+            )
             source_world.write_text('<sdf version="1.6"><world name="default"/></sdf>')
             with mock.patch.dict(os.environ, {'AWS_SMALL_HOUSE_ROOT': str(asset)}):
                 module = load_launch('sim.launch.py')
@@ -131,6 +150,14 @@ class LaunchModeTests(unittest.TestCase):
             }
             self.assertIn('gz::sim::systems::Sensors', plugin_names)
             self.assertIn('gz::sim::systems::Imu', plugin_names)
+            shoe_inertia = ET.parse(shoe_model).getroot().find('.//inertia')
+            self.assertIsNotNone(shoe_inertia)
+            self.assertEqual(
+                [child.tag for child in shoe_inertia], ['ixx', 'iyy', 'izz'])
+            self.assertIn(
+                '../../../photos/PortraitA_01.jpg', portrait_mesh.read_text())
+            self.assertNotIn(
+                '../../../../photos/', portrait_mesh.read_text())
             self.assertEqual(
                 source_world.read_text(),
                 '<sdf version="1.6"><world name="default"/></sdf>',
