@@ -101,7 +101,7 @@ make control-extension-check
 ```
 
 The command prints the absolute path to
-`shared/lichtblick-robot-control/robium.robot-control-0.3.0.foxe`. That artifact
+`shared/lichtblick-robot-control/robium.robot-control-0.4.0.foxe`. That artifact
 remains reusable in other Lichtblick projects: drag it onto another project's
 browser viewer (or use Lichtblick's file picker) and confirm installation once
 for that browser origin. Indoor-navigation's committed layout supplies its ROS
@@ -113,13 +113,19 @@ Nav2 for the entered name; **Stop mapping** saves it beneath the selected
 world and tears that stack down; **Load & localize** launches map_server, AMCL,
 and Nav2 for a saved map. Only one navigation mode can run at a time.
 
-The compact Simulation card switches among TurtleBot3 House, Tugbot in
-Warehouse, Industrial Warehouse, and Furnished House. The two industrial Fuel
-worlds download on first use and remain in Gazebo's local cache. Furnished
-House is the MIT-licensed AWS RoboMaker Small House asset, pinned and prepared
-for modern Gazebo when the Docker image is built. Restarting a world stops any
-mapping/localization session and returns to IDLE. Maps are grouped by world,
-so only maps created for the active environment appear in the list.
+The compact Simulation card offers **House** and **Warehouse**. House is the
+default and uses the MIT-licensed AWS RoboMaker Small House asset, pinned and
+prepared for modern Gazebo during the image build. Warehouse uses the pinned
+OpenRobotics Tugbot warehouse and remains in Gazebo's local cache after its
+first download. Restarting a world stops any mapping/localization session and
+returns to IDLE. Maps remain grouped under the stable internal world names, so
+only maps created for the active environment appear in the list.
+
+TurtleBot3 Waffle Pi is the single controllable robot in both environments.
+Its wider 0.15 m navigation radius, lidar, IMU, odometry, and pinhole camera
+are used consistently by Gazebo, Nav2, and the dashboard. The Tugbot already
+present in Warehouse remains part of the environment rather than a second
+controllable robot.
 
 Movement supports held WASD/arrow controls and adjustable forward/turn speed.
 Stop Robot sends zero velocity; it is not a hardware emergency stop. Go Home

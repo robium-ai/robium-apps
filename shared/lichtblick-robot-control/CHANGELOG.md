@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0 - 2026-08-14
+
+- Simplify the simulation selector to House and Warehouse.
+- Default the selector to the furnished House environment.
+
 ## 0.3.0 - 2026-08-14
 
 - Replace the unreliable single-room simulation choice with Furnished House.

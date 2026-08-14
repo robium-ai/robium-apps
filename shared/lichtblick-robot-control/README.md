@@ -13,7 +13,7 @@ npm run lint
 npm run package
 ```
 
-The package command creates `robium.robot-control-0.3.0.foxe`. In Lichtblick Web, drag the `.foxe` onto
+The package command creates `robium.robot-control-0.4.0.foxe`. In Lichtblick Web, drag the `.foxe` onto
 the viewer (or open it with the file picker), confirm installation, and add **Robium Robot Control →
 robot-control** to a layout. Browser installation is stored in IndexedDB for that browser origin.
 
@@ -55,3 +55,7 @@ emergency stop.** Keep a hardware emergency-stop path for real robots.
 
 The panel requests lifecycle transitions through configured services. The robot
 application owns the simulator, mapping, and localization process lifecycle.
+
+Indoor-navigation configures the simulation selector with two stable backend
+values: `furnished_house` is displayed as **House**, and `tugbot_warehouse` is
+displayed as **Warehouse**.

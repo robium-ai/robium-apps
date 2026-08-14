@@ -77,7 +77,7 @@ COPY indoor-navigation/docker/entrypoint.sh /entrypoint.sh
 COPY --from=lichtblick /src /opt/lichtblick
 COPY indoor-navigation/lichtblick/nav-layout.json /opt/lichtblick/nav-layout.json
 COPY indoor-navigation/lichtblick/mapping-layout.json /opt/lichtblick/mapping-layout.json
-COPY --from=robot-control /extension/robium.robot-control-0.3.0.foxe /opt/lichtblick/robium/robot-control.foxe
+COPY --from=robot-control /extension/robium.robot-control-0.4.0.foxe /opt/lichtblick/robium/robot-control.foxe
 COPY shared/lichtblick-robot-control/package.json /opt/lichtblick/robium/package.json
 COPY shared/lichtblick-robot-control/README.md /opt/lichtblick/robium/README.md
 COPY shared/lichtblick-robot-control/CHANGELOG.md /opt/lichtblick/robium/CHANGELOG.md

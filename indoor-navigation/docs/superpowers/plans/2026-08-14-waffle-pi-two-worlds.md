@@ -33,10 +33,10 @@
 - Consumes: existing `world` session parameter and `WORLD_OPTIONS` panel configuration.
 - Produces: accepted values `furnished_house | tugbot_warehouse`, displayed as `House | Warehouse`.
 
-- [ ] Write failing backend and panel tests expecting two worlds and `furnished_house` as the default.
-- [ ] Run targeted Python and TypeScript tests and confirm they fail on the four-world contract.
-- [ ] Remove the obsolete world routes/options and set the new default without renaming internal identifiers.
-- [ ] Run targeted tests and commit the green two-world contract.
+- [x] Write failing backend and panel tests expecting two worlds and `furnished_house` as the default.
+- [x] Run targeted Python and TypeScript tests and confirm they fail on the four-world contract.
+- [x] Remove the obsolete world routes/options and set the new default without renaming internal identifiers.
+- [x] Run targeted tests and commit the green two-world contract.
 
 ### Task 2: Waffle Pi runtime profile
 
@@ -57,10 +57,10 @@
 - Consumes: upstream `turtlebot3_waffle_pi` SDF, bridge YAML, URDF, and Nav2 radius.
 - Produces: `TURTLEBOT3_MODEL=waffle_pi`, a 10 Hz pinhole camera, and 0.15 m local/global costmap radii.
 
-- [ ] Write failing tests for the Waffle Pi environment, camera optimization behavior, and both costmap radii.
-- [ ] Run targeted Python tests and confirm failures identify Burger Cam and 0.10 m assumptions.
-- [ ] Switch all runtime environments to Waffle Pi, generalize camera optimization, and set both radii to 0.15 m.
-- [ ] Run targeted tests and commit the green robot profile.
+- [x] Write failing tests for the Waffle Pi environment, camera optimization behavior, and both costmap radii.
+- [x] Run targeted Python tests and confirm failures identify Burger Cam and 0.10 m assumptions.
+- [x] Switch all runtime environments to Waffle Pi, generalize camera optimization, and set both radii to 0.15 m.
+- [x] Run targeted tests and commit the green robot profile.
 
 ### Task 3: Documentation and live verification
 
@@ -75,11 +75,10 @@
 **Interfaces:**
 - Verifies the built Waffle Pi image and the two-world operator workflow.
 
-- [ ] Update operator and registry text to describe Waffle Pi, House, and Warehouse.
-- [ ] Build and force-recreate the mapping container; confirm initial `furnished_house`, `IDLE`, and no `/map`.
-- [ ] Verify `/clock`, `/scan`, `/camera/image_raw`, and `/odom`, then publish teleop and confirm odometry changes.
-- [ ] Restart into Warehouse and repeat the sensor checks.
-- [ ] Start and stop mapping, verify saved output, return to `IDLE`, then move only generated smoke artifacts out of the workspace.
-- [ ] Run all Python and extension tests, lint, production build/package, and `git diff --check`.
-- [ ] Check every completed box in this plan and commit documentation plus verification evidence.
-
+- [x] Update operator and registry text to describe Waffle Pi, House, and Warehouse.
+- [x] Build and force-recreate the mapping container; confirm initial `furnished_house`, `IDLE`, and no `/map`.
+- [x] Verify `/clock`, `/scan`, `/camera/image_raw`, and `/odom`, then publish teleop and confirm odometry changes.
+- [x] Restart into Warehouse and repeat the sensor checks.
+- [x] Start and stop mapping, verify saved output, return to `IDLE`, then move only generated smoke artifacts out of the workspace.
+- [x] Run all Python and extension tests, lint, production build/package, and `git diff --check`.
+- [x] Check every completed box in this plan and commit documentation plus verification evidence.

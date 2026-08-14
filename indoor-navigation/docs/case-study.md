@@ -84,12 +84,12 @@ works. Neither proves that a velocity command reaches the robot.
 
 We started with the desired behavior and the host constraints. A
 Robium-assisted architecture pass selected ROS 2 Jazzy, Gazebo Harmonic,
-Nav2, `slam_toolbox`, and the TurtleBot 3 Burger Cam.
+Nav2, `slam_toolbox`, and the TurtleBot 3 Waffle Pi.
 
 The choices were intentionally ordinary. This project was about integrating
 the standard navigation path, not evaluating planners or training a policy.
-The Burger Cam provides lidar, odometry, and a robot-mounted camera. Its camera
-is deliberately reduced to 320 pixels wide at 10 Hz so the headless path stays
+Waffle Pi provides lidar, odometry, IMU, and a robot-mounted pinhole camera.
+Its 640×480 camera is deliberately limited to 10 Hz so the headless path stays
 practical while the native path still shows the robot's viewpoint. The
 TurtleBot packages supply the model, furnished-house geometry, and a useful
 starting configuration for Nav2.
@@ -212,7 +212,7 @@ monitor, and docking server. Applying the setting only to the main controller
 would leave recovery or safety behavior on a different interface.
 
 The collision monitor exposed a second issue on the same command path. The
-simulated Burger lidar publishes at about 5 Hz, one scan every 0.2 seconds.
+simulated TurtleBot lidar publishes at about 5 Hz, one scan every 0.2 seconds.
 The starting configuration also treated a source as stale after 0.2 seconds.
 Normal timing variation was therefore enough to reject a valid scan and stop
 the robot. The application gives the scan source a one-second timeout:

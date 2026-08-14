@@ -4,10 +4,15 @@
   "description": "Reusable movement, mapping, localization, and home controls for ROS 2 robots in Lichtblick.",
   "publisher": "robium",
   "homepage": "https://github.com/robium-ai/robium-apps",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "license": "MIT",
   "main": "./dist/extension.js",
-  "keywords": ["lichtblick", "robotics", "ros2", "navigation"],
+  "keywords": [
+    "lichtblick",
+    "robotics",
+    "ros2",
+    "navigation"
+  ],
   "overrides": {
     "webpack": "5.105.0"
   },

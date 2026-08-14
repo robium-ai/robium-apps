@@ -9,7 +9,7 @@ All confirmed with the user (design spec: docs/superpowers/specs/2026-07-10-nav-
 no silent assumptions were needed.
 
 - **Robot type:** mobile base, TurtleBot-class off-the-shelf with existing Gazebo model and
-  Nav2 params. Final pick delegated to this brief → **TurtleBot 3 Burger Cam** (see §2).
+  Nav2 params. Current application robot → **TurtleBot 3 Waffle Pi** (see §2).
 - **Task:** autonomous navigation in simulation, SLAM-first pipeline: drive → build map →
   save map → Nav2 localizes on the saved map → programmatically-sent goals reached.
 - **Sim vs real:** simulation only. No real robot, no sim-to-real.
@@ -29,7 +29,7 @@ This is the architect skill's **navigation golden path** (`ros2` + `nav2` + `gaz
 |---|---|---|---|
 | Middleware | ROS 2 | **Jazzy Jalisco** (LTS, EOL May 2029) | Decision-tree 1: mobile base + standard drivers + package ecosystem → ROS 2. Distro: Lyrical Luth is the newer LTS, but **Nav2 has no Lyrical binaries yet** (verified open: [ros-navigation/navigation2#6123](https://github.com/ros-navigation/navigation2/issues/6123), and no Lyrical rows on the ROS package index as of 2026-07-10) — the skill's stated exception applies, so the Nav2 vertical stays on Jazzy. Kilted rejected (non-LTS, EOL ~Dec 2026). |
 | Simulator | Gazebo | **Harmonic** (LTS, paired with Jazzy) | Decision-tree 2: no NVIDIA GPU + macOS host → Gazebo is the only viable branch; Isaac Sim is hard-gated (RTX floor, Linux-only). Harmonic is the officially paired sim for Jazzy via `ros_gz`; **arm64 debs confirmed** on packages.osrfoundation.org for Ubuntu Noble. Jetty rejected (pairs with Lyrical, which Nav2 blocks). Run mode: server-only, headless rendering (see §5). |
-| Robot | **TurtleBot 3 Burger Cam** | `turtlebot3_gazebo` (Jazzy binary) | The upstream model supplies lidar, odometry, and the robot-mounted camera used by the dashboard. The camera is tuned to a modest frame rate and resolution for the CPU-rendered Cloud Run path, while native macOS Gazebo renders through the local graphics stack. Switching models remains one `TURTLEBOT3_MODEL` environment variable. |
+| Robot | **TurtleBot 3 Waffle Pi** | `turtlebot3_gazebo` (Jazzy binary) | The upstream model is larger and wider than Burger while retaining the same lidar, odometry, IMU, camera, and velocity interfaces. Its pinhole camera is limited to 10 Hz for CPU rendering, and Nav2 uses the upstream 0.15 m Waffle Pi radius. |
 | SLAM | **slam_toolbox** | Jazzy binary (`ros-jazzy-slam-toolbox`, 2.8.x) | The Nav2-recommended and only officially supported ROS 2 SLAM library; online-async mode + `map_saver_cli` covers the drive→map→save milestone. Cartographer (the old TB3 default) rejected: effectively unmaintained upstream. |
 | Navigation | **Nav2** (AMCL + planner/controller servers, `nav2_simple_commander` for goals) | Jazzy binaries | The classical nav stack for a mobile base; no learning component → no training framework (decision-tree 3, "No" branch). Goals sent programmatically via the `nav2_simple_commander` Python API (`NavigateToPose`), which is also what the smoke test drives. |
 | Visualization | **Lichtblick** (browser) via `foxglove_bridge` | bundled web viewer + reusable `.foxe` control extension | Headless Docker + macOS host → no X display → RViz2 rejected per the skill's headless rule. The bridge runs beside the robot/sim and Lichtblick uses its Foxglove WebSocket protocol. The mapping layout docks the shared Robium Robot Control extension on the right. |
@@ -57,7 +57,7 @@ indoor-navigation/
 │       │   ├── sim.launch.py         # ros_gz_sim gz_sim.launch.py (headless args) + upstream spawn/rsp includes + foxglove_bridge
 │       │   ├── slam.launch.py        # sim + slam_toolbox (online_async) + Nav2 servers launched DIRECTLY
 │       │   └── nav.launch.py         # sim + map_server(saved map) + AMCL + Nav2 servers launched DIRECTLY
-│       ├── config/                   # nav2_params.yaml (TB3 burger.yaml base + grafted smoother_server), slam_params.yaml
+│       ├── config/                   # nav2_params.yaml (TB3 Waffle Pi radius + smoother_server), slam_params.yaml
 │       ├── maps/                     # saved map (map.pgm + map.yaml) — committed
 │       └── indoor_nav_bringup/        # package module (ros2 run entry points)
 │           ├── drive_mapping_route.py  # scripted waypoint route for the SLAM run
@@ -85,8 +85,8 @@ params so `bond_timeout` can't be set (Docker stall spikes then kill the
 stack); and TB3's `$(find-pkg-share)` param substitutions break without
 `allow_substs=True`. Scenario scripts `run_slam.sh`/`run_smoke.sh` wrap each
 run with an outer `timeout` so no failure mode is an unbounded hang.
-Params: `config/nav2_params.yaml` base is the shipped TB3
-`turtlebot3_navigation2` burger.yaml with `smoother_server` grafted in and
+Params: `config/nav2_params.yaml` follows the shipped TB3 Navigation2 profile,
+uses Waffle Pi's 0.15 m radius, adds `smoother_server`, and enables
 `enable_stamped_cmd_vel: true` in all five cmd_vel-publishing sections.
 
 Responsibilities:
@@ -183,7 +183,7 @@ Ordered by the design spec's milestones; testing is planned in, not bolted on.
 | Phase | Skill(s) | Exit criterion |
 |---|---|---|
 | Env setup | `environments` | image builds arm64; `ros2 topic list` works in container |
-| Bringup (M1) | `ros2`, `gazebo` | TB3 Burger Cam spawns in the furnished house by default; `/scan` and `/camera/image_raw` publish; drivable |
+| Bringup (M1) | `ros2`, `gazebo` | TB3 Waffle Pi spawns in House by default; `/scan` and `/camera/image_raw` publish; drivable |
 | Visualization (M1) | `visualization` → `foxglove` | live `/scan` + TF in browser Foxglove |
 | SLAM (M2) | `nav2` (slam_toolbox is in its orbit), `ros2` | scripted drive → map saved + committed; `tests/check_map.py` passes |
 | Navigation (M3) | `nav2` | AMCL localizes on saved map; `send_goals.py` reaches goals |
