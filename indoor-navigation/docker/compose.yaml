@@ -9,7 +9,7 @@ x-app: &app
   image: indoor-navigation:latest
   environment:
     ROS_DOMAIN_ID: "42"
-    TURTLEBOT3_MODEL: burger_cam
+    TURTLEBOT3_MODEL: waffle_pi
 
 services:
   sim:
@@ -18,12 +18,9 @@ services:
     ports: ["8765:8765"]
     volumes:
       - gazebo-fuel:/root/.gz/fuel
-    # WORLD=arena falls back to the cheap pillar arena; default is the house.
-    # Every frame here is software-rendered (llvmpipe, no GPU), so being able
-    # to swap the scene without an image rebuild is how a real-time-factor
-    # regression gets bisected against the world. slam/nav/demo do not forward
-    # this yet — they take sim.launch.py's default (house).
-    command: ros2 launch indoor_nav_bringup sim.launch.py world:=${WORLD:-house}
+    command: >
+      ros2 launch indoor_nav_bringup sim.launch.py
+      world:=${WORLD:-furnished_house}
 
   # Persistent interactive dashboard. The supervisor starts in IDLE and owns
   # restartable simulator and mapping/localization child process groups.
@@ -44,7 +41,7 @@ services:
       - ../lichtblick/mapping-layout.json:/opt/lichtblick/mapping-layout.json:ro
     command: >
       ros2 launch indoor_nav_bringup mapping.launch.py
-      world:=${WORLD:-house} map_name:=${MAP_NAME:-map}
+      world:=${WORLD:-furnished_house} map_name:=${MAP_NAME:-map}
 
   slam:
     <<: *app
@@ -75,7 +72,7 @@ services:
     profiles: [test]
     environment:
       ROS_DOMAIN_ID: "42"
-      TURTLEBOT3_MODEL: burger_cam
+      TURTLEBOT3_MODEL: waffle_pi
       # Host-overridable outer/inner smoke bound (see scripts/run_smoke.sh).
       SMOKE_TIMEOUT: "${SMOKE_TIMEOUT:-180}"
     command: bash /ws/scripts/run_smoke.sh

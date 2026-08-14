@@ -2,7 +2,7 @@
 """Relay browser teleop (Twist) onto the sim's /cmd_vel (TwistStamped).
 
 Lichtblick's Teleop panel publishes geometry_msgs/Twist with no header — the
-panel bundle has no TwistStamped path at all. turtlebot3_burger_cam_bridge.yaml
+panel bundle has no TwistStamped path at all. turtlebot3_waffle_pi_bridge.yaml
 bridges /cmd_vel as geometry_msgs/msg/TwistStamped, and ros_gz drops a
 mismatched type at the bridge WITHOUT logging anything, so wiring the panel
 straight to /cmd_vel fails as "the panel works, the robot never moves". This

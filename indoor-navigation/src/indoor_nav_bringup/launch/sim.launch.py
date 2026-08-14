@@ -1,11 +1,11 @@
-"""Gazebo server + optional native GUI + TurtleBot3 burger_cam + ROS bridge.
+"""Gazebo server + optional native GUI + TurtleBot3 Waffle Pi + ROS bridge.
 
 Path B composition (Task 3 Step 1 evidence): upstream
 turtlebot3_world.launch.py hardcodes a gz GUI client and non-overridable
 server gz_args, so we include ros_gz_sim's gz_sim.launch.py ourselves with
 `-s -r --headless-rendering` and reuse the upstream sub-launch files:
 - spawn_turtlebot3.launch.py: spawns the model AND starts the ros_gz
-  parameter_bridge (params/turtlebot3_burger_cam_bridge.yaml: /clock, /odom,
+  parameter_bridge (params/turtlebot3_waffle_pi_bridge.yaml: /clock, /odom,
   /tf, /cmd_vel, /imu, /scan, /joint_states, /camera/camera_info). For any
   model other than plain burger it also starts ros_gz_image's image_bridge,
   which is what puts the robot's /camera/image_raw on ROS.
@@ -167,8 +167,8 @@ def generate_launch_description():
     gazebo = OpaqueFunction(
         function=gazebo_actions, args=[bringup, tb3_gazebo, ros_gz_sim])
 
-    # Spawns TURTLEBOT3_MODEL (burger_cam via container env) and starts the
-    # ros_gz parameter_bridge from turtlebot3_burger_cam_bridge.yaml. That
+    # Spawns TURTLEBOT3_MODEL (waffle_pi via the runtime env) and starts the
+    # ros_gz parameter_bridge from turtlebot3_waffle_pi_bridge.yaml. That
     # launch also starts ros_gz_image's image_bridge for any model other than
     # plain burger, which is what puts /camera/image_raw on ROS for us.
     # (-2.0, -0.5) is upstream's default spawn for BOTH turtlebot3_world.launch.py

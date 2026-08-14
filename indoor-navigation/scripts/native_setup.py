@@ -16,6 +16,7 @@ import tarfile
 import tempfile
 import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ET
 from pathlib import Path, PurePosixPath
 
 try:
@@ -183,43 +184,28 @@ def neutralize_publish_cleanup(viewer: Path) -> Path:
     return bundle
 
 
-def optimize_burger_camera(model_sdf: Path) -> None:
-    """Replace the stock fisheye with a cheaper pinhole robot camera."""
+def optimize_robot_camera(model_sdf: Path) -> None:
+    """Reduce the upstream Waffle Pi pinhole camera from 30 Hz to 10 Hz."""
     try:
-        text = model_sdf.read_text()
-    except OSError as error:
+        tree = ET.parse(model_sdf)
+    except (OSError, ET.ParseError) as error:
         raise NativeError(f'cannot read TurtleBot camera model: {error}') from error
-
-    optimized_tokens = (
-        'sensor name="camera" type="camera"',
-        '<update_rate>10</update_rate>',
-        '<horizontal_fov>1.5</horizontal_fov>',
-    )
-    if all(token in text for token in optimized_tokens) and '<lens>' not in text:
+    cameras = [sensor for sensor in tree.getroot().findall('.//sensor')
+               if sensor.get('name') == 'camera' and sensor.get('type') == 'camera']
+    if len(cameras) != 1:
+        raise NativeError(
+            'TurtleBot pinhole camera must occur exactly once; '
+            f'found {len(cameras)}')
+    update_rate = cameras[0].find('update_rate')
+    if update_rate is None or update_rate.text not in ('10', '30'):
+        value = None if update_rate is None else update_rate.text
+        raise NativeError(
+            f'TurtleBot camera update rate changed; expected 30 or 10, got {value}')
+    if update_rate.text == '10':
         return
-
-    def replace_once(pattern: str, replacement: str, source: str,
-                     description: str) -> str:
-        rewritten, count = re.subn(pattern, replacement, source, flags=re.S)
-        if count != 1:
-            raise NativeError(
-                f'TurtleBot camera {description} must occur exactly once; '
-                f'found {count}')
-        return rewritten
-
-    text = replace_once(
-        r'type="wideanglecamera"', 'type="camera"', text, 'sensor type')
-    text = replace_once(
-        r'<update_rate>30</update_rate>', '<update_rate>10</update_rate>',
-        text, 'update rate')
-    text = replace_once(
-        r'\s*<lens>.*?</lens>', '', text, 'lens block')
-    text = replace_once(
-        r'<horizontal_fov>3\.183</horizontal_fov>',
-        '<horizontal_fov>1.5</horizontal_fov>', text,
-        'horizontal field of view')
+    update_rate.text = '10'
     temporary = model_sdf.with_suffix('.tmp')
-    temporary.write_text(text)
+    tree.write(temporary, encoding='unicode')
     os.replace(temporary, model_sdf)
 
 
@@ -266,9 +252,9 @@ def install_environment(paths: NativePaths) -> None:
         '--auth-file', str(paths.auth),
     ]
     subprocess.run(command, env=native_environment(paths), check=True)
-    optimize_burger_camera(
+    optimize_robot_camera(
         paths.experiment / '.pixi' / 'envs' / 'default' / 'share' /
-        'turtlebot3_gazebo' / 'models' / 'turtlebot3_burger_cam' / 'model.sdf')
+        'turtlebot3_gazebo' / 'models' / 'turtlebot3_waffle_pi' / 'model.sdf')
 
 
 def _registry_token(repository: str) -> str:

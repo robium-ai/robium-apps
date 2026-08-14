@@ -51,7 +51,7 @@ demo:
       GZ_IP: 127.0.0.1
       FASTDDS_BUILTIN_TRANSPORTS: UDPv4
       ROS_DOMAIN_ID: "42"
-      TURTLEBOT3_MODEL: burger_cam
+      TURTLEBOT3_MODEL: waffle_pi
   estimated_startup_seconds: 45
 
 artifacts:

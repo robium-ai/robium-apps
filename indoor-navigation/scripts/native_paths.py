@@ -132,7 +132,7 @@ def native_environment(
         'DEMO_SHUTDOWN_MODE': 'parent',
         'RMW_IMPLEMENTATION': 'rmw_cyclonedds_cpp',
         'ROS_DOMAIN_ID': '42',
-        'TURTLEBOT3_MODEL': 'burger_cam',
+        'TURTLEBOT3_MODEL': 'waffle_pi',
     })
     return env
 

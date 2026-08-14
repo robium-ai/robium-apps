@@ -116,6 +116,26 @@ class NativeSetupTests(unittest.TestCase):
                     'native-macos' / 'pixi.toml').read_text()
         self.assertIn('setuptools = "<80"', manifest)
 
+    def test_robot_camera_optimizer_only_reduces_waffle_pi_frame_rate(self):
+        from scripts.native_setup import optimize_robot_camera
+
+        model = self.destination / 'model.sdf'
+        model.write_text(
+            '<sdf><model><link><sensor name="camera" type="camera">'
+            '<update_rate>30</update_rate><camera>'
+            '<horizontal_fov>1.085595</horizontal_fov>'
+            '<lens><type>custom</type></lens>'
+            '</camera></sensor></link></model></sdf>'
+        )
+
+        optimize_robot_camera(model)
+        optimize_robot_camera(model)
+
+        optimized = model.read_text()
+        self.assertIn('<update_rate>10</update_rate>', optimized)
+        self.assertIn('<horizontal_fov>1.085595</horizontal_fov>', optimized)
+        self.assertIn('<lens><type>custom</type></lens>', optimized)
+
 
 if __name__ == '__main__':
     unittest.main()

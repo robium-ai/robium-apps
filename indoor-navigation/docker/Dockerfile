@@ -53,37 +53,22 @@ RUN . /opt/ros/${ROS_DISTRO}/setup.sh \
  && colcon build --symlink-install \
  && rm -rf /var/lib/apt/lists/*
 
-# Make the robot's onboard camera affordable without a GPU.
-#
-# turtlebot3_burger_cam ships a `wideanglecamera` (fisheye, hfov 3.183 rad) with
-# a 512x512 env_texture — a six-face cubemap rendered every frame at 30 Hz. On
-# llvmpipe that dominates the whole simulation: measured RTF 1.15 with only the
-# robot camera, 0.17 once this sensor is added. Nav2's controller and the
-# smoke timeouts both assume RTF near 1.0, so the fisheye is not affordable.
-#
-# A pinhole camera at 10 Hz costs one render pass instead of six and looks the
-# same in an Image panel. The FOV drops from 182 deg to a pi-cam-like 86 deg,
-# which is the intended trade: this view exists to show what the robot sees,
-# not to be a calibrated fisheye.
+# Make Waffle Pi's upstream pinhole camera affordable under software rendering
+# by reducing only its frame rate. Preserve its optics, noise, and frame IDs.
 RUN python3 - <<'PYEOF'
-import re
+import xml.etree.ElementTree as ET
 from pathlib import Path
 sdf = Path('/opt/ros/jazzy/share/turtlebot3_gazebo/models/'
-           'turtlebot3_burger_cam/model.sdf')
-text = sdf.read_text()
-
-def once(pattern, repl, s, what):
-    s, n = re.subn(pattern, repl, s, flags=re.S)
-    assert n == 1, f'expected exactly 1 {what}, found {n}: upstream model changed, re-verify'
-    return s
-
-text = once(r'type="wideanglecamera"', 'type="camera"', text, 'wideanglecamera sensor')
-text = once(r'<update_rate>30</update_rate>', '<update_rate>10</update_rate>', text, 'camera update_rate')
-text = once(r'\s*<lens>.*?</lens>', '', text, 'lens block')          # pinhole has no lens model
-text = once(r'<horizontal_fov>3\.183</horizontal_fov>',
-            '<horizontal_fov>1.5</horizontal_fov>', text, 'horizontal_fov')
-sdf.write_text(text)
-print('turtlebot3_burger_cam camera: wideangle@30Hz -> pinhole@10Hz')
+           'turtlebot3_waffle_pi/model.sdf')
+tree = ET.parse(sdf)
+cameras = [sensor for sensor in tree.getroot().findall('.//sensor')
+           if sensor.get('name') == 'camera' and sensor.get('type') == 'camera']
+assert len(cameras) == 1, f'expected one Waffle Pi pinhole camera, found {len(cameras)}'
+rate = cameras[0].find('update_rate')
+assert rate is not None and rate.text == '30', 'upstream Waffle Pi camera rate changed; re-verify'
+rate.text = '10'
+tree.write(sdf, encoding='unicode')
+print('turtlebot3_waffle_pi camera: pinhole 30Hz -> 10Hz')
 PYEOF
 
 COPY indoor-navigation/docker/entrypoint.sh /entrypoint.sh
@@ -156,7 +141,7 @@ print(f'lichtblick publish-cleanup neutralized in {path.name}')
 PYEOF
 RUN chmod +x /entrypoint.sh /ws/scripts/*.sh 2>/dev/null || chmod +x /entrypoint.sh
 
-ENV TURTLEBOT3_MODEL=burger_cam
+ENV TURTLEBOT3_MODEL=waffle_pi
 EXPOSE 8765
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["bash"]

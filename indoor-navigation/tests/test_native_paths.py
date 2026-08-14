@@ -37,7 +37,7 @@ class NativePathsTests(unittest.TestCase):
         self.assertEqual(env['DEMO_SHUTDOWN_MODE'], 'parent')
         self.assertEqual(env['RMW_IMPLEMENTATION'], 'rmw_cyclonedds_cpp')
         self.assertEqual(env['ROS_DOMAIN_ID'], '42')
-        self.assertEqual(env['TURTLEBOT3_MODEL'], 'burger_cam')
+        self.assertEqual(env['TURTLEBOT3_MODEL'], 'waffle_pi')
         self.assertEqual(env['HOME'], str(self.paths.runtime_home))
 
     def test_environment_does_not_forward_common_secret_variables(self):
