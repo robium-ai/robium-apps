@@ -120,3 +120,41 @@ class WaypointStore:
             os.replace(temporary, path)
         finally:
             temporary.unlink(missing_ok=True)
+
+
+class WaypointController:
+    """Apply session-mode rules around storage, TF capture, and goal output."""
+
+    def __init__(self, store, context, lookup_pose, publish_goal):
+        self._store = store
+        self._context = context
+        self._lookup_pose = lookup_pose
+        self._publish_goal = publish_goal
+
+    def names(self):
+        world, map_name = self._scope()
+        return self._store.list_names(world, map_name)
+
+    def save(self, name):
+        world, map_name = self._scope()
+        waypoint = self._lookup_pose()
+        self._store.save(world, map_name, name, waypoint)
+        return f'saved waypoint {name!r} at the robot current position'
+
+    def navigate(self, name):
+        world, map_name = self._scope()
+        waypoint = self._store.get(world, map_name, name)
+        self._publish_goal(waypoint)
+        return f'navigation requested to waypoint {name!r}'
+
+    def delete(self, name):
+        world, map_name = self._scope()
+        self._store.delete(world, map_name, name)
+        return f'deleted waypoint {name!r}'
+
+    def _scope(self):
+        mode, world, map_name = self._context()
+        if mode != 'LOCALIZATION' or not map_name:
+            raise RuntimeError(
+                'waypoint actions require an active LOCALIZATION session')
+        return world, map_name

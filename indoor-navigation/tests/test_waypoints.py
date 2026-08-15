@@ -9,7 +9,11 @@ import unittest
 APP_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(APP_ROOT / 'src' / 'indoor_nav_bringup'))
 
-from indoor_nav_bringup.waypoints import Waypoint, WaypointStore  # noqa: E402
+from indoor_nav_bringup.waypoints import (  # noqa: E402
+    Waypoint,
+    WaypointController,
+    WaypointStore,
+)
 
 
 class WaypointStoreTests(unittest.TestCase):
@@ -101,6 +105,67 @@ class WaypointStoreTests(unittest.TestCase):
         self.assertEqual(self.store.list_names('furnished_house', 'office'), [])
         self.assertFalse(
             (self.root / 'furnished_house' / 'office.waypoints.json').exists())
+
+
+class WaypointControllerTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.context = ['LOCALIZATION', 'furnished_house', 'office']
+        self.published = []
+        self.controller = WaypointController(
+            WaypointStore(self.root),
+            context=lambda: tuple(self.context),
+            lookup_pose=lambda: Waypoint(1.0, 2.0, 0.5),
+            publish_goal=self.published.append,
+        )
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_saves_the_current_pose_and_publishes_a_stored_goal(self):
+        self.assertIn('saved waypoint', self.controller.save('Kitchen'))
+        self.assertEqual(self.controller.names(), ['Kitchen'])
+
+        self.assertIn('navigation requested', self.controller.navigate('Kitchen'))
+        self.assertEqual(self.published, [Waypoint(1.0, 2.0, 0.5)])
+
+    def test_refuses_all_actions_outside_localization(self):
+        for mode in ('IDLE', 'MAPPING'):
+            self.context[0] = mode
+            for action in (
+                lambda: self.controller.save('Kitchen'),
+                lambda: self.controller.navigate('Kitchen'),
+                lambda: self.controller.delete('Kitchen'),
+            ):
+                with self.subTest(mode=mode, action=action), self.assertRaisesRegex(
+                        RuntimeError, 'LOCALIZATION'):
+                    action()
+        self.assertFalse(any(self.root.rglob('*.waypoints.json')))
+
+    def test_missing_transform_does_not_create_a_waypoint(self):
+        def missing_pose():
+            raise RuntimeError('map to base_footprint transform unavailable')
+
+        controller = WaypointController(
+            WaypointStore(self.root),
+            context=lambda: tuple(self.context),
+            lookup_pose=missing_pose,
+            publish_goal=self.published.append,
+        )
+        with self.assertRaisesRegex(RuntimeError, 'transform unavailable'):
+            controller.save('Kitchen')
+        self.assertFalse(any(self.root.rglob('*.waypoints.json')))
+
+    def test_deletes_one_waypoint_and_rejects_unknown_names(self):
+        self.controller.save('Kitchen')
+        self.assertIn('deleted waypoint', self.controller.delete('Kitchen'))
+        self.assertEqual(self.controller.names(), [])
+
+        with self.assertRaisesRegex(KeyError, 'Missing'):
+            self.controller.navigate('Missing')
+        with self.assertRaisesRegex(KeyError, 'Missing'):
+            self.controller.delete('Missing')
 
 
 if __name__ == '__main__':

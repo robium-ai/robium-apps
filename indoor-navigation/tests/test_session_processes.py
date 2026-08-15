@@ -40,6 +40,7 @@ class SessionProcessesTests(unittest.TestCase):
 
     def test_startup_runs_only_simulation_and_has_no_navigation_map_session(self):
         self.assertEqual(self.sessions.mode, 'IDLE')
+        self.assertIsNone(self.sessions.active_map)
         self.assertEqual(self.sessions.world, 'furnished_house')
         self.assertEqual([process.role for process in self.started], ['simulation'])
         self.assertIn('world:=furnished_house', self.started[0].command)
@@ -47,6 +48,7 @@ class SessionProcessesTests(unittest.TestCase):
     def test_mapping_start_and_stop_save_before_navigation_terminates(self):
         self.sessions.start_mapping('floor_1')
         self.assertEqual(self.sessions.mode, 'MAPPING')
+        self.assertEqual(self.sessions.active_map, 'floor_1')
         navigation = self.started[-1]
         self.assertEqual(navigation.role, 'navigation')
         self.assertIn('mode:=mapping', navigation.command)
@@ -62,6 +64,7 @@ class SessionProcessesTests(unittest.TestCase):
         self.assertEqual(saved, [path])
         self.assertLess(self.events.index(('save', path)), self.events.index(('stop', 'navigation')))
         self.assertEqual(self.sessions.mode, 'IDLE')
+        self.assertIsNone(self.sessions.active_map)
 
     def test_loading_requires_a_saved_map_and_replaces_localization(self):
         with self.assertRaisesRegex(FileNotFoundError, 'missing'):
@@ -72,6 +75,7 @@ class SessionProcessesTests(unittest.TestCase):
         (world_maps / 'office.yaml').write_text('image: office.pgm\n')
         self.sessions.load_map('office')
         self.assertEqual(self.sessions.mode, 'LOCALIZATION')
+        self.assertEqual(self.sessions.active_map, 'office')
         self.assertIn(f'map_yaml:={world_maps / "office.yaml"}', self.started[-1].command)
 
         (world_maps / 'lobby.yaml').write_text('image: lobby.pgm\n')
@@ -93,6 +97,7 @@ class SessionProcessesTests(unittest.TestCase):
             [('stop', 'navigation'), ('stop', 'simulation'), ('start', 'simulation')],
         )
         self.assertEqual(self.sessions.mode, 'IDLE')
+        self.assertIsNone(self.sessions.active_map)
         self.assertEqual(self.sessions.world, 'tugbot_warehouse')
         self.assertIn('world:=tugbot_warehouse', self.started[-1].command)
         self.assertEqual(self.sessions.available_maps(), [])

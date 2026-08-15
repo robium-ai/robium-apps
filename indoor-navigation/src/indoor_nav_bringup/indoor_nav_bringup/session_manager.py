@@ -1,21 +1,26 @@
 #!/usr/bin/env python3
 """ROS services that manage the dashboard's simulator and map sessions."""
 
+import math
 import os
 import signal
 import subprocess
 import threading
 
 import rclpy
+from geometry_msgs.msg import PoseStamped
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile
+from rclpy.time import Time
 from slam_toolbox.srv import SaveMap
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
+from tf2_ros import Buffer, TransformException, TransformListener
 
 from .session_processes import SessionProcesses
+from .waypoints import Waypoint, WaypointController, WaypointStore
 
 
 LATCHED = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
@@ -53,6 +58,7 @@ class SessionManager(Node):
         self.declare_parameter('map_name', 'map')
         self.declare_parameter('world', 'furnished_house')
         self.declare_parameter('maps_root', '/ws/maps')
+        self.declare_parameter('waypoint_name', 'waypoint')
         self._lock = threading.RLock()
         group = ReentrantCallbackGroup()
 
@@ -60,6 +66,11 @@ class SessionManager(Node):
         self._maps_pub = self.create_publisher(String, '/maps/available', LATCHED)
         self._simulation_pub = self.create_publisher(
             String, '/simulation/state', LATCHED)
+        self._waypoint_pub = self.create_publisher(
+            String, '/waypoints/available', LATCHED)
+        self._goal_pub = self.create_publisher(PoseStamped, '/goal_pose', 10)
+        self._tf_buffer = Buffer()
+        self._tf_listener = TransformListener(self._tf_buffer, self)
         self._save_client = self.create_client(
             SaveMap, '/slam_toolbox/save_map', callback_group=group)
 
@@ -67,6 +78,16 @@ class SessionManager(Node):
             lambda role, command: self._start_child(role, command),
             self.get_parameter('maps_root').value,
             self.get_parameter('world').value,
+        )
+        self._waypoints = WaypointController(
+            WaypointStore(self.get_parameter('maps_root').value),
+            context=lambda: (
+                self._sessions.mode,
+                self._sessions.world,
+                self._sessions.active_map,
+            ),
+            lookup_pose=self._lookup_pose,
+            publish_goal=self._publish_goal,
         )
         self.create_service(
             Trigger, '/mapping/start', self.on_start_mapping, callback_group=group)
@@ -76,6 +97,15 @@ class SessionManager(Node):
             Trigger, '/mapping/load', self.on_load_map, callback_group=group)
         self.create_service(
             Trigger, '/simulation/restart', self.on_restart_simulation,
+            callback_group=group)
+        self.create_service(
+            Trigger, '/waypoints/save', self.on_save_waypoint,
+            callback_group=group)
+        self.create_service(
+            Trigger, '/waypoints/navigate', self.on_navigate_waypoint,
+            callback_group=group)
+        self.create_service(
+            Trigger, '/waypoints/delete', self.on_delete_waypoint,
             callback_group=group)
         self.create_timer(5.0, self.publish_state, callback_group=group)
         self.publish_state()
@@ -90,6 +120,13 @@ class SessionManager(Node):
         self._simulation_pub.publish(String(data=self._sessions.world))
         maps = self._sessions.available_maps()
         self._maps_pub.publish(String(data='\n'.join(maps) if maps else '<none>'))
+        waypoint_names = []
+        if self._sessions.mode == 'LOCALIZATION':
+            try:
+                waypoint_names = self._waypoints.names()
+            except Exception as exc:
+                self.get_logger().error(f'cannot list waypoints: {exc}')
+        self._waypoint_pub.publish(String(data='\n'.join(waypoint_names)))
 
     def _result(self, response, action):
         try:
@@ -135,6 +172,43 @@ class SessionManager(Node):
     def _restart_simulation(self, world):
         self._sessions.restart_simulation(world)
         return f'simulation restarted: {world}; navigation is IDLE'
+
+    def on_save_waypoint(self, _request, response):
+        name = self.get_parameter('waypoint_name').value
+        return self._result(response, lambda: self._waypoints.save(name))
+
+    def on_navigate_waypoint(self, _request, response):
+        name = self.get_parameter('waypoint_name').value
+        return self._result(response, lambda: self._waypoints.navigate(name))
+
+    def on_delete_waypoint(self, _request, response):
+        name = self.get_parameter('waypoint_name').value
+        return self._result(response, lambda: self._waypoints.delete(name))
+
+    def _lookup_pose(self):
+        try:
+            transform = self._tf_buffer.lookup_transform(
+                'map', 'base_footprint', Time())
+        except TransformException as exc:
+            raise RuntimeError(
+                f'map to base_footprint transform unavailable: {exc}') from exc
+        translation = transform.transform.translation
+        rotation = transform.transform.rotation
+        yaw = math.atan2(
+            2.0 * (rotation.w * rotation.z + rotation.x * rotation.y),
+            1.0 - 2.0 * (rotation.y * rotation.y + rotation.z * rotation.z),
+        )
+        return Waypoint(translation.x, translation.y, yaw)
+
+    def _publish_goal(self, waypoint):
+        goal = PoseStamped()
+        goal.header.frame_id = 'map'
+        goal.header.stamp = self.get_clock().now().to_msg()
+        goal.pose.position.x = waypoint.x
+        goal.pose.position.y = waypoint.y
+        goal.pose.orientation.z = math.sin(waypoint.yaw / 2.0)
+        goal.pose.orientation.w = math.cos(waypoint.yaw / 2.0)
+        self._goal_pub.publish(goal)
 
     def _save_map(self, path):
         path.parent.mkdir(parents=True, exist_ok=True)

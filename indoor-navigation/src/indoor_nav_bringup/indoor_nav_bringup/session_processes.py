@@ -71,6 +71,10 @@ class SessionProcesses:
         except OSError:
             return []
 
+    @property
+    def active_map(self):
+        return self._map_name
+
     def close(self):
         self._stop_navigation()
         if self._simulation is not None:
