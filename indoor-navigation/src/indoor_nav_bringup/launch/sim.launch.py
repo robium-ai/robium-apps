@@ -31,9 +31,11 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
-FUEL_ROOT = 'https://fuel.gazebosim.org/1.0'
-AWS_SMALL_HOUSE_ROOT = Path(os.environ.get(
-    'AWS_SMALL_HOUSE_ROOT', '/opt/robium/worlds/aws-small-house'))
+ROBIUM_ASSETS_ROOT = Path(os.environ.get(
+    'ROBIUM_ASSETS_ROOT', '/opt/robium/assets'))
+AWS_SMALL_HOUSE_ROOT = ROBIUM_ASSETS_ROOT / 'world.aws-small-house'
+TUGBOT_WAREHOUSE_WORLD = (
+    ROBIUM_ASSETS_ROOT / 'world.tugbot-warehouse' / 'tugbot_warehouse.sdf')
 FURNISHED_HOUSE_SYSTEMS = (
     ('gz-sim-physics-system', 'gz::sim::systems::Physics'),
     ('gz-sim-user-commands-system', 'gz::sim::systems::UserCommands'),
@@ -46,8 +48,10 @@ FURNISHED_HOUSE_SYSTEMS = (
 def world_spec(bringup, tb3_gazebo, world_name):
     """Resolve a world and a collision-free TurtleBot spawn pose."""
     if world_name == 'tugbot_warehouse':
-        return (f'{FUEL_ROOT}/OpenRobotics/worlds/'
-                'Tugbot%20in%20Warehouse/2', '0.0', '0.0')
+        if not TUGBOT_WAREHOUSE_WORLD.is_file():
+            raise RuntimeError(
+                f'Tugbot Warehouse asset is missing: {TUGBOT_WAREHOUSE_WORLD}')
+        return (str(TUGBOT_WAREHOUSE_WORLD), '0.0', '0.0')
     if world_name == 'furnished_house':
         return (str(AWS_SMALL_HOUSE_ROOT / 'worlds' / 'small_house.world'),
                 '3.5', '1.0')

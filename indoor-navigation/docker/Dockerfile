@@ -30,19 +30,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       ros-jazzy-ros-gz \
       ros-jazzy-teleop-twist-keyboard \
       python3-colcon-common-extensions \
+      python3-yaml \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /ws
 COPY indoor-navigation/src ./src
 COPY indoor-navigation/scripts ./scripts
 
-# Furnished-home simulation environment. Keep the large MIT-licensed model tree out
-# of git, but pin the exact upstream revision and preserve its provenance in
-# the image beside the asset.
-ARG AWS_SMALL_HOUSE_COMMIT=ff9631ca6d1db9c1ba656498151464b5ab74aafe
-RUN python3 ./scripts/fetch_aws_small_house.py \
-      --commit "${AWS_SMALL_HOUSE_COMMIT}" \
-      --destination /opt/robium/worlds/aws-small-house
+# Materialize only this app's declared worlds from the shared, checksummed
+# catalog. Large payloads remain outside git; manifests and licenses stay in
+# the image beside the resolver for provenance inspection.
+COPY shared/assets /opt/robium/asset-catalog
+RUN python3 /opt/robium/asset-catalog/scripts/fetch_assets.py \
+      --catalog /opt/robium/asset-catalog/catalog.yaml \
+      --destination /opt/robium/assets/world.aws-small-house \
+      world.aws-small-house \
+ && python3 /opt/robium/asset-catalog/scripts/fetch_assets.py \
+      --catalog /opt/robium/asset-catalog/catalog.yaml \
+      --destination /opt/robium/assets/world.tugbot-warehouse \
+      world.tugbot-warehouse
 
 # rosdep before build, every time (ros2 skill key directive).
 RUN . /opt/ros/${ROS_DISTRO}/setup.sh \

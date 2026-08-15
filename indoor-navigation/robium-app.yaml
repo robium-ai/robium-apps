@@ -53,6 +53,12 @@ requirements:
   gpu: none
   network: optional
 
+assets:
+  worlds:
+    - world.aws-small-house
+    - world.tugbot-warehouse
+  maps: []
+
 demo:
   default_mode: demo
   hosted: true
