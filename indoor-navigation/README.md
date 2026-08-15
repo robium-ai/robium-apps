@@ -134,12 +134,16 @@ robot has arrived. Waypoints are local per-map sidecars named
 `<map>.waypoints.json` beside user-saved maps and are not committed by default.
 
 The compact Simulation card offers **House** and **Warehouse**. House is the
-default and uses the MIT-licensed AWS RoboMaker Small House asset, pinned and
-prepared for modern Gazebo during the image build. Warehouse uses the pinned
-OpenRobotics Tugbot warehouse and remains in Gazebo's local cache after its
-first download. Restarting a world stops any mapping/localization session and
-returns to IDLE. Maps remain grouped under the stable internal world names, so
-only maps created for the active environment appear in the list.
+default and uses the MIT-licensed AWS RoboMaker Small House asset. Warehouse
+uses OpenRobotics Tugbot in Warehouse version 2, whose upstream license is the
+restrictive CC BY-NC-ND 4.0. Both worlds are registered centrally as
+`world.aws-small-house` and `world.tugbot-warehouse` under `shared/assets/`.
+Their manifests, immutable sources, SHA-256 digests, entrypoints, and licenses
+are tracked; large payloads remain outside Git and are materialized into the
+image during the build. Restarting a world stops any mapping/localization
+session and returns to IDLE. Maps remain grouped under the stable internal
+world names, so only maps created for the active environment appear in the
+list.
 
 TurtleBot3 Waffle Pi is the single controllable robot in both environments.
 Its wider 0.15 m navigation radius, lidar, IMU, odometry, and pinhole camera
@@ -167,10 +171,15 @@ layout for that flow is `foxglove/indoor-navigation-layout.json`.
 - `make build` uses an explicit service name (`docker compose build sim`) —
   a bare `compose build` builds nothing when every service is behind a
   profile.
-- Map regeneration: `make slam` rewrites `src/indoor_nav_bringup/maps/`
-  (map.pgm + map.yaml) via the compose volume mount; the next image build
-  (`make build`) bakes the new map in. The SLAM run is bounded by
-  `SLAM_TIMEOUT` (default 900) inside the container.
+- Map regeneration currently writes `src/indoor_nav_bringup/maps/` through the
+  existing compose volume. Those local maps and waypoint sidecars are
+  untracked and are not promoted automatically. `data/maps/` is reserved as
+  the future writable boundary; the mount will switch only after selected
+  local maps have been copied and verified without removing the originals.
+- A reusable map is promoted deliberately into `shared/assets/maps/` with its
+  world, robot, generation method, license, and file roles recorded. Shared
+  vendored assets are limited to 5 MiB each and 25 MiB total.
+- The SLAM run is bounded by `SLAM_TIMEOUT` (default 900) inside the container.
 
 ## Live demo (maintainers)
 

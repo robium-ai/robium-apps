@@ -50,6 +50,8 @@ indoor-navigation/
 │   └── entrypoint.sh                 # sources ROS + workspace, then exec
 ├── scripts/
 │   └── run_slam.sh                   # slam scenario wrapper: launch in bg + outer `timeout` around the driver
+├── data/
+│   └── maps/                         # future writable map boundary; gitignored, not mounted yet
 ├── src/
 │   └── indoor_nav_bringup/            # the one app package
 │       ├── launch/
@@ -57,7 +59,7 @@ indoor-navigation/
 │       │   ├── slam.launch.py        # sim + slam_toolbox (online_async) + Nav2 servers launched DIRECTLY
 │       │   └── nav.launch.py         # sim + map_server(saved map) + AMCL + Nav2 servers launched DIRECTLY
 │       ├── config/                   # nav2_params.yaml (TB3 Waffle Pi radius + smoother_server), slam_params.yaml
-│       ├── maps/                     # saved map (map.pgm + map.yaml) — committed
+│       ├── maps/                     # current local map store; generated files remain untracked
 │       └── indoor_nav_bringup/        # package module (ros2 run entry points)
 │           ├── drive_mapping_route.py  # scripted waypoint route for the SLAM run
 │           └── send_goals.py           # nav2_simple_commander goal sender
@@ -87,8 +89,11 @@ uses Waffle Pi's 0.15 m radius, adds `smoother_server`, and enables
 Responsibilities:
 - **Upstream (apt):** robot model/URDF (`turtlebot3_description`), sim worlds/models
   (`turtlebot3_gazebo`), baseline Nav2/SLAM params (`turtlebot3_navigation2`).
-- **`indoor_nav_bringup`:** composition only — launch files, tuned param copies, the saved
-  map, and the two thin scripts. No custom nodes unless a milestone forces one.
+- **`shared/assets`:** stable world IDs, immutable sources, checksums, licenses,
+  entrypoints, and a safe resolver shared by every app. Docker materializes
+  only the IDs declared by this app beneath `/opt/robium/assets/`.
+- **`indoor_nav_bringup`:** launch composition, tuned parameters, session
+  management, mapping, navigation, and the current local map boundary.
 - **`docker/`:** one image, several compose profiles; the `environments` skill owns detail.
 
 ## 4. Comms plan
@@ -163,9 +168,20 @@ through Metal while Lichtblick remains the complementary ROS-state dashboard.
 
 Non-learning app — short plan.
 
-- **The saved map is the app's one data artifact**: produced by the SLAM milestone
-  (`map_saver_cli`), committed at `src/indoor_nav_bringup/maps/` (pgm+yaml, ~KBs), consumed
-  by the nav milestone. Regenerating it is a documented one-command run.
+- **Worlds are shared pointer assets:** `world.aws-small-house` pins the
+  MIT-licensed Git archive and `world.tugbot-warehouse` pins Fuel version 2,
+  which is restricted CC BY-NC-ND 4.0. Their manifests live under
+  `shared/assets/`; verified payloads use its gitignored `.cache/`, and images
+  materialize them under `/opt/robium/assets/<asset-id>/`.
+- **Saved maps are writable local data:** the current compose mount remains
+  `src/indoor_nav_bringup/maps/` so existing untracked maps stay visible.
+  `data/maps/` is the approved future boundary, but it is not mounted until a
+  later explicit migration copies selected files and verifies them while
+  preserving the originals.
+- **Curated maps are derived shared assets:** promotion to
+  `shared/assets/maps/` records the world ID, Waffle Pi configuration,
+  `slam_toolbox` derivation, license, map YAML/PGM, and waypoint sidecar. Git
+  budgets are 5 MiB per asset and 25 MiB total.
 - **Map-frame convention:** slam_toolbox sets the `map` origin at the robot's *starting pose*,
   not the Gazebo world origin — spawn at world (-2.0, -0.5) means world (-2.0, -0.5) = map
   (0, 0). The saved map inherits this origin, so all nav goals (`send_goals.py`)
