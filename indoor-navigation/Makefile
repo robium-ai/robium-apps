@@ -169,10 +169,11 @@ check-map:
 # resolution, lower rate, fewer lidar samples. RTF 0.5 at 300% would mean
 # something is serialising and more CPU would not help at all.
 #
-# WORLD=arena runs the cheap pillar scene for comparison, which is how a
-# regression gets attributed to the world rather than to anything else.
+# WORLD=tugbot_warehouse runs the alternate warehouse scene for comparison,
+# which is how a regression gets attributed to the world rather than to
+# anything else.
 # (Bounded shell loops, not timeout(1) — absent on macOS hosts.)
-WORLD ?= house
+WORLD ?= furnished_house
 export WORLD
 RTF_SAMPLES ?= 6
 rtf:
