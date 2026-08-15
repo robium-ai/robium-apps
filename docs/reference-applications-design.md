@@ -109,14 +109,14 @@ Two layers, both already grounded in shipped code:
 ### 4a. The umbrella CLI: `robium-ai` (exists; grows an `app` noun)
 
 `robium-ai` (npm, zero runtime deps) today does `setup`, `doctor`, `skills`.
-Reference apps add an **`app`** command group; the noun is the app, and
-scenarios are a flag:
+Reference apps add an **`app`** command group; the noun is the app, and named
+run modes are a flag:
 
 ```text
 robium-ai app list                       # catalog from robium-app.yaml files
 robium-ai app describe <id> [--json]     # metadata for humans and tooling
 robium-ai app check <id>                 # preflight: doctor facts + app requirements
-robium-ai app run <id> [--scenario NAME] # resolve and exec the app's verb/scenario
+robium-ai app run <id> [--mode NAME]     # resolve and exec the app's verb/mode
 robium-ai app new <id> [--from <app>]    # scaffold by copying the closest existing app
 ```
 
@@ -147,8 +147,8 @@ make check   # preflight: deps, files, ports, credentials, hardware
 make down    # teardown/cleanup
 ```
 
-Scenario-shaped targets (like indoor-navigation's `sim` / `slam` / `nav`) are
-declared in `robium-app.yaml` so `robium-ai app run <id> --scenario slam`
+Mode-shaped targets (like indoor-navigation's `sim` / `slam` / `nav`) are
+declared in `robium-app.yaml` so `robium-ai app run <id> --mode slam`
 resolves them. Commands fail with actionable messages; interactive prompts are
 allowed only where a non-interactive path also exists.
 
@@ -180,7 +180,7 @@ verbs:                     # standard verbs -> actual commands (section 4b)
   check: make check
   down: make down
 
-scenarios:                 # optional; name -> command + one-line description
+modes:                     # optional; name -> command + one-line description
   slam:
     command: make slam
     summary: drive the mapping route and save the map
@@ -194,7 +194,7 @@ requirements:
   network: optional
 
 demo:
-  default_scenario: demo
+  default_mode: demo
   hosted: true             # has an orchestrator config in robium-website
   estimated_startup_seconds: 45
 

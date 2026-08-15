@@ -59,7 +59,7 @@ make test      # the regression suite (54 tests, no Hub access needed)
 
 The app's machine-readable contract is `robium-app.yaml` (reference-apps
 spec v1): standard verbs (`build`/`demo`/`smoke`/`check`/`test`), the
-scenario list, and the hosted-demo orchestrator section the website's
+mode list, and the hosted-demo orchestrator section the website's
 `demos.json` is generated from.
 
 `make oracle` is the fastest real signal in this repo: if it ever drops below

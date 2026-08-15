@@ -21,7 +21,7 @@ help:
 	@echo "make logs        robium app logs indoor-navigation              Follow application logs"
 	@echo "make stop        robium app stop indoor-navigation              Stop all application services"
 	@echo ""
-	@echo "Advanced scenarios: make sim | make slam | make nav | make demo"
+	@echo "Modes: make sim | make slam | make nav | make demo"
 
 # Diagnose likely setup failures without changing application state.
 # (Bounded checks only; no timeout(1) — absent on macOS hosts.)

@@ -17,7 +17,7 @@ verbs:
   smoke: make smoke
   check: make check
 
-scenarios:
+modes:
   fetch-artifacts:
     command: make fetch-artifacts
     summary: pull the pretrained ladder + eval bundle from the public Hub repo (no token)
@@ -46,7 +46,7 @@ requirements:
   network: required      # fetch-artifacts pulls ~794 MB; smoke pulls lerobot/pusht (~186 MB)
 
 demo:
-  default_scenario: demo # needs artifacts in outputs/ (make fetch-artifacts, or train them)
+  default_mode: demo # needs artifacts in outputs/ (make fetch-artifacts, or train them)
   hosted: false          # v2 demo is session-blind (plain Gradio app; per-user isolation is
                          # the container boundary). The legacy /demos/manip-trial page spoke
                          # the retired session-gateway contract; re-enable hosted once the

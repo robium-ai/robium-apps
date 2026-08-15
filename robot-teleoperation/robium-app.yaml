@@ -16,7 +16,7 @@ verbs:
   smoke: make smoke         # hardware-in-the-loop; needs the robot reachable
   check: make check
 
-scenarios:
+modes:
   teleop:
     command: make teleop
     summary: print the Foxglove connection and layout-import instructions
@@ -30,7 +30,7 @@ requirements:
   network: required        # robot on the same Wi-Fi; ROBOT=<ip> overridable
 
 demo:
-  default_scenario: demo
+  default_mode: demo
   hosted: false            # real hardware; no hosted instances
   estimated_startup_seconds: 20
 

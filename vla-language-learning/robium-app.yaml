@@ -18,7 +18,7 @@ verbs:
   check: make check
   test: make test
 
-scenarios:
+modes:
   oracle:
     command: make oracle
     summary: scripted-IK canary, 10/10 on tuned seeds, proves scene/physics/success predicate
@@ -35,7 +35,7 @@ requirements:
   network: required      # Hub assets + HF Jobs
 
 demo:
-  default_scenario: demo
+  default_mode: demo
   hosted: true
   orchestrator:            # source for demo-orchestrator demos/<demo_id>.json
     demo_id: vla-trial     # legacy id kept by live-demo infra through the rename

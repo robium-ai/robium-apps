@@ -17,7 +17,7 @@ verbs:
   check: make check
   test: make test          # Mac-side pure-Python config guards only
 
-scenarios:
+modes:
   list-envs:
     command: make list-envs
     summary: pod-side, confirm the Go2 task id exists before trusting config
@@ -37,7 +37,7 @@ requirements:
   network: required        # RunPod SSH + NGC image pulls
 
 demo:
-  default_scenario: play
+  default_mode: play
   hosted: false            # live panel ran from the pod; no orchestrator config yet
   estimated_startup_seconds: 300
 

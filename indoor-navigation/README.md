@@ -72,7 +72,7 @@ Run `make help` to see the standard Make commands and their equivalent
 - `make logs` — follow Docker, Gazebo, ROS, and viewer process output
 - `make stop` — stop all application services
 
-Advanced scenarios remain available: `make sim` runs simulation only;
+Advanced modes remain available: `make sim` runs simulation only;
 `make slam` rebuilds a map through the scripted route; `make nav` starts raw
 navigation without demo initialization; and `make demo` runs the autonomous
 hosted-demo flow locally.
