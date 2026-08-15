@@ -1,2 +1,12 @@
 schema_version: "1"
-assets: []
+assets:
+  - id: world.aws-small-house
+    kind: world
+    name: AWS RoboMaker Small House
+    storage: pointer
+    manifest: worlds/aws-small-house/asset.yaml
+  - id: world.tugbot-warehouse
+    kind: world
+    name: Tugbot in Warehouse
+    storage: pointer
+    manifest: worlds/tugbot-warehouse/asset.yaml
