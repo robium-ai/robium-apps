@@ -33,8 +33,13 @@
         },
         "/plan": {
           "visible": true,
-          "lineWidth": 0.05,
-          "gradient": ["#00e04d", "#00e04d"]
+          "lineWidth": 0.12,
+          "gradient": ["#00c8ff", "#00c8ff"]
+        },
+        "/local_plan": {
+          "visible": true,
+          "lineWidth": 0.08,
+          "gradient": ["#ff9f1c", "#ff9f1c"]
         },
         "/global_costmap/costmap": {
           "visible": false,
@@ -80,7 +85,6 @@
       "saveWaypointService": "/waypoints/save",
       "navigateWaypointService": "/waypoints/navigate",
       "deleteWaypointService": "/waypoints/delete",
-      "goHomeService": "",
       "navigationStopService": "",
       "linearSpeed": 0.2,
       "angularSpeed": 0.8,

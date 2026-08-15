@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.0 - 2026-08-14
+
+- Remove the unused Go Home quick action and configuration.
+- Leave Stop Robot as the single full-width quick action.
+
 ## 0.5.0 - 2026-08-14
 
 - Add named current-position waypoint save, list, navigate, and delete controls.

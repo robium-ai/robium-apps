@@ -21,8 +21,8 @@
 **Files:**
 - Modify: `indoor-navigation/lichtblick/mapping-layout.json`
 
-- [ ] Keep `/plan` visible and change it to a thicker cyan line.
-- [ ] Add visible `/local_plan` styling as an orange line.
+- [x] Keep `/plan` visible and change it to a thicker cyan line.
+- [x] Add visible `/local_plan` styling as an orange line.
 
 ### Task 2: Remove Go Home
 
@@ -32,9 +32,9 @@
 - Modify: `shared/lichtblick-robot-control/src/panelConfig.ts`
 - Modify: `shared/lichtblick-robot-control/src/styles.css`
 
-- [ ] Remove the Go Home button and let Stop Robot occupy the full Quick Actions row.
-- [ ] Narrow `callConfiguredService` to `navigationStopService`.
-- [ ] Remove `goHomeService` from config defaults, parsing, and settings.
+- [x] Remove the Go Home button and let Stop Robot occupy the full Quick Actions row.
+- [x] Narrow `callConfiguredService` to `navigationStopService`.
+- [x] Remove `goHomeService` from config defaults, parsing, and settings.
 
 ### Task 3: Ship the updated extension and docs
 
@@ -47,6 +47,6 @@
 - Modify: `indoor-navigation/docker/Dockerfile`
 - Modify: `indoor-navigation/README.md`
 
-- [ ] Bump Robot Control to `0.6.0` and update artifact paths.
-- [ ] Document dual-color navigation paths and the single Stop Robot quick action.
-- [ ] Commit the implementation without staging saved map directories.
+- [x] Bump Robot Control to `0.6.0` and update artifact paths.
+- [x] Document dual-color navigation paths and the single Stop Robot quick action.
+- [x] Commit the implementation without staging saved map directories.

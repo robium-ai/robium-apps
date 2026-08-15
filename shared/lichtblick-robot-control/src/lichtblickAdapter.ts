@@ -60,7 +60,6 @@ const STRING_CONFIG_SETTINGS: ReadonlyArray<readonly [StringConfigKey, string]> 
   ["saveWaypointService", "Save waypoint service"],
   ["navigateWaypointService", "Navigate waypoint service"],
   ["deleteWaypointService", "Delete waypoint service"],
-  ["goHomeService", "Go home service"],
   ["navigationStopService", "Navigation stop service"],
 ];
 
@@ -263,9 +262,7 @@ export class LichtblickAdapter {
     }
   }
 
-  public async callConfiguredService(
-    key: "goHomeService" | "navigationStopService",
-  ): Promise<void> {
+  public async callConfiguredService(key: "navigationStopService"): Promise<void> {
     const service = this.config[key];
     if (service === "" || this.context.callService == undefined) {
       throw new Error("This action is not configured for the current connection.");
@@ -274,10 +271,7 @@ export class LichtblickAdapter {
     try {
       this.requireServiceSuccess(await this.context.callService(service, {}));
       this.setStatus(
-        {
-          kind: "success",
-          message: key === "goHomeService" ? "Home requested." : "Stop requested.",
-        },
+        { kind: "success", message: "Stop requested." },
         false,
       );
     } catch (error) {

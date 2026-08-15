@@ -22,7 +22,7 @@ export type ControlPanelAdapter = {
   runMapAction(mapName: string, action: MapActionConfigKey): Promise<void>;
   runSimulationAction(world: SimulationWorld): Promise<void>;
   runWaypointAction(waypointName: string, action: WaypointActionConfigKey): Promise<void>;
-  callConfiguredService(key: "goHomeService" | "navigationStopService"): Promise<void>;
+  callConfiguredService(key: "navigationStopService"): Promise<void>;
 };
 
 const KEY_DIRECTIONS: Readonly<Record<string, Direction>> = {
@@ -394,21 +394,6 @@ export function RobotControlPanel({
       <section className="control-card destination-card" aria-labelledby="destination-heading">
         <h2 id="destination-heading">Quick actions</h2>
         <div className="action-row">
-          <button
-            type="button"
-            aria-label="Go home"
-            disabled={snapshot.config.goHomeService === "" || snapshot.busy}
-            title={
-              snapshot.config.goHomeService === ""
-                ? "Configure a home service in panel settings"
-                : undefined
-            }
-            onClick={() =>
-              void adapter.callConfiguredService("goHomeService").catch(() => undefined)
-            }
-          >
-            Go home
-          </button>
           <button
             className="stop-action"
             type="button"

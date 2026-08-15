@@ -87,8 +87,9 @@ make localize MAP_NAME=map   # localize against an existing map
 ```
 
 Open http://localhost:8080. The right rail should immediately show Robot
-Control with WASD, mapping, map-loading, named waypoints, Go Home, and Stop
-Robot controls. To
+Control with WASD, mapping, map-loading, named waypoints, and Stop Robot.
+The 3D map draws the global Nav2 plan in cyan and the local controller plan
+in orange. To
 prove the default works independently of any previous browser installation,
 open http://127.0.0.1:8080 in a private window; that is a clean browser origin.
 
@@ -99,7 +100,7 @@ make control-extension
 ```
 
 The command prints the absolute path to
-`shared/lichtblick-robot-control/robium.robot-control-0.5.0.foxe`. That artifact
+`shared/lichtblick-robot-control/robium.robot-control-0.6.0.foxe`. That artifact
 remains reusable in other Lichtblick projects: drag it onto another project's
 browser viewer (or use Lichtblick's file picker) and confirm installation once
 for that browser origin. Indoor-navigation's committed layout supplies its ROS
@@ -133,8 +134,7 @@ present in Warehouse remains part of the environment rather than a second
 controllable robot.
 
 Movement supports held WASD/arrow controls and adjustable forward/turn speed.
-Stop Robot sends zero velocity; it is not a hardware emergency stop. Go Home
-remains intentionally disabled until a service is configured.
+Stop Robot sends zero velocity; it is not a hardware emergency stop.
 
 External viewers still work too: with any scenario running, connect
 Foxglove or a local Lichtblick to `ws://localhost:8765` (during `make demo`

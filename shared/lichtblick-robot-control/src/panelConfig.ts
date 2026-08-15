@@ -15,7 +15,6 @@ export type PanelConfig = {
   saveWaypointService: string;
   navigateWaypointService: string;
   deleteWaypointService: string;
-  goHomeService: string;
   navigationStopService: string;
   linearSpeed: number;
   angularSpeed: number;
@@ -39,7 +38,6 @@ export const DEFAULT_CONFIG: PanelConfig = {
   saveWaypointService: "/waypoints/save",
   navigateWaypointService: "/waypoints/navigate",
   deleteWaypointService: "/waypoints/delete",
-  goHomeService: "",
   navigationStopService: "",
   linearSpeed: 0.2,
   angularSpeed: 0.8,
@@ -62,7 +60,6 @@ const stringKeys: (keyof PanelConfig)[] = [
   "saveWaypointService",
   "navigateWaypointService",
   "deleteWaypointService",
-  "goHomeService",
   "navigationStopService",
 ];
 
