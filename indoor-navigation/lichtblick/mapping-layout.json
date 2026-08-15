@@ -77,6 +77,11 @@
         "imageTopic": "/camera/image_raw"
       }
     },
+    "RosOut!logs": {
+      "topicToRender": "/rosout",
+      "searchTerms": [],
+      "minLogLevel": 2
+    },
     "Robium Robot Control.robot-control!control": {
       "version": 3,
       "teleopTopic": "/cmd_vel_teleop",
@@ -108,9 +113,14 @@
     "direction": "row",
     "first": {
       "direction": "column",
-      "first": "3D!dash",
-      "second": "Image!robotcam",
-      "splitPercentage": 78
+      "first": {
+        "direction": "row",
+        "first": "Image!robotcam",
+        "second": "3D!dash",
+        "splitPercentage": 36
+      },
+      "second": "RosOut!logs",
+      "splitPercentage": 72
     },
     "second": "Robium Robot Control.robot-control!control",
     "splitPercentage": 76

@@ -76,8 +76,10 @@ pose, so world (-2.0, -0.5) = map (0, 0).
 ### Use the default control panel
 
 The mapping layout reserves its right 24% for the **Robium Robot Control**
-Lichtblick extension. The Docker image builds and preinstalls it automatically;
-there is no drag-and-drop installation step for indoor-navigation.
+Lichtblick extension across the full dashboard height. On the left, the camera
+and 3D map share the top row and ROS logs span the bottom row. The Docker image
+builds and preinstalls the extension automatically; there is no drag-and-drop
+installation step for indoor-navigation.
 
 Start either operating mode:
 
