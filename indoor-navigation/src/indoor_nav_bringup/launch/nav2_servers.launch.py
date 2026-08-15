@@ -33,7 +33,7 @@ a server crash, and although `respawn=True` restarts the process, a respawned
 lifecycle node comes back UNCONFIGURED and is never re-transitioned — so a real
 crash leaves the stack permanently wedged. In the slam scenario the backstop is
 SLAM_TIMEOUT in scripts/run_slam.sh. The interactive dashboard deliberately has
-no timeout, so there the backstop is you noticing and running `make down`.
+no timeout, so there the backstop is you noticing and running `make stop`.
 
 An OpaqueFunction builds the node list because `localization` decides how many
 nodes exist and what the lifecycle manager must be told to manage — that is a

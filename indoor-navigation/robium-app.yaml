@@ -9,13 +9,30 @@ tags: [navigation, ros2, nav2, gazebo, slam, foxglove, lichtblick]
 
 runtime:
   kind: docker
-  entrypoint: make demo
+  entrypoint: make run
 
 verbs:
-  build: make build
-  demo: make demo
-  check: make check
-  down: make down
+  help:
+    command: make help
+    summary: Show commands, examples, and equivalent CLI commands
+  doctor:
+    command: make doctor
+    summary: Diagnose Docker, Compose, ports, and image readiness
+  build:
+    command: make build
+    summary: Build the indoor-navigation Docker image
+  run:
+    command: make run
+    summary: Run the simulator and interactive control panel
+  status:
+    command: make status
+    summary: Show running services and dashboard endpoints
+  logs:
+    command: make logs
+    summary: Follow application process logs
+  stop:
+    command: make stop
+    summary: Stop all indoor-navigation services
 
 scenarios:
   sim:
@@ -27,6 +44,9 @@ scenarios:
   nav:
     command: make nav
     summary: navigation on the saved map, initial pose set manually
+  demo:
+    command: make demo
+    summary: autonomous hosted-demo flow running locally
 
 requirements:
   hardware: []

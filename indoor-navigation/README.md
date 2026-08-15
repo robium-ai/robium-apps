@@ -43,18 +43,17 @@ arm64; use Docker for portable and Cloud Run-compatible execution.
   out of the box; the image is built from `ros:jazzy-ros-base-noble`.
 - A browser. No local ROS, no display server, no accounts needed.
 
-## Docker: try it in 2 commands
+## Docker: run the app
 
 ```bash
 make build   # one-time image build (about 10 min cold)
-make demo    # full stack: sim + Nav2 + built-in browser viewer
+make run     # simulator + interactive control panel
 ```
 
-Then open http://localhost:8765 in your browser. The viewer (Lichtblick,
-the open-source Foxglove fork, bundled in the image) auto-connects and
-shows the map, laser scan, and planned paths. Click a navigation goal with
-the 3D panel's pose-publish tool and watch the robot drive itself. Ctrl-C
-stops everything.
+Then open http://localhost:8080. The viewer (Lichtblick, the open-source
+Foxglove fork bundled in the image) includes the robot camera, 3D map, ROS
+logs, and Robot Control. The app starts in IDLE; start mapping or load a saved
+map from the control panel. Ctrl-C stops the foreground process.
 
 This is byte-for-byte the same container that powers the live demo at
 robium.ai/demos/nav-trial: same simulation, same Nav2 stack, same viewer.
@@ -62,16 +61,21 @@ robium.ai/demos/nav-trial: same simulation, same Nav2 stack, same viewer.
 Note: nav goals are map-frame — the SLAM map origin is the robot's start
 pose, so world (-2.0, -0.5) = map (0, 0).
 
-## Other scenarios
+## Commands
 
-- `make mapping` — interactive SLAM, teleop, save/reset controls, and robot
-  camera at http://localhost:8080
-- `make localize` — AMCL localization on a saved map with load controls and
-  clicked Nav2 goals at http://localhost:8080
-- `make sim` — bringup only; `make slam` — rebuild the map; `make nav` —
-  navigation without the demo auto-init (set the initial pose yourself)
-- `make check` — preflight: Docker daemon, compose v2, port 8765 free
-- `make down` — tear down all profiles' containers
+Run `make help` to see the standard Make commands and their equivalent
+`robium app` commands. The lifecycle vocabulary is `help`, `doctor`, `build`,
+`run`, `status`, `logs`, and `stop`.
+
+- `make doctor` — diagnose Docker, Compose, ports 8080/8765, and image status
+- `make status` — show running services and dashboard endpoints
+- `make logs` — follow Docker, Gazebo, ROS, and viewer process output
+- `make stop` — stop all application services
+
+Advanced scenarios remain available: `make sim` runs simulation only;
+`make slam` rebuilds a map through the scripted route; `make nav` starts raw
+navigation without demo initialization; and `make demo` runs the autonomous
+hosted-demo flow locally.
 
 ### Use the default control panel
 
@@ -83,11 +87,10 @@ shared `/rosout` stream by node name. The Docker image builds and preinstalls
 the extension automatically; there is no drag-and-drop installation step for
 indoor-navigation.
 
-Start either operating mode:
+Start the control panel:
 
 ```bash
-make mapping                 # build a map
-make localize MAP_NAME=map   # localize against an existing map
+make run
 ```
 
 Open http://localhost:8080. The right rail should immediately show Robot

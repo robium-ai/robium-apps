@@ -2,26 +2,45 @@ COMPOSE = docker compose -f docker/compose.yaml
 CONTROL_EXTENSION = ../shared/lichtblick-robot-control
 CONTROL_EXTENSION_ARTIFACT = $(CONTROL_EXTENSION)/robium.robot-control-0.8.0.foxe
 
-.PHONY: build sim mapping localize drive save-map load-map slam nav demo native-setup demo-native native-down demo-image demo-deploy check control-extension rtf down
+.PHONY: help doctor build run status logs stop sim drive save-map load-map slam nav demo native-setup demo-native native-down demo-image demo-deploy control-extension rtf
 
 # Initial dashboard values. Mapping and localization are selected explicitly
 # from the control panel after the simulator starts in IDLE.
 MAP_NAME ?= map
 export MAP_NAME
 
-# Preflight: catch the likely setup failures before any scenario runs.
+help:
+	@echo "Indoor navigation"
+	@echo ""
+	@echo "Make command     Robium CLI equivalent                         Description"
+	@echo "make help        robium app help indoor-navigation              Show commands and examples"
+	@echo "make doctor      robium app doctor indoor-navigation            Diagnose prerequisites and conflicts"
+	@echo "make build       robium app build indoor-navigation             Build the Docker image"
+	@echo "make run         robium app run indoor-navigation               Run simulator and control panel"
+	@echo "make status      robium app status indoor-navigation            Show running services and URLs"
+	@echo "make logs        robium app logs indoor-navigation              Follow application logs"
+	@echo "make stop        robium app stop indoor-navigation              Stop all application services"
+	@echo ""
+	@echo "Advanced scenarios: make sim | make slam | make nav | make demo"
+
+# Diagnose likely setup failures without changing application state.
 # (Bounded checks only; no timeout(1) — absent on macOS hosts.)
-check:
+doctor:
 	@ok=1; \
 	command -v docker >/dev/null 2>&1 || { echo "FAIL: docker not installed (install Docker Desktop or compatible)"; ok=0; }; \
 	if [ $$ok -eq 1 ] && ! docker info >/dev/null 2>&1; then echo "FAIL: docker daemon not running"; ok=0; fi; \
 	if [ $$ok -eq 1 ] && ! docker compose version >/dev/null 2>&1; then echo "FAIL: docker compose v2 not available"; ok=0; fi; \
-	if command -v lsof >/dev/null 2>&1 && lsof -nP -iTCP:8765 -sTCP:LISTEN >/dev/null 2>&1; then \
-	  echo "FAIL: port 8765 already in use (make down, or stop whatever holds it)"; ok=0; fi; \
+	app_running=$$($(COMPOSE) --profile mapping ps --status running -q mapping 2>/dev/null); \
+	for port in 8080 8765; do \
+	  if command -v lsof >/dev/null 2>&1 && lsof -nP -iTCP:$$port -sTCP:LISTEN >/dev/null 2>&1; then \
+	    if [ -n "$$app_running" ]; then echo "ok: port $$port is owned by the running app"; \
+	    else echo "FAIL: port $$port already in use (stop the process using it)"; ok=0; fi; \
+	  else echo "ok: port $$port available"; fi; \
+	done; \
 	if docker image inspect indoor-navigation:latest >/dev/null 2>&1; then \
 	  echo "ok: image indoor-navigation:latest present"; \
 	else echo "note: image not built yet — 'make build' first (~10 min cold)"; fi; \
-	[ $$ok -eq 1 ] && echo "CHECK PASS" || { echo "CHECK FAIL"; exit 1; }
+	[ $$ok -eq 1 ] && echo "DOCTOR PASS" || { echo "DOCTOR FAIL"; exit 1; }
 
 build:
 	$(COMPOSE) build sim
@@ -36,17 +55,30 @@ sim:
 
 # --- interactive dashboard: drive, map, save and navigate from the browser ---
 #
-# `make mapping` starts Gazebo plus the dashboard supervisor in IDLE. It does
+# `make run` starts Gazebo plus the dashboard supervisor in IDLE. It does
 # not start SLAM, map_server, AMCL, or publish /map. Start Mapping and Load &
 # Localize create the appropriate mutually-exclusive child stack. Changing the
 # simulation world restarts Gazebo and returns the navigation session to IDLE.
-mapping:
+run:
 	@echo "dashboard -> http://localhost:8080   (bridge on :8765)"
 	$(COMPOSE) --profile mapping up --abort-on-container-exit
 
-localize:
-	@echo "Localization is selected from the dashboard; opening IDLE control panel."
-	$(COMPOSE) --profile mapping up --abort-on-container-exit
+status:
+	@services=$$($(COMPOSE) --profile "*" ps --status running --services 2>/dev/null); \
+	if [ -z "$$services" ]; then \
+	  echo "Indoor navigation: STOPPED"; \
+	  echo "Run: make run"; \
+	else \
+	  echo "Indoor navigation: RUNNING"; \
+	  $(COMPOSE) --profile "*" ps; \
+	  if echo "$$services" | grep -q '^mapping$$'; then \
+	    echo "Dashboard: http://localhost:8080"; \
+	    echo "ROS bridge: ws://localhost:8765"; \
+	  fi; \
+	fi
+
+logs:
+	$(COMPOSE) --profile "*" logs --tail=100 -f
 
 # stamped:=true is REQUIRED, not a preference. The sim bridges /cmd_vel as
 # geometry_msgs/msg/TwistStamped; a plain Twist is dropped at the bridge with
@@ -156,5 +188,5 @@ rtf:
 	@$(COMPOSE) --profile "*" down --remove-orphans
 	@echo "RTF PROBE DONE"
 
-down:
+stop:
 	$(COMPOSE) --profile "*" down --remove-orphans
