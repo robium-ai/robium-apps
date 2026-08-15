@@ -20,11 +20,16 @@ import {
 
 export type MappingMode = "MAPPING" | "LOCALIZATION" | "IDLE" | "UNKNOWN";
 export type MapActionConfigKey = "startMappingService" | "stopMappingService" | "loadMapService";
+export type WaypointActionConfigKey =
+  | "saveWaypointService"
+  | "navigateWaypointService"
+  | "deleteWaypointService";
 
 export type AdapterSnapshot = {
   config: PanelConfig;
   mode: MappingMode;
   maps: string[];
+  waypoints: string[];
   world: SimulationWorld | "UNKNOWN";
   selectedParameter?: string;
   colorScheme: "dark" | "light";
@@ -44,12 +49,17 @@ const STRING_CONFIG_SETTINGS: ReadonlyArray<readonly [StringConfigKey, string]> 
   ["mappingStateTopic", "Mapping state topic"],
   ["availableMapsTopic", "Available maps topic"],
   ["simulationStateTopic", "Simulation state topic"],
+  ["availableWaypointsTopic", "Available waypoints topic"],
   ["mapNameParameter", "Map-name parameter"],
   ["worldParameter", "Simulation-world parameter"],
+  ["waypointNameParameter", "Waypoint-name parameter"],
   ["startMappingService", "Start mapping service"],
   ["stopMappingService", "Stop mapping service"],
   ["loadMapService", "Load map service"],
   ["restartSimulationService", "Restart simulation service"],
+  ["saveWaypointService", "Save waypoint service"],
+  ["navigateWaypointService", "Navigate waypoint service"],
+  ["deleteWaypointService", "Delete waypoint service"],
   ["goHomeService", "Go home service"],
   ["navigationStopService", "Navigation stop service"],
 ];
@@ -117,6 +127,7 @@ export class LichtblickAdapter {
       config: this.config,
       mode: "UNKNOWN",
       maps: [],
+      waypoints: [],
       world: "UNKNOWN",
       colorScheme: "dark",
       canPublish: context.publish != undefined && context.advertise != undefined,
@@ -219,6 +230,39 @@ export class LichtblickAdapter {
     }
   }
 
+  public async runWaypointAction(
+    waypointName: string,
+    actionKey: WaypointActionConfigKey,
+  ): Promise<void> {
+    const trimmedName = waypointName.trim();
+    if (!validateMapName(trimmedName)) {
+      throw new Error(
+        "Enter a valid waypoint name using letters, numbers, dashes, or underscores.",
+      );
+    }
+    const service = this.config[actionKey];
+    if (service === "") {
+      throw new Error("This action is not configured.");
+    }
+    if (this.context.callService == undefined) {
+      throw new Error("This connection does not support service calls.");
+    }
+
+    this.setStatus(undefined, true);
+    try {
+      await this.setParameterAndWait(this.config.waypointNameParameter, trimmedName);
+      this.requireServiceSuccess(await this.context.callService(service, {}));
+      this.setStatus(
+        { kind: "success", message: waypointActionMessage(actionKey, trimmedName) },
+        false,
+      );
+    } catch (error) {
+      const normalized = error instanceof Error ? error : new Error(String(error));
+      this.setStatus({ kind: "error", message: normalized.message }, false);
+      throw normalized;
+    }
+  }
+
   public async callConfiguredService(
     key: "goHomeService" | "navigationStopService",
   ): Promise<void> {
@@ -276,6 +320,7 @@ export class LichtblickAdapter {
       { topic: this.config.mappingStateTopic },
       { topic: this.config.availableMapsTopic },
       { topic: this.config.simulationStateTopic },
+      { topic: this.config.availableWaypointsTopic },
     ]);
   }
 
@@ -288,6 +333,8 @@ export class LichtblickAdapter {
         next = { ...next, maps: parseAvailableMaps(event.message) };
       } else if (event.topic === this.config.simulationStateTopic) {
         next = { ...next, world: normalizeWorld(event.message) };
+      } else if (event.topic === this.config.availableWaypointsTopic) {
+        next = { ...next, waypoints: parseAvailableMaps(event.message) };
       }
     }
     const selectedParameter = renderState.parameters?.get(this.config.mapNameParameter);
@@ -299,13 +346,10 @@ export class LichtblickAdapter {
       next = { ...next, colorScheme: renderState.colorScheme };
     }
     this.state = next;
-    const selectedWorld = renderState.parameters?.get(this.config.worldParameter);
     if (
       this.pendingParameter != undefined &&
-      ((this.pendingParameter.parameter === this.config.mapNameParameter &&
-        selectedMapName === this.pendingParameter.expected) ||
-        (this.pendingParameter.parameter === this.config.worldParameter &&
-          selectedWorld === this.pendingParameter.expected))
+      renderState.parameters?.get(this.pendingParameter.parameter) ===
+        this.pendingParameter.expected
     ) {
       const pending = this.pendingParameter;
       this.pendingParameter = undefined;
@@ -322,7 +366,7 @@ export class LichtblickAdapter {
     return new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pendingParameter = undefined;
-        reject(new Error("Timed out waiting for map-name parameter acknowledgement."));
+        reject(new Error("Timed out waiting for parameter acknowledgement."));
       }, this.parameterTimeoutMs);
       this.pendingParameter = { parameter, expected: value, resolve, reject, timeout };
       try {
@@ -389,6 +433,16 @@ function actionKeyLabel(key: MapActionConfigKey): string {
     return "stop mapping";
   }
   return "load map";
+}
+
+function waypointActionMessage(key: WaypointActionConfigKey, name: string): string {
+  if (key === "saveWaypointService") {
+    return `Saved current position as ${name}.`;
+  }
+  if (key === "navigateWaypointService") {
+    return `Navigation request sent for ${name}.`;
+  }
+  return `Deleted waypoint ${name}.`;
 }
 
 export { DEFAULT_CONFIG };

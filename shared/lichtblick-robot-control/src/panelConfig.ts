@@ -1,15 +1,20 @@
 export type PanelConfig = {
-  version: 1;
+  version: 2;
   teleopTopic: string;
   mappingStateTopic: string;
   availableMapsTopic: string;
   simulationStateTopic: string;
+  availableWaypointsTopic: string;
   mapNameParameter: string;
   worldParameter: string;
+  waypointNameParameter: string;
   startMappingService: string;
   stopMappingService: string;
   loadMapService: string;
   restartSimulationService: string;
+  saveWaypointService: string;
+  navigateWaypointService: string;
+  deleteWaypointService: string;
   goHomeService: string;
   navigationStopService: string;
   linearSpeed: number;
@@ -18,17 +23,22 @@ export type PanelConfig = {
 };
 
 export const DEFAULT_CONFIG: PanelConfig = {
-  version: 1,
+  version: 2,
   teleopTopic: "/cmd_vel_teleop",
   mappingStateTopic: "/mapping/state",
   availableMapsTopic: "/maps/available",
   simulationStateTopic: "/simulation/state",
+  availableWaypointsTopic: "/waypoints/available",
   mapNameParameter: "/session_manager.map_name",
   worldParameter: "/session_manager.world",
+  waypointNameParameter: "/session_manager.waypoint_name",
   startMappingService: "/mapping/start",
   stopMappingService: "/mapping/stop",
   loadMapService: "/mapping/load",
   restartSimulationService: "/simulation/restart",
+  saveWaypointService: "/waypoints/save",
+  navigateWaypointService: "/waypoints/navigate",
+  deleteWaypointService: "/waypoints/delete",
   goHomeService: "",
   navigationStopService: "",
   linearSpeed: 0.2,
@@ -41,12 +51,17 @@ const stringKeys: (keyof PanelConfig)[] = [
   "mappingStateTopic",
   "availableMapsTopic",
   "simulationStateTopic",
+  "availableWaypointsTopic",
   "mapNameParameter",
   "worldParameter",
+  "waypointNameParameter",
   "startMappingService",
   "stopMappingService",
   "loadMapService",
   "restartSimulationService",
+  "saveWaypointService",
+  "navigateWaypointService",
+  "deleteWaypointService",
   "goHomeService",
   "navigationStopService",
 ];

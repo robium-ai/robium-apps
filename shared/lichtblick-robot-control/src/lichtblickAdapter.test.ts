@@ -65,17 +65,20 @@ test("subscribes, watches exact render fields, and acknowledges every render", (
     { topic: "/mapping/state" },
     { topic: "/maps/available" },
     { topic: "/simulation/state" },
+    { topic: "/waypoints/available" },
   ]);
   fixture.render({
     currentFrame: [
       { topic: "/mapping/state", message: { data: "MAPPING" } },
       { topic: "/maps/available", message: { data: "office\nhouse" } },
+      { topic: "/waypoints/available", message: { data: "Lobby\nKitchen" } },
     ] as never,
     colorScheme: "dark",
   });
   assert.equal(fixture.calls.done, 1);
   assert.equal(adapter.snapshot.mode, "MAPPING");
   assert.deepEqual(adapter.snapshot.maps, ["house", "office"]);
+  assert.deepEqual(adapter.snapshot.waypoints, ["Kitchen", "Lobby"]);
   assert.equal(adapter.snapshot.colorScheme, "dark");
   adapter.dispose();
 });
@@ -114,6 +117,53 @@ test("waits for the selected map parameter before calling the service", async ()
   fixture.render({ parameters: new Map([["/session_manager.map_name", "house"]]) });
   await action;
   assert.deepEqual(fixture.calls.services, [{ service: "/mapping/stop", request: {} }]);
+  adapter.dispose();
+});
+
+test("waits for the selected waypoint before requesting navigation", async () => {
+  const fixture = makePanelContext();
+  const adapter = new LichtblickAdapter(fixture.context, DEFAULT_CONFIG);
+  const action = adapter.runWaypointAction("Kitchen", "navigateWaypointService");
+  assert.deepEqual(fixture.calls.parameters, [
+    ["/session_manager.waypoint_name", "Kitchen"],
+  ]);
+  assert.deepEqual(fixture.calls.services, []);
+  fixture.render({
+    parameters: new Map([["/session_manager.waypoint_name", "Kitchen"]]),
+  });
+  await action;
+  assert.deepEqual(fixture.calls.services, [
+    { service: "/waypoints/navigate", request: {} },
+  ]);
+  assert.equal(adapter.snapshot.status?.message, "Navigation request sent for Kitchen.");
+  adapter.dispose();
+});
+
+test("rejects invalid waypoint names before changing a parameter", async () => {
+  const fixture = makePanelContext();
+  const adapter = new LichtblickAdapter(fixture.context, DEFAULT_CONFIG);
+  await assert.rejects(
+    adapter.runWaypointAction("../escape", "saveWaypointService"),
+    /valid waypoint name/i,
+  );
+  assert.deepEqual(fixture.calls.parameters, []);
+  assert.deepEqual(fixture.calls.services, []);
+  adapter.dispose();
+});
+
+test("surfaces a waypoint Trigger refusal", async () => {
+  const fixture = makePanelContext();
+  fixture.context.callService = async () => ({
+    success: false,
+    message: "waypoint actions require an active LOCALIZATION session",
+  });
+  const adapter = new LichtblickAdapter(fixture.context, DEFAULT_CONFIG);
+  const action = adapter.runWaypointAction("Kitchen", "deleteWaypointService");
+  fixture.render({
+    parameters: new Map([["/session_manager.waypoint_name", "Kitchen"]]),
+  });
+  await assert.rejects(action, /LOCALIZATION/);
+  assert.equal(adapter.snapshot.status?.kind, "error");
   adapter.dispose();
 });
 

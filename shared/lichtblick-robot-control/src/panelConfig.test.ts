@@ -13,12 +13,17 @@ test("uses the indoor-navigation ROS interfaces by default", () => {
   assert.equal(DEFAULT_CONFIG.mappingStateTopic, "/mapping/state");
   assert.equal(DEFAULT_CONFIG.availableMapsTopic, "/maps/available");
   assert.equal(DEFAULT_CONFIG.simulationStateTopic, "/simulation/state");
+  assert.equal(DEFAULT_CONFIG.availableWaypointsTopic, "/waypoints/available");
   assert.equal(DEFAULT_CONFIG.mapNameParameter, "/session_manager.map_name");
   assert.equal(DEFAULT_CONFIG.worldParameter, "/session_manager.world");
+  assert.equal(DEFAULT_CONFIG.waypointNameParameter, "/session_manager.waypoint_name");
   assert.equal(DEFAULT_CONFIG.startMappingService, "/mapping/start");
   assert.equal(DEFAULT_CONFIG.stopMappingService, "/mapping/stop");
   assert.equal(DEFAULT_CONFIG.loadMapService, "/mapping/load");
   assert.equal(DEFAULT_CONFIG.restartSimulationService, "/simulation/restart");
+  assert.equal(DEFAULT_CONFIG.saveWaypointService, "/waypoints/save");
+  assert.equal(DEFAULT_CONFIG.navigateWaypointService, "/waypoints/navigate");
+  assert.equal(DEFAULT_CONFIG.deleteWaypointService, "/waypoints/delete");
   assert.equal(DEFAULT_CONFIG.linearSpeed, 0.2);
   assert.equal(DEFAULT_CONFIG.angularSpeed, 0.8);
   assert.equal(DEFAULT_CONFIG.publishRateHz, 10);
