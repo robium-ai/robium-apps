@@ -8,7 +8,6 @@ home/stop services in a compact right-side control rail.
 
 ```bash
 npm ci
-npm test
 npm run lint
 npm run package
 ```

@@ -68,15 +68,12 @@ pose, so world (-2.0, -0.5) = map (0, 0).
   camera at http://localhost:8080
 - `make localize` — AMCL localization on a saved map with load controls and
   clicked Nav2 goals at http://localhost:8080
-- `make smoke` — the pass bar: launches the full nav scenario headless,
-  sends two goals, exits 0 on success (~90 s once built)
 - `make sim` — bringup only; `make slam` — rebuild the map; `make nav` —
   navigation without the demo auto-init (set the initial pose yourself)
 - `make check` — preflight: Docker daemon, compose v2, port 8765 free
-- `make check-map` — host-side map sanity check (`tests/check_map.py`)
 - `make down` — tear down all profiles' containers
 
-### Test the default control panel
+### Use the default control panel
 
 The mapping layout reserves its right 24% for the **Robium Robot Control**
 Lichtblick extension. The Docker image builds and preinstalls it automatically;
@@ -95,10 +92,10 @@ Robot controls. To
 prove the default works independently of any previous browser installation,
 open http://127.0.0.1:8080 in a private window; that is a clean browser origin.
 
-For an automated extension build/test gate, run:
+To rebuild the reusable extension package, run:
 
 ```bash
-make control-extension-check
+make control-extension
 ```
 
 The command prints the absolute path to
@@ -150,23 +147,19 @@ layout for that flow is `foxglove/indoor-navigation-layout.json`.
 - The demo image bundles the Lichtblick web viewer; the gateway serves it
   on :8765 alongside the Foxglove WebSocket tunnel and session API.
 - One Docker image; compose profiles are the scenarios (sim / slam / nav /
-  test / demo). All nodes of a scenario run in ONE container — macOS hosts
+  mapping / demo). All nodes of a scenario run in ONE container — macOS hosts
   can't route DDS multicast across containers.
 - `make build` uses an explicit service name (`docker compose build sim`) —
   a bare `compose build` builds nothing when every service is behind a
   profile.
 - Map regeneration: `make slam` rewrites `src/indoor_nav_bringup/maps/`
   (map.pgm + map.yaml) via the compose volume mount; the next image build
-  (`make build`, or `make smoke`'s `--build`) bakes the new map in.
-- Timeouts: the smoke run is bounded by `SMOKE_TIMEOUT` (seconds, default
-  180 ≈ 90 s sim × 2 at RTF ≈ 1.0) — override with e.g. `SMOKE_TIMEOUT=300
-  make smoke`. The SLAM run has an analogous `SLAM_TIMEOUT` (default 900)
-  inside the container.
+  (`make build`) bakes the new map in. The SLAM run is bounded by
+  `SLAM_TIMEOUT` (default 900) inside the container.
 
 ## Live demo (maintainers)
 
-`make demo-smoke` gates the demo scenario (viewer served, session guards,
-one goal, shutdown). `make demo-image` + `make demo-deploy` push it to
+`make demo-image` + `make demo-deploy` push the demo to
 Cloud Run (`demo-nav-trial`, robium-prod, per-visitor instances, GZ_RELAY
 unicast discovery), where robium.ai/demos/nav-trial hands each visitor a
 private instance and embeds the instance-served viewer. Requires robium

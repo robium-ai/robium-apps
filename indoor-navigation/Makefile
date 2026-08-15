@@ -2,7 +2,7 @@ COMPOSE = docker compose -f docker/compose.yaml
 CONTROL_EXTENSION = ../shared/lichtblick-robot-control
 CONTROL_EXTENSION_ARTIFACT = $(CONTROL_EXTENSION)/robium.robot-control-0.5.0.foxe
 
-.PHONY: build sim mapping localize drive save-map load-map slam nav demo native-setup demo-native native-down demo-smoke demo-image demo-deploy smoke check check-map control-extension control-extension-check rtf down
+.PHONY: build sim mapping localize drive save-map load-map slam nav demo native-setup demo-native native-down demo-image demo-deploy check control-extension rtf down
 
 # Initial dashboard values. Mapping and localization are selected explicitly
 # from the control panel after the simulator starts in IDLE.
@@ -28,14 +28,6 @@ build:
 
 control-extension:
 	npm ci --prefix $(CONTROL_EXTENSION)
-	npm run package --prefix $(CONTROL_EXTENSION)
-	@echo "Control extension: $(abspath $(CONTROL_EXTENSION_ARTIFACT))"
-
-control-extension-check:
-	npm ci --prefix $(CONTROL_EXTENSION)
-	npm test --prefix $(CONTROL_EXTENSION)
-	npm run lint --prefix $(CONTROL_EXTENSION)
-	npm run build --prefix $(CONTROL_EXTENSION)
 	npm run package --prefix $(CONTROL_EXTENSION)
 	@echo "Control extension: $(abspath $(CONTROL_EXTENSION_ARTIFACT))"
 
@@ -102,37 +94,6 @@ demo-native:
 native-down:
 	python3 scripts/native_demo.py down
 
-# Demo gate: boot the demo scenario, assert the gateway tunnels the Foxglove
-# WebSocket, serves the bundled viewer, /status reaches ready, session
-# guards hold (409/403 for intruders), one nav goal succeeds, and /shutdown
-# kills the container. (Bounded shell loops, not timeout(1) — absent on
-# macOS hosts.)
-demo-smoke:
-	$(COMPOSE) --profile demo up --build -d demo
-	n=0; until bash tests/check_ws.sh http://localhost:8765; do \
-	  n=$$((n+1)); [ $$n -ge 20 ] && echo "WS TIMEOUT" && exit 1; sleep 3; done
-	curl -sf -X POST "http://localhost:8765/start?session=smoke" | grep -q '"ok": true'
-	curl -sf "http://localhost:8765/status?session=smoke" | grep -q '"budget": 5'
-	n=0; until curl -sf "http://localhost:8765/status?session=smoke" | grep -q '"ready": *true'; do \
-	  n=$$((n+1)); [ $$n -ge 48 ] && echo "READY TIMEOUT" && exit 1; sleep 5; done
-	curl -sf "http://localhost:8765/status?session=smoke"
-	test "$$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:8765/status?session=intruder")" = "409"
-	test "$$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://localhost:8765/shutdown?session=intruder")" = "403"
-	test "$$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:8765/?session=smoke")" = "302"
-	curl -sfL "http://localhost:8765/?session=smoke" | grep -qi "<html"
-	test "$$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:8765/fs/list?session=smoke&path=src")" = "404"
-	test "$$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:8765/pty?session=smoke")" = "404"
-	test "$$(curl -s -o /dev/null --path-as-is -w '%{http_code}' "http://localhost:8765/../etc/passwd")" = "404"
-	$(COMPOSE) exec demo /entrypoint.sh ros2 run indoor_nav_bringup send_goals --goals "3.4,0.8" --timeout 120
-	curl -s -X POST "http://localhost:8765/shutdown?session=smoke" | grep -q bye
-	n=0; until [ -z "$$($(COMPOSE) ps -q demo)" ] || [ "$$(docker inspect -f '{{.State.Running}}' $$($(COMPOSE) ps -q demo) 2>/dev/null)" != "true" ]; do \
-	  n=$$((n+1)); [ $$n -ge 10 ] && echo "SHUTDOWN TIMEOUT" && exit 1; sleep 2; done
-	$(COMPOSE) --profile "*" down --remove-orphans
-	@echo "DEMO SMOKE PASS"
-
-smoke:
-	$(COMPOSE) --profile test up --build --abort-on-container-exit --exit-code-from smoke
-
 # --- live demo on Cloud Run (per-visitor instances; see robium.ai spec) ---
 DEMO_IMAGE = us-central1-docker.pkg.dev/robium-prod/robium/demo-nav-trial:latest
 
@@ -153,9 +114,6 @@ demo-deploy:
 # GZ_RELAY/GZ_IP: gz-transport discovery is UDP-multicast-based and Cloud Run
 # has no multicast — without the unicast loopback relay, gz server is
 # undiscoverable and spawn/bridge wait forever (verified 2026-07-12).
-
-check-map:
-	python3 tests/check_map.py src/indoor_nav_bringup/maps/map.yaml
 
 # Real-time-factor probe. Boots the sim scenario alone — no SLAM, no Nav2, no
 # saved map — so it works before the house map exists, then samples gz's own

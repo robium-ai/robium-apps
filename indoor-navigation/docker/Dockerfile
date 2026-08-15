@@ -34,10 +34,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /ws
 COPY indoor-navigation/src ./src
-COPY indoor-navigation/tests ./tests
 COPY indoor-navigation/scripts ./scripts
 
-# Furnished-home test environment. Keep the large MIT-licensed model tree out
+# Furnished-home simulation environment. Keep the large MIT-licensed model tree out
 # of git, but pin the exact upstream revision and preserve its provenance in
 # the image beside the asset.
 ARG AWS_SMALL_HOUSE_COMMIT=ff9631ca6d1db9c1ba656498151464b5ab74aafe

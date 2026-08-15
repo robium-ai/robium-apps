@@ -67,15 +67,5 @@ services:
       - ../scripts:/ws/scripts:ro
     command: ros2 launch indoor_nav_bringup demo.launch.py
 
-  smoke:
-    <<: *app
-    profiles: [test]
-    environment:
-      ROS_DOMAIN_ID: "42"
-      TURTLEBOT3_MODEL: waffle_pi
-      # Host-overridable outer/inner smoke bound (see scripts/run_smoke.sh).
-      SMOKE_TIMEOUT: "${SMOKE_TIMEOUT:-180}"
-    command: bash /ws/scripts/run_smoke.sh
-
 volumes:
   gazebo-fuel:

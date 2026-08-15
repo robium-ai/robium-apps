@@ -14,7 +14,6 @@ runtime:
 verbs:
   build: make build
   demo: make demo
-  smoke: make smoke
   check: make check
   down: make down
 

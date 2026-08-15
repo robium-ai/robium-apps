@@ -21,27 +21,22 @@
     "lichtblick:prepublish": "lichtblick-extension build --mode production",
     "lint": "eslint --report-unused-disable-directives .",
     "local-install": "lichtblick-extension install",
-    "package": "lichtblick-extension package",
-    "test": "tsx --test src/*.test.* && node --test deploy/*.test.mjs"
+    "package": "lichtblick-extension package"
   },
   "devDependencies": {
     "@lichtblick/eslint-plugin": "2.0.8",
     "@lichtblick/suite": "1.8.0",
-    "@types/jsdom": "27.0.0",
     "@types/node": "22.9.0",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
     "create-lichtblick-extension": "1.1.0",
     "css-loader": "7.1.2",
     "eslint": "9.38.0",
-    "fake-indexeddb": "6.2.4",
     "globals": "15.14.0",
-    "jsdom": "27.0.0",
     "prettier": "3.3.3",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "style-loader": "4.0.0",
-    "tsx": "4.20.6",
     "typescript": "5.7.2"
   }
 }

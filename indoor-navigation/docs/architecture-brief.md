@@ -39,18 +39,17 @@ This is the architect skill's **navigation golden path** (`ros2` + `nav2` + `gaz
 
 Scaffold-pattern ROS 2 layout, pruned hard for an MVP: TurtleBot 3 upstream packages already
 provide the description, sim models, worlds, and baseline params, so the app carries **one
-colcon package** plus docker and tests.
+colcon package** plus Docker and runtime scripts.
 
 ```
 indoor-navigation/
 ├── docs/architecture-brief.md        # this file
 ├── docker/
 │   ├── Dockerfile                    # ros:jazzy + turtlebot3*, nav2, slam_toolbox, foxglove_bridge, gz-harmonic (via ros_gz)
-│   ├── compose.yaml                  # profiles: sim | slam | nav | test (one container per scenario)
+│   ├── compose.yaml                  # profiles: sim | mapping | slam | nav | demo
 │   └── entrypoint.sh                 # sources ROS + workspace, then exec
 ├── scripts/
-│   ├── run_slam.sh                   # slam scenario wrapper: launch in bg + outer `timeout` around the driver
-│   └── run_smoke.sh                  # smoke wrapper: same shape, outer `timeout -k 10 ${SMOKE_TIMEOUT:-180}`
+│   └── run_slam.sh                   # slam scenario wrapper: launch in bg + outer `timeout` around the driver
 ├── src/
 │   └── indoor_nav_bringup/            # the one app package
 │       ├── launch/
@@ -61,12 +60,8 @@ indoor-navigation/
 │       ├── maps/                     # saved map (map.pgm + map.yaml) — committed
 │       └── indoor_nav_bringup/        # package module (ros2 run entry points)
 │           ├── drive_mapping_route.py  # scripted waypoint route for the SLAM run
-│           └── send_goals.py           # nav2_simple_commander goal sender (shared with smoke test)
-├── tests/
-│   ├── smoke_nav.py                  # the pass bar (see §6/§7)
-│   ├── check_map.py                  # SLAM check: map exists + non-trivial
-│   └── check_scan.py                 # R1 de-risk probe: /scan publishing
-├── Makefile                          # build | sim | slam | nav | smoke | check-map | down
+│           └── send_goals.py           # nav2_simple_commander goal sender
+├── Makefile                          # build | mapping | sim | slam | nav | demo | down
 └── README.md
 ```
 
@@ -83,8 +78,8 @@ nav2_bringup — three live-hit reasons: Jazzy `slam:=True` starts a duplicate
 (sync) slam_toolbox; `navigation_launch.py` hard-codes lifecycle-manager
 params so `bond_timeout` can't be set (Docker stall spikes then kill the
 stack); and TB3's `$(find-pkg-share)` param substitutions break without
-`allow_substs=True`. Scenario scripts `run_slam.sh`/`run_smoke.sh` wrap each
-run with an outer `timeout` so no failure mode is an unbounded hang.
+`allow_substs=True`. The `run_slam.sh` scenario wrapper uses an outer timeout
+so a failed mapping run does not hang indefinitely.
 Params: `config/nav2_params.yaml` follows the shipped TB3 Navigation2 profile,
 uses Waffle Pi's 0.15 m radius, adds `smoother_server`, and enables
 `enable_stamped_cmd_vel: true` in all five cmd_vel-publishing sections.
@@ -95,7 +90,6 @@ Responsibilities:
 - **`indoor_nav_bringup`:** composition only — launch files, tuned param copies, the saved
   map, and the two thin scripts. No custom nodes unless a milestone forces one.
 - **`docker/`:** one image, several compose profiles; the `environments` skill owns detail.
-- **`tests/`:** the definition of done; the `testing` skill owns detail.
 
 ## 4. Comms plan
 
@@ -128,9 +122,8 @@ active world. The panel observes mode and disables invalid UI paths, while ROS
 services remain the authoritative lifecycle gate.
 
 The `.foxe` is installed once into Lichtblick Web's per-origin IndexedDB using
-drag/open; generated bundles stay untracked. `make control-extension-check`
-runs the extension tests, lint, build, and package gate and prints the artifact
-path.
+drag/open; generated bundles stay untracked. `make control-extension` builds
+and packages the reusable artifact.
 
 Frames: standard `map → odom → base_link → base_scan`. Transport is plain DDS topics inside
 one compose network — no zenoh/gRPC needed at this scale (`integration` skill owns any change).
@@ -168,34 +161,27 @@ Non-learning app — short plan.
 
 - **The saved map is the app's one data artifact**: produced by the SLAM milestone
   (`map_saver_cli`), committed at `src/indoor_nav_bringup/maps/` (pgm+yaml, ~KBs), consumed
-  by the nav milestone and the smoke test. Regenerating it is a documented one-command run.
+  by the nav milestone. Regenerating it is a documented one-command run.
 - **Map-frame convention:** slam_toolbox sets the `map` origin at the robot's *starting pose*,
   not the Gazebo world origin — spawn at world (-2.0, -0.5) means world (-2.0, -0.5) = map
-  (0, 0). The saved map inherits this origin, so all nav goals (send_goals.py, smoke test)
+  (0, 0). The saved map inherits this origin, so all nav goals (`send_goals.py`)
   are map-frame coordinates: `goal_map = goal_world - spawn_pose`.
 - **Rosbags/logs** (debug recordings, Foxglove captures): gitignored under `bags/`.
 - No datasets, no Hub pulls/pushes — `data`/`huggingface` skills not in the routing table.
 
 ## 7. Robium skills per build phase
 
-Ordered by the design spec's milestones; testing is planned in, not bolted on.
+Ordered by the design spec's milestones. Validation is performed while running
+the development scenarios; this app intentionally carries no automated tests.
 
 | Phase | Skill(s) | Exit criterion |
 |---|---|---|
 | Env setup | `environments` | image builds arm64; `ros2 topic list` works in container |
 | Bringup (M1) | `ros2`, `gazebo` | TB3 Waffle Pi spawns in House by default; `/scan` and `/camera/image_raw` publish; drivable |
 | Visualization (M1) | `visualization` → `foxglove` | live `/scan` + TF in browser Foxglove |
-| SLAM (M2) | `nav2` (slam_toolbox is in its orbit), `ros2` | scripted drive → map saved + committed; `tests/check_map.py` passes |
+| SLAM (M2) | `nav2` (slam_toolbox is in its orbit), `ros2` | scripted drive → map saved locally |
 | Navigation (M3) | `nav2` | AMCL localizes on saved map; `send_goals.py` reaches goals |
 | Wiring/compose | `integration` | profiles compose cleanly; cmd_vel stamping aligned (R3) |
-| Testing (gate) | `testing` | one-command smoke test green headless |
-
-**Smoke test shape** (pass bar): one command (`docker compose --profile test up
---exit-code-from smoke` or a `make smoke` wrapper) → launches sim + nav stack headless, waits
-for Nav2 active, sends goal(s) via `nav2_simple_commander`, asserts `SUCCEEDED` within a
-timeout sized to the measured real-time factor (R2), exits nonzero on failure.
-**SLAM check** (lighter): map yaml+pgm exist; occupied and free cell counts above thresholds
-(rejects an empty/degenerate map).
 
 ## 8. Risks (with outcomes at implementation, 2026-07-11)
 

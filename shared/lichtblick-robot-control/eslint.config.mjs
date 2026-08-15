@@ -30,11 +30,4 @@ export default [
       "@typescript-eslint/return-await": "off",
     },
   },
-  {
-    files: ["**/*.test.{ts,tsx}"],
-    rules: {
-      "@typescript-eslint/no-floating-promises": "off",
-      "@typescript-eslint/unbound-method": "off",
-    },
-  },
 ];

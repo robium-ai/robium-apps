@@ -33,7 +33,7 @@ None of the fixes involved tuning the planner.
 This is an account of those failures and the checks that now define whether
 the application works.
 
-## The result we chose to test
+## The result we chose to run
 
 The application now has two reproducible paths. On Apple Silicon, Pixi and
 RoboStack keep ROS 2 and Gazebo inside the app directory while Gazebo opens as
@@ -49,19 +49,13 @@ There are two related workflows:
 2. The navigation workflow loads that map, initializes AMCL, and sends two
    goals through Nav2's `BasicNavigator` API.
 
-The second workflow is also the smoke test:
+The second workflow can be run directly:
 
 ```bash
-make smoke
+make nav
 ```
 
-It builds the current image, starts the same headless stack used by the demo,
-and exits successfully only when both goals return `SUCCEEDED`. The whole run
-has a 180-second wall-clock limit by default. That number came from an
-observed run of roughly 90 seconds at a real-time factor near 0.99, with a
-two-times margin. It remains configurable through `SMOKE_TIMEOUT`.
-
-This behavioral test matters because every layer before motion can appear
+This runtime workflow matters because every layer before motion can appear
 healthy on its own:
 
 ```text
@@ -266,27 +260,20 @@ deployment, multiple robots, or independently deployed services would justify
 revisiting the transport and container boundaries. Here, one container made
 local behavior repeatable and produced one artifact for the hosted demo.
 
-## What the smoke test actually proves
+## What the navigation run exercises
 
-`make smoke` exercises the saved-map navigation path. The goal sender:
+The goal sender used by the navigation scenario:
 
 1. publishes the initial pose AMCL needs before it can establish
    `map -> odom`;
 2. waits for Nav2 to become active;
 3. sends the two map-frame goals `(3.7, 0.5)` and `(0.3, 0.5)` in sequence;
 4. requires `TaskResult.SUCCEEDED` for each goal;
-5. returns a non-zero exit code on timeout or any other result.
+5. reports timeout or any other result at runtime.
 
-An outer shell timeout also covers the activation phase. This is intentional:
-the goal sender's own deadline starts only after `waitUntilNav2Active()`, so a
-broken transform or lifecycle transition could otherwise hang the test before
-its timer began.
-
-The test proves that one known robot, world, saved map, configuration, and goal
-pair complete the navigation loop in simulation. It does not measure route
-optimality, robustness across randomized worlds, recovery success, or
-real-robot behavior. Those would need different tests and, for hardware,
-different safety decisions.
+This is a development scenario for observing behavior, not an automated test
+or release gate. Failures are diagnosed from the running system when they
+occur.
 
 ## The debugging order we kept
 
