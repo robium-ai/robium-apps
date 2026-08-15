@@ -100,7 +100,7 @@ make control-extension
 ```
 
 The command prints the absolute path to
-`shared/lichtblick-robot-control/robium.robot-control-0.7.1.foxe`. That artifact
+`shared/lichtblick-robot-control/robium.robot-control-0.8.0.foxe`. That artifact
 remains reusable in other Lichtblick projects: drag it onto another project's
 browser viewer (or use Lichtblick's file picker) and confirm installation once
 for that browser origin. Indoor-navigation's committed layout supplies its ROS
@@ -108,8 +108,9 @@ defaults automatically.
 
 The panel starts in **IDLE**: Gazebo and the robot are running, but SLAM,
 map_server, AMCL, Nav2, and `/map` are not. **Start mapping** launches SLAM and
-Nav2 for the entered name; **Stop mapping** saves it beneath the selected
-world and tears that stack down; **Load & localize** launches map_server, AMCL,
+Nav2 for the entered name, locks that name, and changes to **Finish mapping**.
+Finish mapping saves it beneath the selected world and tears that stack down;
+**Load & localize** launches map_server, AMCL,
 and Nav2 for a saved map. Only one navigation mode can run at a time.
 
 The **Navigation** card reports **Navigating** while any Nav2 goal is active,

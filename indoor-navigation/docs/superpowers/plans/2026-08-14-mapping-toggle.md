@@ -22,10 +22,10 @@
 - Modify: `shared/lichtblick-robot-control/src/RobotControlPanel.tsx`
 - Modify: `shared/lichtblick-robot-control/src/styles.css`
 
-- [ ] Place the map-name input and mapping action in one grid row.
-- [ ] Switch between Start mapping and Finish mapping from live mapping state.
-- [ ] Lock the map-name input during mapping.
-- [ ] Remove the separate two-button action row.
+- [x] Place the map-name input and mapping action in one grid row.
+- [x] Switch between Start mapping and Finish mapping from live mapping state.
+- [x] Lock the map-name input during mapping.
+- [x] Remove the separate two-button action row.
 
 ### Task 2: Ship Robot Control 0.8.0
 
@@ -38,6 +38,6 @@
 - Modify: `indoor-navigation/docker/Dockerfile`
 - Modify: `indoor-navigation/README.md`
 
-- [ ] Bump the extension artifact to 0.8.0.
-- [ ] Update user-facing mapping workflow text.
-- [ ] Commit and push without staging saved maps.
+- [x] Bump the extension artifact to 0.8.0.
+- [x] Update user-facing mapping workflow text.
+- [x] Commit and push without staging saved maps.

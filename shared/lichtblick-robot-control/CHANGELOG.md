@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.0 - 2026-08-14
+
+- Combine map-name entry and mapping lifecycle into one compact row.
+- Switch the action between Start mapping and Finish mapping from live state.
+- Lock the map name during an active mapping session.
+
 ## 0.7.1 - 2026-08-14
 
 - Migrate the legacy empty navigation-stop setting to `/navigation/stop` when loading version-2 panel state.

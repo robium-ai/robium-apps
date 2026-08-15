@@ -12,7 +12,7 @@ npm run lint
 npm run package
 ```
 
-The package command creates `robium.robot-control-0.7.1.foxe`. In Lichtblick Web, drag the `.foxe` onto
+The package command creates `robium.robot-control-0.8.0.foxe`. In Lichtblick Web, drag the `.foxe` onto
 the viewer (or open it with the file picker), confirm installation, and add **Robium Robot Control →
 robot-control** to a layout. Browser installation is stored in IndexedDB for that browser origin.
 
@@ -51,7 +51,8 @@ goal activity and enables Stop navigation only while a Nav2 goal is active.
 
 Map names are limited to 1–64 letters, numbers, dashes, or underscores. Map actions set the
 map-name parameter, wait up to three seconds for the live ROS parameter state to acknowledge it,
-then call the service.
+then call the service. Start mapping changes to Finish mapping while active and locks the map name
+until the save completes.
 
 Waypoint names follow the same validation rule. The indoor-navigation backend
 enables waypoint actions only after a map is loaded for localization. **Save

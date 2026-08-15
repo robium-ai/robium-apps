@@ -197,7 +197,8 @@ export class LichtblickAdapter {
 
   public async runMapAction(mapName: string, actionKey: MapActionConfigKey): Promise<void> {
     const trimmedName = mapName.trim();
-    if (!validateMapName(trimmedName)) {
+    const selectsMap = actionKey !== "stopMappingService";
+    if (selectsMap && !validateMapName(trimmedName)) {
       throw new Error("Enter a valid map name using letters, numbers, dashes, or underscores.");
     }
     const service = this.config[actionKey];
@@ -210,7 +211,9 @@ export class LichtblickAdapter {
 
     this.setStatus(undefined, true);
     try {
-      await this.setParameterAndWait(this.config.mapNameParameter, trimmedName);
+      if (selectsMap) {
+        await this.setParameterAndWait(this.config.mapNameParameter, trimmedName);
+      }
       this.requireServiceSuccess(await this.context.callService(service, {}));
       this.setStatus(
         { kind: "success", message: `Requested ${actionKeyLabel(actionKey)}.` },

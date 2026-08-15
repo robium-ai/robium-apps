@@ -74,6 +74,7 @@ select {
   margin-top: 5px;
 }
 
+.mapping-action-row,
 .waypoint-save-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

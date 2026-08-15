@@ -243,35 +243,37 @@ export function RobotControlPanel({
         </div>
 
         <label htmlFor="map-name">New map name</label>
-        <input
-          id="map-name"
-          value={mapName}
-          placeholder="e.g. warehouse_floor_1"
-          aria-invalid={mapName !== "" && !validMapName}
-          onInput={(event) => setMapName(event.currentTarget.value)}
-        />
+        <div className="mapping-action-row">
+          <input
+            id="map-name"
+            value={mapName}
+            placeholder="e.g. warehouse_floor_1"
+            aria-invalid={mapName !== "" && !validMapName}
+            disabled={mapping}
+            onInput={(event) => setMapName(event.currentTarget.value)}
+          />
+          <button
+            className={mapping ? undefined : "primary-action"}
+            type="button"
+            aria-label={mapping ? "Finish mapping" : "Start mapping"}
+            disabled={
+              snapshot.busy ||
+              !snapshot.canCallServices ||
+              (!mapping && !validMapName)
+            }
+            onClick={() =>
+              runMapAction(
+                mapName.trim(),
+                mapping ? "stopMappingService" : "startMappingService",
+              )
+            }
+          >
+            {mapping ? "Finish mapping" : "Start mapping"}
+          </button>
+        </div>
         {mapName !== "" && !validMapName && (
           <p className="field-error">Use 1–64 letters, numbers, dashes, or underscores.</p>
         )}
-        <div className="action-row">
-          <button
-            className="primary-action"
-            type="button"
-            aria-label="Start mapping"
-            disabled={!validMapName || mapping || snapshot.busy || !snapshot.canCallServices}
-            onClick={() => runMapAction(mapName.trim(), "startMappingService")}
-          >
-            Start mapping
-          </button>
-          <button
-            type="button"
-            aria-label="Stop mapping"
-            disabled={!mapping || snapshot.busy || !snapshot.canCallServices}
-            onClick={() => runMapAction(mapName.trim(), "stopMappingService")}
-          >
-            Stop mapping
-          </button>
-        </div>
 
         <label htmlFor="available-map">Available maps</label>
         <div className="load-row">
