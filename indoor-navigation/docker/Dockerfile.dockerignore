@@ -2,8 +2,8 @@
 !indoor-navigation/
 !indoor-navigation/**
 !shared/
-!shared/lichtblick-robot-control/
-!shared/lichtblick-robot-control/**
+!shared/lichtblick-dashboard/
+!shared/lichtblick-dashboard/**
 **/node_modules/
 **/dist/
 **/*.foxe

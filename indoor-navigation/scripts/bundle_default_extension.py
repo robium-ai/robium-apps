@@ -37,7 +37,7 @@ try {{
     baseUrl: "./robium/",
   }});
 }} catch (error) {{
-  console.error("Could not preinstall the Robium Robot Control extension", error);
+  console.error("Could not preinstall the Robium Dashboard extension", error);
 }}
 const script = document.createElement("script");
 script.defer = true;

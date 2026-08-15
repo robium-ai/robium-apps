@@ -1,5 +1,16 @@
+export type SimulationWorld = {
+  value: string;
+  label: string;
+};
+
 export type PanelConfig = {
-  version: 3;
+  version: 4;
+  showMovement: boolean;
+  showMaps: boolean;
+  showNavigation: boolean;
+  showSimulation: boolean;
+  showQuickActions: boolean;
+  simulationWorlds: SimulationWorld[];
   teleopTopic: string;
   mappingStateTopic: string;
   availableMapsTopic: string;
@@ -23,8 +34,14 @@ export type PanelConfig = {
 };
 
 export const DEFAULT_CONFIG: PanelConfig = {
-  version: 3,
-  teleopTopic: "/cmd_vel_teleop",
+  version: 4,
+  showMovement: true,
+  showMaps: false,
+  showNavigation: false,
+  showSimulation: false,
+  showQuickActions: true,
+  simulationWorlds: [],
+  teleopTopic: "/cmd_vel",
   mappingStateTopic: "/mapping/state",
   availableMapsTopic: "/maps/available",
   simulationStateTopic: "/simulation/state",
@@ -46,6 +63,21 @@ export const DEFAULT_CONFIG: PanelConfig = {
   publishRateHz: 10,
 };
 
+const LEGACY_SIMULATION_WORLDS: SimulationWorld[] = [
+  { value: "furnished_house", label: "House" },
+  { value: "tugbot_warehouse", label: "Warehouse" },
+];
+
+export const CAPABILITY_KEYS = [
+  "showMovement",
+  "showMaps",
+  "showNavigation",
+  "showSimulation",
+  "showQuickActions",
+] as const;
+
+export type CapabilityKey = (typeof CAPABILITY_KEYS)[number];
+
 const stringKeys: (keyof PanelConfig)[] = [
   "teleopTopic",
   "mappingStateTopic",
@@ -66,33 +98,45 @@ const stringKeys: (keyof PanelConfig)[] = [
   "navigationStopService",
 ];
 
-export const SIMULATION_WORLDS = [
-  { value: "furnished_house", label: "House" },
-  { value: "tugbot_warehouse", label: "Warehouse" },
-] as const;
+function normalizeSimulationWorlds(value: unknown): SimulationWorld[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const worlds: SimulationWorld[] = [];
+  for (const candidate of value) {
+    if (
+      typeof candidate === "object" &&
+      candidate != undefined &&
+      "value" in candidate &&
+      "label" in candidate &&
+      typeof candidate.value === "string" &&
+      candidate.value.trim() !== "" &&
+      typeof candidate.label === "string" &&
+      candidate.label.trim() !== ""
+    ) {
+      worlds.push({ value: candidate.value.trim(), label: candidate.label.trim() });
+    }
+  }
+  return worlds;
+}
 
-export type SimulationWorld = (typeof SIMULATION_WORLDS)[number]["value"];
-
-export function isSimulationWorld(value: string): value is SimulationWorld {
-  return SIMULATION_WORLDS.some((world) => world.value === value);
+export function isSimulationWorld(value: string, worlds: SimulationWorld[]): boolean {
+  return worlds.some((world) => world.value === value);
 }
 
 export function normalizeConfig(value: unknown): PanelConfig {
   if (value == undefined || typeof value !== "object") {
-    return { ...DEFAULT_CONFIG };
+    return { ...DEFAULT_CONFIG, simulationWorlds: [] };
   }
   const candidate = value as Record<string, unknown>;
   const candidateVersion =
     typeof candidate.version === "number" && Number.isFinite(candidate.version)
       ? candidate.version
       : 0;
-  const config = { ...DEFAULT_CONFIG };
+  const config = { ...DEFAULT_CONFIG, simulationWorlds: [] };
+
   for (const key of stringKeys) {
-    if (
-      key === "navigationStopService" &&
-      candidateVersion < 3 &&
-      candidate[key] === ""
-    ) {
+    if (key === "navigationStopService" && candidateVersion < 3 && candidate[key] === "") {
       continue;
     }
     if (typeof candidate[key] === "string") {
@@ -104,6 +148,20 @@ export function normalizeConfig(value: unknown): PanelConfig {
     if (typeof next === "number" && Number.isFinite(next) && next > 0) {
       config[key] = next;
     }
+  }
+
+  if (candidateVersion < 4) {
+    for (const key of CAPABILITY_KEYS) {
+      config[key] = true;
+    }
+    config.simulationWorlds = LEGACY_SIMULATION_WORLDS.map((world) => ({ ...world }));
+  } else {
+    for (const key of CAPABILITY_KEYS) {
+      if (typeof candidate[key] === "boolean") {
+        config[key] = candidate[key];
+      }
+    }
+    config.simulationWorlds = normalizeSimulationWorlds(candidate.simulationWorlds);
   }
   return config;
 }

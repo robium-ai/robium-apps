@@ -32,7 +32,7 @@ This is the architect skill's **navigation golden path** (`ros2` + `nav2` + `gaz
 | Robot | **TurtleBot 3 Waffle Pi** | `turtlebot3_gazebo` (Jazzy binary) | The upstream model is larger and wider than Burger while retaining the same lidar, odometry, IMU, camera, and velocity interfaces. Its pinhole camera is limited to 10 Hz for CPU rendering, and Nav2 uses the upstream 0.15 m Waffle Pi radius. |
 | SLAM | **slam_toolbox** | Jazzy binary (`ros-jazzy-slam-toolbox`, 2.8.x) | The Nav2-recommended and only officially supported ROS 2 SLAM library; online-async mode + `map_saver_cli` covers the drive→map→save milestone. Cartographer (the old TB3 default) rejected: effectively unmaintained upstream. |
 | Navigation | **Nav2** (AMCL + planner/controller servers, `nav2_simple_commander` for goals) | Jazzy binaries | The classical nav stack for a mobile base; no learning component → no training framework (decision-tree 3, "No" branch). Goals sent programmatically via the `nav2_simple_commander` Python API (`NavigateToPose`), which is also what the smoke test drives. |
-| Visualization | **Lichtblick** (browser) via `foxglove_bridge` | bundled web viewer + reusable `.foxe` control extension | Headless Docker + macOS host → no X display → RViz2 rejected per the skill's headless rule. The bridge runs beside the robot/sim and Lichtblick uses its Foxglove WebSocket protocol. The mapping layout docks the shared Robium Robot Control extension on the right. |
+| Visualization | **Lichtblick** (browser) via `foxglove_bridge` | bundled web viewer + reusable `.foxe` dashboard extension | Headless Docker + macOS host → no X display → RViz2 rejected per the skill's headless rule. The bridge runs beside the robot/sim and Lichtblick uses its Foxglove WebSocket protocol. The mapping layout docks the shared Robium Dashboard extension on the right. |
 | Environment | **Docker** (portable/deploy) + **Pixi/RoboStack** (native macOS arm64) | `ros:jazzy` Linux image; locked community-native Jazzy packages for local Metal visualization | Docker remains the supported portable path. The native path is isolated under the app and verified on Apple Silicon without modifying system libraries. |
 
 ## 3. Module breakdown
@@ -105,11 +105,14 @@ Single robot, single host — short plan. Key ROS 2 interfaces (all bridged from
 | `navigate_to_pose` | Nav2 action | on demand | driven by `send_goals.py` / smoke test via `nav2_simple_commander` |
 | Foxglove WebSocket | `foxglove_bridge` | — | container port 8765 published to host; browser connects to `ws://localhost:8765` |
 
-### Lichtblick control extension boundary
+### Lichtblick Dashboard extension boundary
 
-`shared/lichtblick-robot-control/` is deliberately outside the app so other
-ROS 2 applications can package the same panel and override its saved settings.
-The panel publishes plain `geometry_msgs/msg/Twist` to `/cmd_vel_teleop`; the
+`shared/lichtblick-dashboard/` is deliberately outside the app so other ROS 2
+applications can package the same panel and configure capabilities and ROS
+interfaces in their own committed Lichtblick layouts. Its portable default is
+Movement plus Stop Robot; indoor-navigation explicitly enables Maps,
+Navigation and waypoints, and Simulation. The panel publishes plain
+`geometry_msgs/msg/Twist` to `/cmd_vel_teleop`; the
 existing app-side `teleop_relay` remains responsible for deadman enforcement
 and conversion to the simulator's stamped `/cmd_vel` contract. The persistent
 `session_manager` owns restartable Gazebo and navigation process groups. It
@@ -122,8 +125,9 @@ active world. The panel observes mode and disables invalid UI paths, while ROS
 services remain the authoritative lifecycle gate.
 
 The `.foxe` is installed once into Lichtblick Web's per-origin IndexedDB using
-drag/open; generated bundles stay untracked. `make control-extension` builds
-and packages the reusable artifact.
+drag/open; generated bundles stay untracked. `make dashboard-extension` builds
+and packages the reusable artifact. Application-specific values live in layout
+JSON rather than in a fork of the extension.
 
 Frames: standard `map → odom → base_link → base_scan`. Transport is plain DDS topics inside
 one compose network — no zenoh/gRPC needed at this scale (`integration` skill owns any change).

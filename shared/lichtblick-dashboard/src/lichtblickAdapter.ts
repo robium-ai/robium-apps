@@ -9,12 +9,13 @@ import type {
 import { DriveController } from "./driveController";
 import type { Twist } from "./messages";
 import {
+  CAPABILITY_KEYS,
   DEFAULT_CONFIG,
   isSimulationWorld,
   normalizeConfig,
   parseAvailableMaps,
+  type CapabilityKey,
   type PanelConfig,
-  type SimulationWorld,
   validateMapName,
 } from "./panelConfig";
 
@@ -32,7 +33,7 @@ export type AdapterSnapshot = {
   maps: string[];
   waypoints: string[];
   navigationState: NavigationState;
-  world: SimulationWorld | "UNKNOWN";
+  world: string | "UNKNOWN";
   selectedParameter?: string;
   colorScheme: "dark" | "light";
   canPublish: boolean;
@@ -43,8 +44,16 @@ export type AdapterSnapshot = {
 
 type StringConfigKey = Exclude<
   keyof PanelConfig,
-  "version" | "linearSpeed" | "angularSpeed" | "publishRateHz"
+  "version" | "linearSpeed" | "angularSpeed" | "publishRateHz" | "simulationWorlds" | CapabilityKey
 >;
+
+const CAPABILITY_SETTINGS: ReadonlyArray<readonly [CapabilityKey, string]> = [
+  ["showMovement", "Movement"],
+  ["showMaps", "Maps and mapping"],
+  ["showNavigation", "Navigation and waypoints"],
+  ["showSimulation", "Simulation"],
+  ["showQuickActions", "Quick actions"],
+];
 
 const STRING_CONFIG_SETTINGS: ReadonlyArray<readonly [StringConfigKey, string]> = [
   ["teleopTopic", "Teleop topic"],
@@ -68,6 +77,10 @@ const STRING_CONFIG_SETTINGS: ReadonlyArray<readonly [StringConfigKey, string]> 
 
 function isStringConfigKey(key: string | undefined): key is StringConfigKey {
   return STRING_CONFIG_SETTINGS.some(([candidate]) => candidate === key);
+}
+
+function isCapabilityKey(key: string | undefined): key is CapabilityKey {
+  return CAPABILITY_KEYS.some((candidate) => candidate === key);
 }
 
 type PendingParameter = {
@@ -104,9 +117,9 @@ function normalizeMode(message: unknown): MappingMode {
   return "UNKNOWN";
 }
 
-function normalizeWorld(message: unknown): SimulationWorld | "UNKNOWN" {
+function normalizeWorld(message: unknown, config: PanelConfig): string | "UNKNOWN" {
   const world = stringMessageData(message).trim();
-  return isSimulationWorld(world) ? world : "UNKNOWN";
+  return isSimulationWorld(world, config.simulationWorlds) ? world : "UNKNOWN";
 }
 
 function normalizeNavigationState(message: unknown): NavigationState {
@@ -155,7 +168,7 @@ export class LichtblickAdapter {
     }
     this.subscribeToTopics();
     this.advertise();
-    context.setDefaultPanelTitle("Robot Control");
+    context.setDefaultPanelTitle("Dashboard");
     this.updateSettingsEditor();
     context.onRender = (renderState, done) => {
       try {
@@ -181,14 +194,16 @@ export class LichtblickAdapter {
 
   public updateConfig(patch: Partial<PanelConfig>): void {
     const previousTopic = this.config.teleopTopic;
+    const previouslyAdvertised = this.config.showMovement || this.config.showQuickActions;
     this.driveController.dispose();
-    if (this.context.unadvertise != undefined) {
+    if (previouslyAdvertised && this.context.unadvertise != undefined) {
       this.context.unadvertise(previousTopic);
     }
     this.config = normalizeConfig({ ...this.config, ...patch });
     this.driveController = this.createDriveController();
     this.state = { ...this.state, config: this.config };
     this.context.saveState(this.config);
+    this.context.unsubscribeAll();
     this.subscribeToTopics();
     this.advertise();
     this.updateSettingsEditor();
@@ -226,8 +241,8 @@ export class LichtblickAdapter {
     }
   }
 
-  public async runSimulationAction(world: SimulationWorld): Promise<void> {
-    if (!isSimulationWorld(world)) {
+  public async runSimulationAction(world: string): Promise<void> {
+    if (!isSimulationWorld(world, this.config.simulationWorlds)) {
       throw new Error("Select a supported simulation world.");
     }
     if (this.context.callService == undefined) {
@@ -288,10 +303,7 @@ export class LichtblickAdapter {
     this.setStatus(undefined, true);
     try {
       this.requireServiceSuccess(await this.context.callService(service, {}));
-      this.setStatus(
-        { kind: "success", message: "Stop requested." },
-        false,
-      );
+      this.setStatus({ kind: "success", message: "Stop requested." }, false);
     } catch (error) {
       const normalized = error instanceof Error ? error : new Error(String(error));
       this.setStatus({ kind: "error", message: normalized.message }, false);
@@ -310,7 +322,9 @@ export class LichtblickAdapter {
       this.pendingParameter = undefined;
     }
     this.driveController.dispose();
-    this.context.unadvertise?.(this.config.teleopTopic);
+    if (this.config.showMovement || this.config.showQuickActions) {
+      this.context.unadvertise?.(this.config.teleopTopic);
+    }
     this.context.unsubscribeAll();
     this.context.onRender = undefined;
     this.listeners.clear();
@@ -319,22 +333,34 @@ export class LichtblickAdapter {
   private createDriveController(): DriveController {
     return new DriveController({
       config: this.config,
-      publish: (message: Twist) => this.context.publish?.(this.config.teleopTopic, message),
+      publish: (message: Twist) => {
+        if (this.config.showMovement || this.config.showQuickActions) {
+          this.context.publish?.(this.config.teleopTopic, message);
+        }
+      },
     });
   }
 
   private advertise(): void {
-    this.context.advertise?.(this.config.teleopTopic, "geometry_msgs/msg/Twist");
+    if (this.config.showMovement || this.config.showQuickActions) {
+      this.context.advertise?.(this.config.teleopTopic, "geometry_msgs/msg/Twist");
+    }
   }
 
   private subscribeToTopics(): void {
-    this.context.subscribe([
-      { topic: this.config.mappingStateTopic },
-      { topic: this.config.availableMapsTopic },
-      { topic: this.config.simulationStateTopic },
-      { topic: this.config.availableWaypointsTopic },
-      { topic: this.config.navigationStateTopic },
-    ]);
+    const topics = new Set<string>();
+    if (this.config.showMaps) {
+      topics.add(this.config.mappingStateTopic);
+      topics.add(this.config.availableMapsTopic);
+    }
+    if (this.config.showNavigation) {
+      topics.add(this.config.availableWaypointsTopic);
+      topics.add(this.config.navigationStateTopic);
+    }
+    if (this.config.showSimulation) {
+      topics.add(this.config.simulationStateTopic);
+    }
+    this.context.subscribe([...topics].filter((topic) => topic !== "").map((topic) => ({ topic })));
   }
 
   private processRender(renderState: Immutable<RenderState>): void {
@@ -345,14 +371,16 @@ export class LichtblickAdapter {
       } else if (event.topic === this.config.availableMapsTopic) {
         next = { ...next, maps: parseAvailableMaps(event.message) };
       } else if (event.topic === this.config.simulationStateTopic) {
-        next = { ...next, world: normalizeWorld(event.message) };
+        next = { ...next, world: normalizeWorld(event.message, this.config) };
       } else if (event.topic === this.config.availableWaypointsTopic) {
         next = { ...next, waypoints: parseAvailableMaps(event.message) };
       } else if (event.topic === this.config.navigationStateTopic) {
         next = { ...next, navigationState: normalizeNavigationState(event.message) };
       }
     }
-    const selectedParameter = renderState.parameters?.get(this.config.mapNameParameter);
+    const selectedParameter = this.config.showMaps
+      ? renderState.parameters?.get(this.config.mapNameParameter)
+      : undefined;
     const selectedMapName = typeof selectedParameter === "string" ? selectedParameter : undefined;
     if (selectedMapName != undefined) {
       next = { ...next, selectedParameter: selectedMapName };
@@ -422,6 +450,10 @@ export class LichtblickAdapter {
     for (const [key, label] of STRING_CONFIG_SETTINGS) {
       fields[key] = { label, input: "string", value: this.config[key] };
     }
+    const capabilityFields: SettingsTreeFields = {};
+    for (const [key, label] of CAPABILITY_SETTINGS) {
+      capabilityFields[key] = { label, input: "boolean", value: this.config[key] };
+    }
     this.context.updatePanelSettingsEditor({
       actionHandler: (action: SettingsTreeAction) => {
         if (action.action !== "update") {
@@ -433,9 +465,16 @@ export class LichtblickAdapter {
           const patch: Partial<PanelConfig> = {};
           patch[key] = value;
           this.updateConfig(patch);
+        } else if (isCapabilityKey(key) && typeof value === "boolean") {
+          const patch: Partial<PanelConfig> = {};
+          patch[key] = value;
+          this.updateConfig(patch);
         }
       },
-      nodes: { ros: { label: "ROS interfaces", fields } },
+      nodes: {
+        capabilities: { label: "Dashboard sections", fields: capabilityFields },
+        ros: { label: "ROS interfaces", fields },
+      },
     });
   }
 }

@@ -7,12 +7,12 @@
 # lichtblick :latest index digest pinned 2026-08-03
 FROM --platform=linux/amd64 ghcr.io/lichtblick-suite/lichtblick@sha256:e29673ab12265fe84a62fed0835606d8789168fe9b3395a2997d97f002ed1e9d AS lichtblick
 
-FROM node:22-bookworm-slim AS robot-control
+FROM node:22-bookworm-slim AS dashboard
 
 WORKDIR /extension
-COPY shared/lichtblick-robot-control/package.json shared/lichtblick-robot-control/package-lock.json ./
+COPY shared/lichtblick-dashboard/package.json shared/lichtblick-dashboard/package-lock.json ./
 RUN npm ci
-COPY shared/lichtblick-robot-control/ ./
+COPY shared/lichtblick-dashboard/ ./
 RUN npm run package
 
 FROM ros:jazzy-ros-base-noble
@@ -76,13 +76,13 @@ COPY indoor-navigation/docker/entrypoint.sh /entrypoint.sh
 COPY --from=lichtblick /src /opt/lichtblick
 COPY indoor-navigation/lichtblick/nav-layout.json /opt/lichtblick/nav-layout.json
 COPY indoor-navigation/lichtblick/mapping-layout.json /opt/lichtblick/mapping-layout.json
-COPY --from=robot-control /extension/robium.robot-control-0.8.0.foxe /opt/lichtblick/robium/robot-control.foxe
-COPY shared/lichtblick-robot-control/package.json /opt/lichtblick/robium/package.json
-COPY shared/lichtblick-robot-control/README.md /opt/lichtblick/robium/README.md
-COPY shared/lichtblick-robot-control/CHANGELOG.md /opt/lichtblick/robium/CHANGELOG.md
-COPY shared/lichtblick-robot-control/deploy/preinstall-extension.mjs /opt/lichtblick/robium/preinstall-extension.mjs
+COPY --from=dashboard /extension/robium.dashboard-0.9.0.foxe /opt/lichtblick/robium/dashboard.foxe
+COPY shared/lichtblick-dashboard/package.json /opt/lichtblick/robium/package.json
+COPY shared/lichtblick-dashboard/README.md /opt/lichtblick/robium/README.md
+COPY shared/lichtblick-dashboard/CHANGELOG.md /opt/lichtblick/robium/CHANGELOG.md
+COPY shared/lichtblick-dashboard/deploy/preinstall-extension.mjs /opt/lichtblick/robium/preinstall-extension.mjs
 RUN python3 /ws/scripts/bundle_default_extension.py /opt/lichtblick/index.html \
-      --revision-file /opt/lichtblick/robium/robot-control.foxe
+      --revision-file /opt/lichtblick/robium/dashboard.foxe
 RUN python3 - <<'PYEOF'
 from pathlib import Path
 idx = Path('/opt/lichtblick/index.html')

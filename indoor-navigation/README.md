@@ -52,7 +52,7 @@ make run     # simulator + interactive control panel
 
 Then open http://localhost:8080. The viewer (Lichtblick, the open-source
 Foxglove fork bundled in the image) includes the robot camera, 3D map, ROS
-logs, and Robot Control. The app starts in IDLE; start mapping or load a saved
+logs, and Dashboard. The app starts in IDLE; start mapping or load a saved
 map from the control panel. Ctrl-C stops the foreground process.
 
 This is byte-for-byte the same container that powers the live demo at
@@ -79,7 +79,7 @@ hosted-demo flow locally.
 
 ### Use the default control panel
 
-The mapping layout reserves its right 24% for the **Robium Robot Control**
+The mapping layout reserves its right 24% for the shared **Robium Dashboard**
 Lichtblick extension across the full dashboard height. On the left, the camera
 and 3D map share the top row and ROS logs span the bottom row. The log area has
 **All**, **Navigation**, and **Mapping & App** tabs; the grouped tabs filter the
@@ -93,8 +93,8 @@ Start the control panel:
 make run
 ```
 
-Open http://localhost:8080. The right rail should immediately show Robot
-Control with WASD, mapping, map-loading, named waypoints, and Stop Robot.
+Open http://localhost:8080. The right rail should immediately show Dashboard
+with WASD, mapping, map-loading, named waypoints, and Stop Robot.
 The 3D map draws the global Nav2 plan in cyan and the local controller plan
 in orange. To
 prove the default works independently of any previous browser installation,
@@ -103,15 +103,17 @@ open http://127.0.0.1:8080 in a private window; that is a clean browser origin.
 To rebuild the reusable extension package, run:
 
 ```bash
-make control-extension
+make dashboard-extension
 ```
 
 The command prints the absolute path to
-`shared/lichtblick-robot-control/robium.robot-control-0.8.0.foxe`. That artifact
-remains reusable in other Lichtblick projects: drag it onto another project's
-browser viewer (or use Lichtblick's file picker) and confirm installation once
-for that browser origin. Indoor-navigation's committed layout supplies its ROS
-defaults automatically.
+`shared/lichtblick-dashboard/robium.dashboard-0.9.0.foxe`. That artifact remains
+reusable in other Lichtblick projects: drag it onto another project's browser
+viewer (or use Lichtblick's file picker) and confirm installation once for that
+browser origin. Indoor-navigation's committed layout enables the full set of
+Dashboard sections, supplies House and Warehouse, and configures its ROS
+interfaces automatically. Other apps can use the same package with only
+Movement and Stop Robot or enable richer sections in their own layout.
 
 The panel starts in **IDLE**: Gazebo and the robot are running, but SLAM,
 map_server, AMCL, Nav2, and `/map` are not. **Start mapping** launches SLAM and

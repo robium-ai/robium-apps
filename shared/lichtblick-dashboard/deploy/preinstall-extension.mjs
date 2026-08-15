@@ -43,7 +43,7 @@ async function openExtensionDatabase(indexedDB) {
 export async function installDefaultExtension({ indexedDB, fetch: fetchImpl, baseUrl }) {
   const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
   const [foxeResponse, packageResponse, readmeResponse, changelogResponse] = await Promise.all([
-    checkedResponse(fetchImpl, `${normalizedBaseUrl}robot-control.foxe`),
+    checkedResponse(fetchImpl, `${normalizedBaseUrl}dashboard.foxe`),
     checkedResponse(fetchImpl, `${normalizedBaseUrl}package.json`),
     checkedResponse(fetchImpl, `${normalizedBaseUrl}README.md`),
     checkedResponse(fetchImpl, `${normalizedBaseUrl}CHANGELOG.md`),

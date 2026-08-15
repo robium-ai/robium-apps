@@ -19,7 +19,7 @@ select {
   font: inherit;
 }
 
-.robot-control {
+.dashboard {
   --bg: #18181b;
   --card: #27272a;
   --line: #3f3f46;
@@ -45,7 +45,7 @@ select {
     sans-serif;
 }
 
-.robot-control.light {
+.dashboard.light {
   --bg: #f4f4f5;
   --card: #ffffff;
   --line: #d4d4d8;

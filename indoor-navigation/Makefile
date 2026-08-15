@@ -1,8 +1,8 @@
 COMPOSE = docker compose -f docker/compose.yaml
-CONTROL_EXTENSION = ../shared/lichtblick-robot-control
-CONTROL_EXTENSION_ARTIFACT = $(CONTROL_EXTENSION)/robium.robot-control-0.8.0.foxe
+DASHBOARD_EXTENSION = ../shared/lichtblick-dashboard
+DASHBOARD_EXTENSION_ARTIFACT = $(DASHBOARD_EXTENSION)/robium.dashboard-0.9.0.foxe
 
-.PHONY: help doctor build run status logs stop sim drive save-map load-map slam nav demo native-setup demo-native native-down demo-image demo-deploy control-extension rtf
+.PHONY: help doctor build run status logs stop sim drive save-map load-map slam nav demo native-setup demo-native native-down demo-image demo-deploy dashboard-extension rtf
 
 # Initial dashboard values. Mapping and localization are selected explicitly
 # from the control panel after the simulator starts in IDLE.
@@ -45,10 +45,10 @@ doctor:
 build:
 	$(COMPOSE) build sim
 
-control-extension:
-	npm ci --prefix $(CONTROL_EXTENSION)
-	npm run package --prefix $(CONTROL_EXTENSION)
-	@echo "Control extension: $(abspath $(CONTROL_EXTENSION_ARTIFACT))"
+dashboard-extension:
+	npm ci --prefix $(DASHBOARD_EXTENSION)
+	npm run package --prefix $(DASHBOARD_EXTENSION)
+	@echo "Dashboard extension: $(abspath $(DASHBOARD_EXTENSION_ARTIFACT))"
 
 sim:
 	$(COMPOSE) --profile sim up --abort-on-container-exit

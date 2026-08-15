@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0 - 2026-08-14
+
+- Adopt the Robium Dashboard name for the reusable extension.
+- Default to a portable movement-and-stop dashboard for generic ROS 2 apps.
+- Let layouts enable maps, navigation and waypoints, simulation, and quick actions independently.
+- Move simulation world choices into app-owned layout configuration.
+- Keep version-3 saved panel state working as a full legacy dashboard.
+
 ## 0.8.0 - 2026-08-14
 
 - Combine map-name entry and mapping lifecycle into one compact row.

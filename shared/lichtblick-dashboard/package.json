@@ -1,10 +1,10 @@
 {
-  "name": "robot-control",
-  "displayName": "Robium Robot Control",
-  "description": "Reusable movement, mapping, localization, and home controls for ROS 2 robots in Lichtblick.",
+  "name": "dashboard",
+  "displayName": "Robium Dashboard",
+  "description": "Configurable movement, navigation, mapping, and simulation controls for ROS 2 robots in Lichtblick.",
   "publisher": "robium",
   "homepage": "https://github.com/robium-ai/robium-apps",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "license": "MIT",
   "main": "./dist/extension.js",
   "keywords": [
