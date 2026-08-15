@@ -78,7 +78,7 @@ pose, so world (-2.0, -0.5) = map (0, 0).
 
 ### Test the default control panel
 
-The mapping layout reserves its right 28% for the **Robium Robot Control**
+The mapping layout reserves its right 24% for the **Robium Robot Control**
 Lichtblick extension. The Docker image builds and preinstalls it automatically;
 there is no drag-and-drop installation step for indoor-navigation.
 
@@ -90,7 +90,8 @@ make localize MAP_NAME=map   # localize against an existing map
 ```
 
 Open http://localhost:8080. The right rail should immediately show Robot
-Control with WASD, mapping, map-loading, Go Home, and Stop Robot controls. To
+Control with WASD, mapping, map-loading, named waypoints, Go Home, and Stop
+Robot controls. To
 prove the default works independently of any previous browser installation,
 open http://127.0.0.1:8080 in a private window; that is a clean browser origin.
 
@@ -101,7 +102,7 @@ make control-extension-check
 ```
 
 The command prints the absolute path to
-`shared/lichtblick-robot-control/robium.robot-control-0.4.0.foxe`. That artifact
+`shared/lichtblick-robot-control/robium.robot-control-0.5.0.foxe`. That artifact
 remains reusable in other Lichtblick projects: drag it onto another project's
 browser viewer (or use Lichtblick's file picker) and confirm installation once
 for that browser origin. Indoor-navigation's committed layout supplies its ROS
@@ -112,6 +113,13 @@ map_server, AMCL, Nav2, and `/map` are not. **Start mapping** launches SLAM and
 Nav2 for the entered name; **Stop mapping** saves it beneath the selected
 world and tears that stack down; **Load & localize** launches map_server, AMCL,
 and Nav2 for a saved map. Only one navigation mode can run at a time.
+
+After **Load & localize**, enter a waypoint name and choose **Save position**
+to capture the robot's current map-frame position and heading. Saved waypoints
+for that map appear alphabetically with **Navigate** and **Delete** actions.
+Navigate confirms that Nav2 received the stored goal; it does not claim the
+robot has arrived. Waypoints are local per-map sidecars named
+`<map>.waypoints.json` beside user-saved maps and are not committed by default.
 
 The compact Simulation card offers **House** and **Warehouse**. House is the
 default and uses the MIT-licensed AWS RoboMaker Small House asset, pinned and

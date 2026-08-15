@@ -1,7 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import type { DriveController } from "./driveController";
-import type { AdapterSnapshot, MapActionConfigKey } from "./lichtblickAdapter";
+import type {
+  AdapterSnapshot,
+  MapActionConfigKey,
+  WaypointActionConfigKey,
+} from "./lichtblickAdapter";
 import type { Direction } from "./messages";
 import {
   SIMULATION_WORLDS,
@@ -17,6 +21,7 @@ export type ControlPanelAdapter = {
   updateConfig(patch: Partial<Pick<PanelConfig, "linearSpeed" | "angularSpeed">>): void;
   runMapAction(mapName: string, action: MapActionConfigKey): Promise<void>;
   runSimulationAction(world: SimulationWorld): Promise<void>;
+  runWaypointAction(waypointName: string, action: WaypointActionConfigKey): Promise<void>;
   callConfiguredService(key: "goHomeService" | "navigationStopService"): Promise<void>;
 };
 
@@ -87,11 +92,14 @@ export function RobotControlPanel({
   );
   const [mapName, setMapName] = useState(snapshot.selectedParameter ?? "map");
   const [selectedMap, setSelectedMap] = useState("");
+  const [waypointName, setWaypointName] = useState("");
   const [selectedWorld, setSelectedWorld] = useState<SimulationWorld>(
     snapshot.world === "UNKNOWN" ? "furnished_house" : snapshot.world,
   );
   const validMapName = validateMapName(mapName.trim());
+  const validWaypointName = validateMapName(waypointName.trim());
   const mapping = snapshot.mode === "MAPPING";
+  const localization = snapshot.mode === "LOCALIZATION";
 
   useEffect(() => {
     if (mapName === "" && snapshot.selectedParameter != undefined) {
@@ -153,6 +161,13 @@ export function RobotControlPanel({
   const runMapAction = useCallback(
     (name: string, key: MapActionConfigKey) => {
       void adapter.runMapAction(name, key).catch(() => undefined);
+    },
+    [adapter],
+  );
+
+  const runWaypointAction = useCallback(
+    (name: string, key: WaypointActionConfigKey) => {
+      void adapter.runWaypointAction(name, key).catch(() => undefined);
     },
     [adapter],
   );
@@ -274,6 +289,78 @@ export function RobotControlPanel({
           >
             Load &amp; localize
           </button>
+        </div>
+      </section>
+
+      <section className="control-card" aria-labelledby="waypoints-heading">
+        <div className="section-heading">
+          <h2 id="waypoints-heading">Waypoints</h2>
+        </div>
+        <label htmlFor="waypoint-name">Waypoint name</label>
+        <div className="waypoint-save-row">
+          <input
+            id="waypoint-name"
+            value={waypointName}
+            placeholder="e.g. kitchen"
+            autoComplete="off"
+            aria-invalid={waypointName !== "" && !validWaypointName}
+            onInput={(event) => setWaypointName(event.currentTarget.value)}
+          />
+          <button
+            className="primary-action"
+            type="button"
+            aria-label="Save current position"
+            disabled={
+              !localization ||
+              !validWaypointName ||
+              snapshot.busy ||
+              !snapshot.canCallServices ||
+              snapshot.config.saveWaypointService === ""
+            }
+            onClick={() => runWaypointAction(waypointName.trim(), "saveWaypointService")}
+          >
+            Save position
+          </button>
+        </div>
+        {waypointName !== "" && !validWaypointName && (
+          <p className="field-error">Use 1–64 letters, numbers, dashes, or underscores.</p>
+        )}
+        <div className="waypoint-list" aria-label="Saved waypoints">
+          {snapshot.waypoints.length === 0 ? (
+            <p className="empty-state">No waypoints saved for this map.</p>
+          ) : (
+            snapshot.waypoints.map((waypoint) => (
+              <div className="waypoint-row" data-waypoint-name={waypoint} key={waypoint}>
+                <span title={waypoint}>{waypoint}</span>
+                <button
+                  type="button"
+                  aria-label={`Navigate to ${waypoint}`}
+                  disabled={
+                    !localization ||
+                    snapshot.busy ||
+                    !snapshot.canCallServices ||
+                    snapshot.config.navigateWaypointService === ""
+                  }
+                  onClick={() => runWaypointAction(waypoint, "navigateWaypointService")}
+                >
+                  Navigate
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Delete ${waypoint}`}
+                  disabled={
+                    !localization ||
+                    snapshot.busy ||
+                    !snapshot.canCallServices ||
+                    snapshot.config.deleteWaypointService === ""
+                  }
+                  onClick={() => runWaypointAction(waypoint, "deleteWaypointService")}
+                >
+                  Delete
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </section>
 

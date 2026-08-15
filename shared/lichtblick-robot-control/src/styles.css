@@ -72,6 +72,42 @@ select {
   margin-top: 5px;
 }
 
+.waypoint-save-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px;
+}
+
+.waypoint-list {
+  display: grid;
+  gap: 3px;
+  margin-top: 5px;
+}
+
+.waypoint-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.waypoint-row > span {
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.waypoint-row button {
+  padding-inline: 6px;
+}
+
+.empty-state {
+  color: var(--muted);
+  font-size: 9px;
+}
+
 .panel-header,
 .section-heading {
   justify-content: space-between;

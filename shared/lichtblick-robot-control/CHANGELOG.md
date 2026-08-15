@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0 - 2026-08-14
+
+- Add named current-position waypoint save, list, navigate, and delete controls.
+- Scope waypoint actions to the active localization map through configurable ROS interfaces.
+
 ## 0.4.0 - 2026-08-14
 
 - Simplify the simulation selector to House and Warehouse.
