@@ -185,6 +185,13 @@ are not accepted pins.
 The initial AWS Small House and Tugbot Warehouse assets remain pointers. Their
 large payloads are not copied into Git.
 
+The upstream Fuel metadata for Tugbot in Warehouse version 2 identifies its
+license as CC BY-NC-ND 4.0. Its manifest and all consuming-app documentation
+must surface that non-commercial, no-derivatives restriction. The pointer may
+support the current prototype, but a future commercial distribution must
+replace the world or obtain suitable permission rather than treating it as a
+permissive Robium asset.
+
 ### Local writable assets
 
 Maps created through Dashboard are runtime data. The long-term destination is
