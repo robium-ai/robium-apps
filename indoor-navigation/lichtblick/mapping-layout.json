@@ -77,9 +77,52 @@
         "imageTopic": "/camera/image_raw"
       }
     },
-    "RosOut!logs": {
+    "Tab!logs": {
+      "activeTabIdx": 0,
+      "tabs": [
+        {
+          "title": "All",
+          "layout": "RosOut!logs-all"
+        },
+        {
+          "title": "Navigation",
+          "layout": "RosOut!logs-navigation"
+        },
+        {
+          "title": "Mapping & App",
+          "layout": "RosOut!logs-mapping-app"
+        }
+      ]
+    },
+    "RosOut!logs-all": {
       "topicToRender": "/rosout",
       "searchTerms": [],
+      "minLogLevel": 2
+    },
+    "RosOut!logs-navigation": {
+      "topicToRender": "/rosout",
+      "searchTerms": [
+        "amcl",
+        "map_server",
+        "controller_server",
+        "smoother_server",
+        "planner_server",
+        "behavior_server",
+        "bt_navigator",
+        "waypoint_follower",
+        "velocity_smoother",
+        "collision_monitor",
+        "lifecycle_manager_navigation"
+      ],
+      "minLogLevel": 2
+    },
+    "RosOut!logs-mapping-app": {
+      "topicToRender": "/rosout",
+      "searchTerms": [
+        "slam_toolbox",
+        "session_manager",
+        "teleop_relay"
+      ],
       "minLogLevel": 2
     },
     "Robium Robot Control.robot-control!control": {
@@ -119,7 +162,7 @@
         "second": "3D!dash",
         "splitPercentage": 36
       },
-      "second": "RosOut!logs",
+      "second": "Tab!logs",
       "splitPercentage": 72
     },
     "second": "Robium Robot Control.robot-control!control",
