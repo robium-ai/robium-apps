@@ -19,6 +19,7 @@ import {
 } from "./panelConfig";
 
 export type MappingMode = "MAPPING" | "LOCALIZATION" | "IDLE" | "UNKNOWN";
+export type NavigationState = "NAVIGATING" | "IDLE" | "UNKNOWN";
 export type MapActionConfigKey = "startMappingService" | "stopMappingService" | "loadMapService";
 export type WaypointActionConfigKey =
   | "saveWaypointService"
@@ -30,6 +31,7 @@ export type AdapterSnapshot = {
   mode: MappingMode;
   maps: string[];
   waypoints: string[];
+  navigationState: NavigationState;
   world: SimulationWorld | "UNKNOWN";
   selectedParameter?: string;
   colorScheme: "dark" | "light";
@@ -50,6 +52,7 @@ const STRING_CONFIG_SETTINGS: ReadonlyArray<readonly [StringConfigKey, string]> 
   ["availableMapsTopic", "Available maps topic"],
   ["simulationStateTopic", "Simulation state topic"],
   ["availableWaypointsTopic", "Available waypoints topic"],
+  ["navigationStateTopic", "Navigation state topic"],
   ["mapNameParameter", "Map-name parameter"],
   ["worldParameter", "Simulation-world parameter"],
   ["waypointNameParameter", "Waypoint-name parameter"],
@@ -106,6 +109,17 @@ function normalizeWorld(message: unknown): SimulationWorld | "UNKNOWN" {
   return isSimulationWorld(world) ? world : "UNKNOWN";
 }
 
+function normalizeNavigationState(message: unknown): NavigationState {
+  const state = stringMessageData(message).trim().toUpperCase();
+  if (state === "NAVIGATING") {
+    return "NAVIGATING";
+  }
+  if (state === "IDLE" || state === "STOPPED") {
+    return "IDLE";
+  }
+  return "UNKNOWN";
+}
+
 export class LichtblickAdapter {
   private config: PanelConfig;
   private driveController: DriveController;
@@ -127,6 +141,7 @@ export class LichtblickAdapter {
       mode: "UNKNOWN",
       maps: [],
       waypoints: [],
+      navigationState: "UNKNOWN",
       world: "UNKNOWN",
       colorScheme: "dark",
       canPublish: context.publish != undefined && context.advertise != undefined,
@@ -315,6 +330,7 @@ export class LichtblickAdapter {
       { topic: this.config.availableMapsTopic },
       { topic: this.config.simulationStateTopic },
       { topic: this.config.availableWaypointsTopic },
+      { topic: this.config.navigationStateTopic },
     ]);
   }
 
@@ -329,6 +345,8 @@ export class LichtblickAdapter {
         next = { ...next, world: normalizeWorld(event.message) };
       } else if (event.topic === this.config.availableWaypointsTopic) {
         next = { ...next, waypoints: parseAvailableMaps(event.message) };
+      } else if (event.topic === this.config.navigationStateTopic) {
+        next = { ...next, navigationState: normalizeNavigationState(event.message) };
       }
     }
     const selectedParameter = renderState.parameters?.get(this.config.mapNameParameter);

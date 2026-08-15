@@ -100,6 +100,13 @@ export function RobotControlPanel({
   const validWaypointName = validateMapName(waypointName.trim());
   const mapping = snapshot.mode === "MAPPING";
   const localization = snapshot.mode === "LOCALIZATION";
+  const navigating = snapshot.navigationState === "NAVIGATING";
+  const navigationLabel =
+    snapshot.navigationState === "UNKNOWN"
+      ? "Status unavailable"
+      : navigating
+        ? "Navigating"
+        : "Not navigating";
 
   useEffect(() => {
     if (mapName === "" && snapshot.selectedParameter != undefined) {
@@ -292,10 +299,34 @@ export function RobotControlPanel({
         </div>
       </section>
 
-      <section className="control-card" aria-labelledby="waypoints-heading">
+      <section className="control-card" aria-labelledby="navigation-heading">
         <div className="section-heading">
-          <h2 id="waypoints-heading">Waypoints</h2>
+          <h2 id="navigation-heading">Navigation</h2>
+          <span
+            className={`navigation-state ${navigating ? "navigating" : "idle"}`}
+            role="status"
+          >
+            <span aria-hidden="true" />
+            {navigationLabel}
+          </span>
         </div>
+        <button
+          className="stop-action navigation-stop"
+          type="button"
+          aria-label="Stop navigation"
+          disabled={
+            !navigating ||
+            snapshot.busy ||
+            !snapshot.canCallServices ||
+            snapshot.config.navigationStopService === ""
+          }
+          onClick={() =>
+            void adapter.callConfiguredService("navigationStopService").catch(() => undefined)
+          }
+        >
+          Stop navigation
+        </button>
+        <h3 className="navigation-subheading">Waypoints</h3>
         <label htmlFor="waypoint-name">Waypoint name</label>
         <div className="waypoint-save-row">
           <input

@@ -1,6 +1,6 @@
 COMPOSE = docker compose -f docker/compose.yaml
 CONTROL_EXTENSION = ../shared/lichtblick-robot-control
-CONTROL_EXTENSION_ARTIFACT = $(CONTROL_EXTENSION)/robium.robot-control-0.6.0.foxe
+CONTROL_EXTENSION_ARTIFACT = $(CONTROL_EXTENSION)/robium.robot-control-0.7.0.foxe
 
 .PHONY: build sim mapping localize drive save-map load-map slam nav demo native-setup demo-native native-down demo-image demo-deploy check control-extension rtf down
 

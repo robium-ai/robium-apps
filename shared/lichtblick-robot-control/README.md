@@ -12,7 +12,7 @@ npm run lint
 npm run package
 ```
 
-The package command creates `robium.robot-control-0.6.0.foxe`. In Lichtblick Web, drag the `.foxe` onto
+The package command creates `robium.robot-control-0.7.0.foxe`. In Lichtblick Web, drag the `.foxe` onto
 the viewer (or open it with the file picker), confirm installation, and add **Robium Robot Control →
 robot-control** to a layout. Browser installation is stored in IndexedDB for that browser origin.
 
@@ -32,6 +32,7 @@ for reuse in other projects.
 | Available maps | `/maps/available` |
 | Simulation state | `/simulation/state` |
 | Available waypoints | `/waypoints/available` |
+| Navigation state | `/navigation/state` |
 | Map-name parameter | `/session_manager.map_name` |
 | Simulation-world parameter | `/session_manager.world` |
 | Waypoint-name parameter | `/session_manager.waypoint_name` |
@@ -42,9 +43,11 @@ for reuse in other projects.
 | Save current position | `/waypoints/save` |
 | Navigate to waypoint | `/waypoints/navigate` |
 | Delete waypoint | `/waypoints/delete` |
+| Stop navigation | `/navigation/stop` |
 
 All interfaces can be changed in the panel settings sidebar. The Stop Robot button always sends
-zero velocity and can optionally call a configured navigation-stop service.
+zero velocity and calls the configured navigation-stop service. The Navigation card reports live
+goal activity and enables Stop navigation only while a Nav2 goal is active.
 
 Map names are limited to 1–64 letters, numbers, dashes, or underscores. Map actions set the
 map-name parameter, wait up to three seconds for the live ROS parameter state to acknowledge it,

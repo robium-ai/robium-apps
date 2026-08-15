@@ -22,9 +22,9 @@
 - Modify: `indoor-navigation/src/indoor_nav_bringup/indoor_nav_bringup/session_manager.py`
 - Modify: `indoor-navigation/src/indoor_nav_bringup/package.xml`
 
-- [ ] Subscribe to `GoalStatusArray` and publish latched `NAVIGATING` or `IDLE` state.
-- [ ] Add `/navigation/stop` Trigger backed by Nav2's cancel-all request.
-- [ ] Declare the `action_msgs` runtime dependency.
+- [x] Subscribe to `GoalStatusArray` and publish latched `NAVIGATING` or `IDLE` state.
+- [x] Add `/navigation/stop` Trigger backed by Nav2's cancel-all request.
+- [x] Declare the `action_msgs` runtime dependency.
 
 ### Task 2: Merge navigation and waypoints in Robot Control
 
@@ -34,10 +34,10 @@
 - Modify: `shared/lichtblick-robot-control/src/RobotControlPanel.tsx`
 - Modify: `shared/lichtblick-robot-control/src/styles.css`
 
-- [ ] Add `navigationStateTopic` and normalize it into the adapter snapshot.
-- [ ] Replace the Waypoints heading with Navigation status and Stop navigation.
-- [ ] Keep the waypoint controls in the same card below the status controls.
-- [ ] Configure Stop Robot to cancel navigation through the now-default stop service.
+- [x] Add `navigationStateTopic` and normalize it into the adapter snapshot.
+- [x] Replace the Waypoints heading with Navigation status and Stop navigation.
+- [x] Keep the waypoint controls in the same card below the status controls.
+- [x] Configure Stop Robot to cancel navigation through the now-default stop service.
 
 ### Task 3: Clean visibility and ship version 0.7.0
 
@@ -51,8 +51,8 @@
 - Modify: `indoor-navigation/docker/Dockerfile`
 - Modify: `indoor-navigation/README.md`
 
-- [ ] Make normal navigation topics explicit and hide duplicate/debug topics.
-- [ ] Reduce laser-scan point size to 2.
-- [ ] Bump config schema to 3 and extension artifact to 0.7.0.
-- [ ] Document the combined Navigation card and its ROS interfaces.
-- [ ] Commit and push without staging local runtime map data.
+- [x] Make normal navigation topics explicit and hide duplicate/debug topics.
+- [x] Reduce laser-scan point size to 2.
+- [x] Bump config schema to 3 and extension artifact to 0.7.0.
+- [x] Document the combined Navigation card and its ROS interfaces.
+- [x] Commit and push without staging local runtime map data.

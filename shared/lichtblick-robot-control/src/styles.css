@@ -27,6 +27,7 @@ select {
   --muted: #a1a1aa;
   --accent: #2aa6aa;
   --accent-ink: #ffffff;
+  --success: #4ade80;
   --danger: #ef6461;
   height: 100%;
   min-height: 0;
@@ -52,6 +53,7 @@ select {
   --muted: #71717a;
   --accent: #087f83;
   --accent-ink: #ffffff;
+  --success: #15803d;
   --danger: #c83e3a;
   color-scheme: light;
 }
@@ -111,6 +113,44 @@ select {
 .panel-header,
 .section-heading {
   justify-content: space-between;
+}
+
+.navigation-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.navigation-state > span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.navigation-state.navigating {
+  color: var(--success);
+}
+
+.navigation-state.navigating > span {
+  background: var(--success);
+}
+
+.navigation-stop {
+  width: 100%;
+  margin-top: 3px;
+}
+
+.navigation-subheading {
+  margin: 10px 0 5px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .panel-header {

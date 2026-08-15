@@ -29,7 +29,7 @@
           "colorField": "intensity",
           "colorMode": "flat",
           "flatColor": "#e04040",
-          "pointSize": 4
+          "pointSize": 2
         },
         "/plan": {
           "visible": true,
@@ -40,6 +40,15 @@
           "visible": true,
           "lineWidth": 0.08,
           "gradient": ["#ff9f1c", "#ff9f1c"]
+        },
+        "/plan_smoothed": {
+          "visible": false
+        },
+        "/received_global_plan": {
+          "visible": false
+        },
+        "/transformed_global_plan": {
+          "visible": false
         },
         "/global_costmap/costmap": {
           "visible": false,
@@ -69,12 +78,13 @@
       }
     },
     "Robium Robot Control.robot-control!control": {
-      "version": 2,
+      "version": 3,
       "teleopTopic": "/cmd_vel_teleop",
       "mappingStateTopic": "/mapping/state",
       "availableMapsTopic": "/maps/available",
       "simulationStateTopic": "/simulation/state",
       "availableWaypointsTopic": "/waypoints/available",
+      "navigationStateTopic": "/navigation/state",
       "mapNameParameter": "/session_manager.map_name",
       "worldParameter": "/session_manager.world",
       "waypointNameParameter": "/session_manager.waypoint_name",
@@ -85,7 +95,7 @@
       "saveWaypointService": "/waypoints/save",
       "navigateWaypointService": "/waypoints/navigate",
       "deleteWaypointService": "/waypoints/delete",
-      "navigationStopService": "",
+      "navigationStopService": "/navigation/stop",
       "linearSpeed": 0.2,
       "angularSpeed": 0.8,
       "publishRateHz": 10

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0 - 2026-08-14
+
+- Merge waypoint controls into a Navigation card with live goal status.
+- Add a Stop navigation action backed by a configurable ROS service.
+- Default Stop Robot to cancel active navigation as well as publish zero velocity.
+
 ## 0.6.0 - 2026-08-14
 
 - Remove the unused Go Home quick action and configuration.

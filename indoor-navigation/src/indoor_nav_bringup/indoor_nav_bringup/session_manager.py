@@ -8,6 +8,8 @@ import subprocess
 import threading
 
 import rclpy
+from action_msgs.msg import GoalStatus, GoalStatusArray
+from action_msgs.srv import CancelGoal
 from geometry_msgs.msg import PoseStamped
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
@@ -60,6 +62,7 @@ class SessionManager(Node):
         self.declare_parameter('maps_root', '/ws/maps')
         self.declare_parameter('waypoint_name', 'waypoint')
         self._lock = threading.RLock()
+        self._navigation_active = False
         group = ReentrantCallbackGroup()
 
         self._state_pub = self.create_publisher(String, '/mapping/state', LATCHED)
@@ -68,11 +71,23 @@ class SessionManager(Node):
             String, '/simulation/state', LATCHED)
         self._waypoint_pub = self.create_publisher(
             String, '/waypoints/available', LATCHED)
+        self._navigation_pub = self.create_publisher(
+            String, '/navigation/state', LATCHED)
         self._goal_pub = self.create_publisher(PoseStamped, '/goal_pose', 10)
         self._tf_buffer = Buffer()
         self._tf_listener = TransformListener(self._tf_buffer, self)
         self._save_client = self.create_client(
             SaveMap, '/slam_toolbox/save_map', callback_group=group)
+        self._cancel_navigation_client = self.create_client(
+            CancelGoal, '/navigate_to_pose/_action/cancel_goal',
+            callback_group=group)
+        self.create_subscription(
+            GoalStatusArray,
+            '/navigate_to_pose/_action/status',
+            self.on_navigation_status,
+            10,
+            callback_group=group,
+        )
 
         self._sessions = SessionProcesses(
             lambda role, command: self._start_child(role, command),
@@ -107,6 +122,9 @@ class SessionManager(Node):
         self.create_service(
             Trigger, '/waypoints/delete', self.on_delete_waypoint,
             callback_group=group)
+        self.create_service(
+            Trigger, '/navigation/stop', self.on_stop_navigation,
+            callback_group=group)
         self.create_timer(5.0, self.publish_state, callback_group=group)
         self.publish_state()
         self.get_logger().info('session_manager ready: IDLE (no map publisher)')
@@ -127,6 +145,23 @@ class SessionManager(Node):
             except Exception as exc:
                 self.get_logger().error(f'cannot list waypoints: {exc}')
         self._waypoint_pub.publish(String(data='\n'.join(waypoint_names)))
+        self._publish_navigation_state()
+
+    def _publish_navigation_state(self):
+        state = 'NAVIGATING' if self._navigation_active else 'IDLE'
+        self._navigation_pub.publish(String(data=state))
+
+    def on_navigation_status(self, message):
+        active_states = {
+            GoalStatus.STATUS_ACCEPTED,
+            GoalStatus.STATUS_EXECUTING,
+            GoalStatus.STATUS_CANCELING,
+        }
+        active = any(
+            status.status in active_states for status in message.status_list)
+        if active != self._navigation_active:
+            self._navigation_active = active
+            self._publish_navigation_state()
 
     def _result(self, response, action):
         try:
@@ -148,6 +183,7 @@ class SessionManager(Node):
 
     def _start_mapping(self, name):
         self._sessions.start_mapping(name)
+        self._navigation_active = False
         return f'mapping started: {self._sessions.world}/{name}'
 
     def on_stop_mapping(self, _request, response):
@@ -155,6 +191,7 @@ class SessionManager(Node):
 
     def _stop_mapping(self):
         path = self._sessions.stop_mapping(self._save_map)
+        self._navigation_active = False
         return f'map saved and mapping stopped: {path}.yaml'
 
     def on_load_map(self, _request, response):
@@ -163,6 +200,7 @@ class SessionManager(Node):
 
     def _load_map(self, name):
         self._sessions.load_map(name)
+        self._navigation_active = False
         return f'localization started: {self._sessions.world}/{name}'
 
     def on_restart_simulation(self, _request, response):
@@ -171,6 +209,7 @@ class SessionManager(Node):
 
     def _restart_simulation(self, world):
         self._sessions.restart_simulation(world)
+        self._navigation_active = False
         return f'simulation restarted: {world}; navigation is IDLE'
 
     def on_save_waypoint(self, _request, response):
@@ -184,6 +223,25 @@ class SessionManager(Node):
     def on_delete_waypoint(self, _request, response):
         name = self.get_parameter('waypoint_name').value
         return self._result(response, lambda: self._waypoints.delete(name))
+
+    def on_stop_navigation(self, _request, response):
+        return self._result(response, self._stop_navigation)
+
+    def _stop_navigation(self):
+        if not self._navigation_active:
+            return 'navigation is already idle'
+        if not self._cancel_navigation_client.wait_for_service(timeout_sec=2.0):
+            raise RuntimeError('Nav2 navigation cancel service is unavailable')
+        done = threading.Event()
+        future = self._cancel_navigation_client.call_async(CancelGoal.Request())
+        future.add_done_callback(lambda _future: done.set())
+        if not done.wait(timeout=SERVICE_TIMEOUT_S):
+            raise RuntimeError('stopping navigation timed out')
+        result = future.result()
+        if result is None or result.return_code != CancelGoal.Response.ERROR_NONE:
+            code = 'no response' if result is None else result.return_code
+            raise RuntimeError(f'stopping navigation failed: result={code}')
+        return 'navigation stop requested'
 
     def _lookup_pose(self):
         try:
