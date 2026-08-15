@@ -20,6 +20,8 @@ Quick Actions keeps Stop Robot. Stop Robot publishes zero manual velocity and al
 
 Robot Control adds configurable `navigationStateTopic` and keeps `navigationStopService`, with defaults `/navigation/state` and `/navigation/stop`.
 
+When loading a saved version-2 panel configuration, an empty legacy `navigationStopService` migrates to the version-3 default. An explicitly empty value saved by version 3 remains empty, so operators can still disable the service.
+
 ## 3D visibility cleanup
 
 - Show `/map`, `/robot_description`, `/scan`, `/plan`, and `/local_plan`.

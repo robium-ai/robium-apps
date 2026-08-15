@@ -12,7 +12,7 @@ npm run lint
 npm run package
 ```
 
-The package command creates `robium.robot-control-0.7.0.foxe`. In Lichtblick Web, drag the `.foxe` onto
+The package command creates `robium.robot-control-0.7.1.foxe`. In Lichtblick Web, drag the `.foxe` onto
 the viewer (or open it with the file picker), confirm installation, and add **Robium Robot Control →
 robot-control** to a layout. Browser installation is stored in IndexedDB for that browser origin.
 

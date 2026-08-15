@@ -38,6 +38,7 @@
 - [x] Replace the Waypoints heading with Navigation status and Stop navigation.
 - [x] Keep the waypoint controls in the same card below the status controls.
 - [x] Configure Stop Robot to cancel navigation through the now-default stop service.
+- [x] Migrate a legacy version-2 empty stop service to the version-3 default.
 
 ### Task 3: Clean visibility and ship version 0.7.0
 

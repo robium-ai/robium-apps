@@ -100,7 +100,7 @@ make control-extension
 ```
 
 The command prints the absolute path to
-`shared/lichtblick-robot-control/robium.robot-control-0.7.0.foxe`. That artifact
+`shared/lichtblick-robot-control/robium.robot-control-0.7.1.foxe`. That artifact
 remains reusable in other Lichtblick projects: drag it onto another project's
 browser viewer (or use Lichtblick's file picker) and confirm installation once
 for that browser origin. Indoor-navigation's committed layout supplies its ROS

@@ -82,8 +82,19 @@ export function normalizeConfig(value: unknown): PanelConfig {
     return { ...DEFAULT_CONFIG };
   }
   const candidate = value as Record<string, unknown>;
+  const candidateVersion =
+    typeof candidate.version === "number" && Number.isFinite(candidate.version)
+      ? candidate.version
+      : 0;
   const config = { ...DEFAULT_CONFIG };
   for (const key of stringKeys) {
+    if (
+      key === "navigationStopService" &&
+      candidateVersion < 3 &&
+      candidate[key] === ""
+    ) {
+      continue;
+    }
     if (typeof candidate[key] === "string") {
       (config[key] as string) = candidate[key];
     }

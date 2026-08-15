@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.1 - 2026-08-14
+
+- Migrate the legacy empty navigation-stop setting to `/navigation/stop` when loading version-2 panel state.
+
 ## 0.7.0 - 2026-08-14
 
 - Merge waypoint controls into a Navigation card with live goal status.
