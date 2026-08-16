@@ -1,190 +1,189 @@
-# indoor-navigation
+# Indoor Navigation
 
-A robot explores a world it has never seen, builds a map of it, then drives
-itself to any goal you click — the classical autonomous-navigation pipeline
-(SLAM → save the map → localize → plan → drive), running entirely in
-simulation on a laptop. No GPU, no robot, no ROS installation on your
-machine. The portable path runs headless inside one Docker image; Apple
-Silicon Macs can also run the same ROS/Gazebo stack from an app-local
-Pixi/RoboStack environment with a native Metal-rendered Gazebo window.
+Run a complete mobile robot navigation stack on a laptop. TurtleBot3 Waffle Pi
+maps a simulated environment, localizes on saved maps, plans around obstacles,
+and drives to goals through a browser control panel.
 
-**Stack:** ROS 2 Jazzy · Nav2 · slam_toolbox · Gazebo Harmonic · TurtleBot 3
-· Docker or Pixi/RoboStack · Lichtblick
+No GPU, physical robot, or local ROS installation is required.
 
-## What you'll see
+**Stack:** ROS 2 Jazzy, Nav2, slam_toolbox, Gazebo Harmonic, TurtleBot3,
+Docker, and Lichtblick.
 
-- **SLAM:** the robot drives a route while slam_toolbox builds an occupancy
-  map from lidar in real time.
-- **Autonomous navigation:** Nav2 localizes on the saved map (AMCL), plans a
-  path around obstacles, and drives goals — sent programmatically or by
-  clicking in Foxglove.
-- Native Gazebo on Apple Silicon, or headless simulation in Docker, with live
-  map/laser/path visualization in the browser.
+> **Media placeholder:** Add a hero image and short demo GIF in a separate pass.
 
-## Native macOS (Apple Silicon)
+## What you can do
 
-The native path opens Gazebo for the simulator scene and Lichtblick for ROS
-state, navigation goals, and the robot-mounted camera. It
-does not install Homebrew packages or a system ROS distribution.
+- Map the House or Warehouse simulation.
+- Save maps and load them for localization.
+- Save the robot's current pose as a named waypoint.
+- Navigate to saved waypoints or goals selected in the 3D view.
+- Cancel navigation or stop robot motion from the Dashboard.
+- Watch the camera, map, lidar, global plan, local plan, and ROS logs.
+
+## Quick start
+
+Install Docker Desktop or another Docker environment with Compose v2, then run:
 
 ```bash
-make native-setup  # one-time app-local dependency + viewer install
-make demo-native   # build, launch Gazebo + Lichtblick, stay in foreground
-```
-
-Press Ctrl-C to stop the owned process group. If a terminal was interrupted
-before cleanup, run `make native-down`. All generated state remains under
-`experiments/native-macos/` and is ignored by Git. This path supports macOS
-arm64; use Docker for portable and Cloud Run-compatible execution.
-
-## Docker prerequisites
-
-- Docker (Desktop or compatible). Apple Silicon and other arm64 hosts work
-  out of the box; the image is built from `ros:jazzy-ros-base-noble`.
-- A browser. No local ROS, no display server, no accounts needed.
-
-## Docker: run the app
-
-```bash
-make build   # one-time image build (about 10 min cold)
-make run     # simulator + interactive control panel
-```
-
-Then open http://localhost:8080. The viewer (Lichtblick, the open-source
-Foxglove fork bundled in the image) includes the robot camera, 3D map, ROS
-logs, and Dashboard. The app starts in IDLE; start mapping or load a saved
-map from the control panel. Ctrl-C stops the foreground process.
-
-This is byte-for-byte the same container that powers the live demo at
-robium.ai/demos/nav-trial: same simulation, same Nav2 stack, same viewer.
-
-Note: nav goals are map-frame — the SLAM map origin is the robot's start
-pose, so world (-2.0, -0.5) = map (0, 0).
-
-## Commands
-
-Run `make help` to see the standard Make commands and their equivalent
-`robium app` commands. The lifecycle vocabulary is `help`, `doctor`, `build`,
-`run`, `status`, `logs`, and `stop`.
-
-- `make doctor` — diagnose Docker, Compose, ports 8080/8765, and image status
-- `make status` — show running services and dashboard endpoints
-- `make logs` — follow Docker, Gazebo, ROS, and viewer process output
-- `make stop` — stop all application services
-
-Advanced modes remain available: `make sim` runs simulation only;
-`make slam` rebuilds a map through the scripted route; `make nav` starts raw
-navigation without demo initialization; and `make demo` runs the autonomous
-hosted-demo flow locally.
-
-### Use the default control panel
-
-The mapping layout reserves its right 24% for the shared **Robium Dashboard**
-Lichtblick extension across the full dashboard height. On the left, the camera
-and 3D map share the top row and ROS logs span the bottom row. The log area has
-**All**, **Navigation**, and **Mapping & App** tabs; the grouped tabs filter the
-shared `/rosout` stream by node name. The Docker image builds and preinstalls
-the extension automatically; there is no drag-and-drop installation step for
-indoor-navigation.
-
-Start the control panel:
-
-```bash
+cd indoor-navigation
+make doctor
+make build
 make run
 ```
 
-Open http://localhost:8080. The right rail should immediately show Dashboard
-with WASD, mapping, map-loading, named waypoints, and Stop Robot.
-The 3D map draws the global Nav2 plan in cyan and the local controller plan
-in orange. To
-prove the default works independently of any previous browser installation,
-open http://127.0.0.1:8080 in a private window; that is a clean browser origin.
+Open http://localhost:8080. The app starts in **IDLE** with Gazebo and the
+robot running. SLAM and Nav2 start only when you begin mapping or load a map.
 
-To rebuild the reusable extension package, run:
+The first image build can take about 10 minutes. Later runs reuse that image,
+so you only need to rebuild after changing the app, Dashboard, dependencies,
+or simulation assets. Press Ctrl-C to stop a foreground run, or use
+`make stop` from another terminal.
+
+## Use the Dashboard
+
+The default layout places the camera and 3D view across the top, ROS logs at
+the bottom, and the Robium Dashboard on the right.
+
+### Create a map
+
+1. Choose **House** or **Warehouse** in Simulation. House is the default.
+2. Enter a map name.
+3. Select **Start mapping**.
+4. Drive with WASD, the arrow keys, or the movement buttons.
+5. Select **Finish mapping** to save the map and return to IDLE.
+
+Changing the simulation stops the active mapping or localization session. Maps
+are kept separate for each environment.
+
+### Navigate and use waypoints
+
+1. Select a saved map and choose **Load & localize**.
+2. Set the robot's initial pose in the 3D view if localization needs it.
+3. Enter a waypoint name and choose **Save position**.
+4. Use **Navigate** beside a waypoint, or send a goal from the 3D view.
+
+The Navigation section reports **Navigating** while a Nav2 goal is active.
+**Stop navigation** cancels that goal. **Stop robot** also sends zero velocity,
+but it is not a certified emergency stop.
+
+### Read the visualization
+
+- The global Nav2 plan is cyan.
+- The local controller plan is orange.
+- Log tabs show **All**, **Navigation**, and **Mapping & App** messages from
+  `/rosout`.
+
+If a plan is missing, open the 3D panel settings and confirm its topic is
+visible. A plan appears only after Nav2 receives a goal and publishes one.
+
+## Commands
+
+Run `make help` for the current command list and equivalent `robium app`
+commands.
+
+| Command | Purpose |
+| --- | --- |
+| `make doctor` | Check Docker, Compose, ports, and image status |
+| `make build` | Build the application image |
+| `make run` | Start the simulator and control panel |
+| `make status` | Show running services and URLs |
+| `make logs` | Follow application logs |
+| `make stop` | Stop application services |
+
+Advanced modes are available for focused workflows:
+
+| Mode | Purpose |
+| --- | --- |
+| `make sim` | Run the headless simulation without SLAM or Nav2 |
+| `make slam` | Run the scripted mapping route and save a map |
+| `make nav` | Start navigation on a saved map |
+| `make demo` | Run the autonomous hosted-demo flow locally |
+
+## Local data and shared assets
+
+Saved maps and waypoint sidecars are local, untracked files. Waypoints are
+stored beside their map as `<map>.waypoints.json`. The app never promotes or
+deletes them automatically.
+
+House and Warehouse are registered in the repository-wide asset catalog as
+`world.aws-small-house` and `world.tugbot-warehouse`. Their source revisions,
+checksums, entrypoints, and licenses are tracked under `shared/assets/`; large
+payloads are downloaded during the image build. House uses the MIT-licensed
+AWS RoboMaker Small House. Warehouse uses an upstream CC BY-NC-ND 4.0 asset,
+so review its license before reuse.
+
+## How it works
+
+```text
+Gazebo sensors and motion
+          |
+          v
+ROS 2 + slam_toolbox + Nav2
+          |
+          v
+foxglove_bridge and app services
+          |
+          v
+Lichtblick + Robium Dashboard
+```
+
+The main workflow runs in one container. This avoids DDS multicast routing
+problems across Docker containers on macOS. The image also bundles Lichtblick
+and the Dashboard extension, so no manual extension installation is needed.
+
+See [docs/architecture-brief.md](docs/architecture-brief.md) for the full
+architecture and design decisions.
+
+## Reuse the Dashboard
+
+The Robium Dashboard is a configurable Lichtblick extension shared across
+Robium apps. Other projects can install its `.foxe` package, enable the needed
+sections, configure their ROS interfaces, and commit the resulting Lichtblick
+layout.
+
+Build the extension package with:
 
 ```bash
 make dashboard-extension
 ```
 
-The command prints the absolute path to
-`shared/lichtblick-dashboard/robium.dashboard-0.9.0.foxe`. That artifact remains
-reusable in other Lichtblick projects: drag it onto another project's browser
-viewer (or use Lichtblick's file picker) and confirm installation once for that
-browser origin. Indoor-navigation's committed layout enables the full set of
-Dashboard sections, supplies House and Warehouse, and configures its ROS
-interfaces automatically. Other apps can use the same package with only
-Movement and Stop Robot or enable richer sections in their own layout.
+See [shared/lichtblick-dashboard/README.md](../shared/lichtblick-dashboard/README.md)
+for installation, configuration, customization, and safety details.
 
-The panel starts in **IDLE**: Gazebo and the robot are running, but SLAM,
-map_server, AMCL, Nav2, and `/map` are not. **Start mapping** launches SLAM and
-Nav2 for the entered name, locks that name, and changes to **Finish mapping**.
-Finish mapping saves it beneath the selected world and tears that stack down;
-**Load & localize** launches map_server, AMCL,
-and Nav2 for a saved map. Only one navigation mode can run at a time.
+## Native macOS and external viewers
 
-The **Navigation** card reports **Navigating** while any Nav2 goal is active,
-whether it came from a saved waypoint or the 3D map. **Stop navigation**
-cancels that goal and is disabled while navigation is idle.
+Apple Silicon Macs can run the ROS and Gazebo stack from an app-local
+Pixi/RoboStack environment:
 
-After **Load & localize**, enter a waypoint name and choose **Save position**
-to capture the robot's current map-frame position and heading. Saved waypoints
-for that map appear alphabetically with **Navigate** and **Delete** actions.
-Navigate confirms that Nav2 received the stored goal; it does not claim the
-robot has arrived. Waypoints are local per-map sidecars named
-`<map>.waypoints.json` beside user-saved maps and are not committed by default.
+```bash
+make native-setup
+make demo-native
+```
 
-The compact Simulation card offers **House** and **Warehouse**. House is the
-default and uses the MIT-licensed AWS RoboMaker Small House asset. Warehouse
-uses OpenRobotics Tugbot in Warehouse version 2, whose upstream license is the
-restrictive CC BY-NC-ND 4.0. Both worlds are registered centrally as
-`world.aws-small-house` and `world.tugbot-warehouse` under `shared/assets/`.
-Their manifests, immutable sources, SHA-256 digests, entrypoints, and licenses
-are tracked; large payloads remain outside Git and are materialized into the
-image during the build. Restarting a world stops any mapping/localization
-session and returns to IDLE. Maps remain grouped under the stable internal
-world names, so only maps created for the active environment appear in the
-list.
+Use `make native-down` after an interrupted native session. Generated native
+state stays under `experiments/native-macos/` and is ignored by Git.
 
-TurtleBot3 Waffle Pi is the single controllable robot in both environments.
-Its wider 0.15 m navigation radius, lidar, IMU, odometry, and pinhole camera
-are used consistently by Gazebo, Nav2, and the dashboard. The Tugbot already
-present in Warehouse remains part of the environment rather than a second
-controllable robot.
+To use another Foxglove-compatible viewer, connect it to
+`ws://localhost:8765` while the app is running.
 
-Movement supports held WASD/arrow controls and adjustable forward/turn speed.
-Stop Robot sends zero velocity and cancels active navigation; it is not a
-hardware emergency stop.
+## Troubleshooting
 
-External viewers still work too: with any scenario running, connect
-Foxglove or a local Lichtblick to `ws://localhost:8765` (during `make demo`
-the same port serves both the viewer and the WebSocket). The committed
-layout for that flow is `foxglove/indoor-navigation-layout.json`.
+- Run `make doctor` before the first build or after changing Docker settings.
+- Run `make status` to confirm the app and dashboard endpoint are running.
+- Run `make logs` to inspect Gazebo, ROS, bridge, and viewer output.
+- Rebuild if source, dependencies, Dashboard code, or simulation assets changed.
+- Use a private browser window at http://127.0.0.1:8080 to rule out saved
+  Lichtblick settings from another session.
 
-## How it's put together
+## More documentation
 
-- Architecture and design rationale: `docs/architecture-brief.md`
-- The demo image bundles the Lichtblick web viewer; the gateway serves it
-  on :8765 alongside the Foxglove WebSocket tunnel and session API.
-- One Docker image; compose profiles are the scenarios (sim / slam / nav /
-  mapping / demo). All nodes of a scenario run in ONE container — macOS hosts
-  can't route DDS multicast across containers.
-- `make build` uses an explicit service name (`docker compose build sim`) —
-  a bare `compose build` builds nothing when every service is behind a
-  profile.
-- Map regeneration currently writes `src/indoor_nav_bringup/maps/` through the
-  existing compose volume. Those local maps and waypoint sidecars are
-  untracked and are not promoted automatically. `data/maps/` is reserved as
-  the future writable boundary; the mount will switch only after selected
-  local maps have been copied and verified without removing the originals.
-- A reusable map is promoted deliberately into `shared/assets/maps/` with its
-  world, robot, generation method, license, and file roles recorded. Shared
-  vendored assets are limited to 5 MiB each and 25 MiB total.
-- The SLAM run is bounded by `SLAM_TIMEOUT` (default 900) inside the container.
+- [Architecture brief](docs/architecture-brief.md)
+- [Project case study](docs/case-study.md)
+- [Shared asset catalog](../shared/assets/README.md)
+- [Robium Dashboard](../shared/lichtblick-dashboard/README.md)
 
-## Live demo (maintainers)
+## Live demo deployment
 
-`make demo-image` + `make demo-deploy` push the demo to
-Cloud Run (`demo-nav-trial`, robium-prod, per-visitor instances, GZ_RELAY
-unicast discovery), where robium.ai/demos/nav-trial hands each visitor a
-private instance and embeds the instance-served viewer. Requires robium
-GCP credentials — not needed for anything else in this app.
+Maintainers can build and deploy the hosted demo with `make demo-image` and
+`make demo-deploy`. This requires access to the Robium Google Cloud project and
+is not part of the local setup.

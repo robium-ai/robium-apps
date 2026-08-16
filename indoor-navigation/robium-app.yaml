@@ -54,9 +54,7 @@ requirements:
   network: optional
 
 assets:
-  worlds:
-    - world.aws-small-house
-    - world.tugbot-warehouse
+  worlds: [world.aws-small-house, world.tugbot-warehouse]
   maps: []
 
 demo:

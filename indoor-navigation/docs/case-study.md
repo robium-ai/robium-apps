@@ -1,300 +1,306 @@
 ---
-title: What it took to make Nav2 reliable on a Mac
-summary: The integration failures we found while building native and containerized SLAM-to-navigation loops with ROS 2 Jazzy, Gazebo Harmonic, and TurtleBot 3.
-kind: engineering-story
-voice: team
+title: Build an indoor navigation app with ROS 2, Nav2, and Gazebo
+summary: Map a simulated home, save robot waypoints, and send navigation goals from a browser dashboard.
+collection: blog
+category: tutorial
+kind: tutorial
+voice: technical
 author: Robium team
 audience: robotics-developer
 level: intermediate
 app: indoor-navigation
-date: 2026-08-06
-tested: 2026-08-03
-tags: [ros2, nav2, gazebo, slam, docker]
+date: 2026-08-15
+tested: 2026-08-14
+tags: [ros2, nav2, gazebo, slam, visualization]
 hero: assets/trailer.gif
-hero_alt: Simulated TurtleBot 3 driving to a selected goal in the browser viewer (simulation footage)
+hero_alt: Simulated TurtleBot3 Waffle Pi navigating through an indoor environment in the browser dashboard
 featured: true
 ---
 
-The first version of this application looked healthy. Gazebo was running,
-the browser showed a map and a laser scan, and Nav2 could draw a path to a
-goal. The robot did not move.
+A TurtleBot3 drives through a simulated home while its lidar fills in an
+occupancy map. When the map is ready, the same browser panel can load it, save
+the robot's current position as a waypoint, and ask Nav2 to drive back there.
 
-That gap became the useful part of the project. We were building a small,
-reproducible navigation application: map a simulated indoor world, save the
-map, restart with localization, and send the robot to known positions. The
-software was familiar—ROS 2 Jazzy, Gazebo Harmonic, `slam_toolbox`, AMCL,
-and Nav2—but several boundaries between those pieces were easy to get almost
-right.
+This tutorial runs that complete workflow on a laptop. Gazebo simulates the
+robot and environment. ROS 2 carries sensor data and commands. `slam_toolbox`
+builds the map, Nav2 handles localization and navigation, and Lichtblick shows
+the camera, map, plans, and logs.
 
-We ended up changing how SLAM was launched, how Nav2's lifecycle was managed,
-which velocity message reached Gazebo, and how scripted goals were expressed.
-None of the fixes involved tuning the planner.
+The project is simulation-only today. You do not need a physical robot, GPU,
+or system ROS installation.
 
-This is an account of those failures and the checks that now define whether
-the application works.
+## What you will run
 
-## The result we chose to run
+The application provides one interactive control panel for the main indoor
+navigation loop:
 
-The application now has two reproducible paths. On Apple Silicon, Pixi and
-RoboStack keep ROS 2 and Gazebo inside the app directory while Gazebo opens as
-a native window. On Linux, CI, and Cloud Run, Docker runs Gazebo headlessly
-through Mesa. Both paths use the bundled
-[Lichtblick](https://github.com/lichtblick-suite/lichtblick) viewer for ROS
-state and the TurtleBot's own camera feed.
+1. Start a TurtleBot3 Waffle Pi in the House or Warehouse environment.
+2. Drive the robot while SLAM builds a map.
+3. Save the map and load it for localization.
+4. Save the current robot pose as a named waypoint.
+5. Send a goal and watch Nav2 plan and drive.
 
-There are two related workflows:
+The default layout keeps the working views together. The camera and 3D scene
+share the top row, ROS logs sit below them, and the Robium Dashboard occupies
+the right side.
 
-1. The SLAM workflow drives a fixed route, builds an occupancy map from lidar
-   and odometry, and saves the map as PGM and YAML files.
-2. The navigation workflow loads that map, initializes AMCL, and sends two
-   goals through Nav2's `BasicNavigator` API.
+## Prerequisites
 
-The second workflow can be run directly:
+You need:
+
+- Docker Desktop or another Docker environment with Compose v2
+- A modern browser
+- The [Robium applications repository](https://github.com/robium-ai/robium-apps)
+
+Apple Silicon and other arm64 hosts are supported. The container includes ROS
+2 Jazzy, Gazebo Harmonic, Nav2, the browser viewer, and the application code.
+
+## Start the application
+
+Clone the repository, enter the app directory, and check the local setup:
 
 ```bash
-make nav
+git clone https://github.com/robium-ai/robium-apps.git
+cd robium-apps/indoor-navigation
+make doctor
 ```
 
-This runtime workflow matters because every layer before motion can appear
-healthy on its own:
+`make doctor` checks Docker, Compose, ports 8080 and 8765, and whether the
+application image already exists. It does not change the running system.
+
+Build the image once, then start the interactive app:
+
+```bash
+make build
+make run
+```
+
+The first build can take about 10 minutes. Later runs reuse the image unless
+the source, dependencies, Dashboard, or simulation assets changed.
+
+Open [http://localhost:8080](http://localhost:8080). The robot and Gazebo are
+already running, but the session starts in **IDLE**. There is no `/map` yet.
+Mapping and localization start only when you ask for them.
+
+## Create a map
+
+The Simulation section offers two environments:
+
+- **House** is the default and uses the AWS RoboMaker Small House.
+- **Warehouse** uses the Open Robotics Tugbot Warehouse environment.
+
+Choose an environment, enter a map name, and select **Start mapping**. The
+button changes to **Finish mapping** while the mapping session is active.
+
+Drive the robot with WASD, the arrow keys, or the movement buttons. The lidar
+scan appears in the 3D view and `slam_toolbox` updates the occupancy map as new
+space becomes visible. Use the speed sliders when narrow passages need slower
+motion.
+
+Try to observe walls from more than one angle and close the loop by returning
+near the starting area. A map built from one quick pass can look complete while
+still containing poor alignments or unexplored gaps.
+
+Select **Finish mapping** when the useful area is covered. The app saves the
+map under the selected environment, stops the mapping stack, and returns to
+IDLE. Only maps created for the active environment appear in the list.
+
+Saved maps are local files. They are deliberately untracked, and the app does
+not delete or publish them automatically.
+
+## Load the map and localize
+
+Select the saved map and choose **Load & localize**. This starts the map server,
+AMCL, and Nav2 against that map.
+
+AMCL needs an estimate of the robot's pose within the saved map. Use the 3D
+panel's initial-pose tool if the estimate is missing or incorrect. Set the
+position first, then drag the heading indicator in the direction the robot is
+facing.
+
+Before sending a goal, check three things in the 3D view:
+
+- the map is visible;
+- the laser scan lines up with nearby walls;
+- the robot model sits where you expect it on the map.
+
+If the scan is offset from the walls, correct the initial pose before changing
+Nav2 parameters. A planner cannot compensate for a robot localized in the
+wrong place.
+
+## Send a navigation goal
+
+Use the 3D panel's goal tool to select a reachable point and heading. Nav2
+creates a global route across the saved map, then the local controller adjusts
+that route around nearby obstacles while driving.
+
+The layout uses different colors for the two plans:
+
+- cyan for the global Nav2 plan;
+- orange for the local controller plan.
+
+The Navigation card reports **Navigating** while a goal is active. Select
+**Stop navigation** to cancel it. The button remains disabled while no goal is
+running.
+
+**Stop robot** publishes a zero velocity command and cancels active navigation.
+It is useful during simulation, but it is not a hardware emergency stop.
+
+## Save and reuse waypoints
+
+A waypoint records the robot's current map-frame position and heading. It does
+not record a point clicked elsewhere in the 3D view.
+
+With a map loaded and localization active:
+
+1. Drive or navigate the robot to the position you want to save.
+2. Enter a waypoint name.
+3. Select **Save position**.
+4. Select **Navigate** beside that waypoint to return to it later.
+
+Waypoints are listed alphabetically and can be deleted from the same card.
+They are stored per map in a local `<map>.waypoints.json` sidecar, so a kitchen
+waypoint from one map will not appear when another map is loaded.
+
+The Navigate action confirms that Nav2 received the stored pose. Watch the
+Navigation status and robot motion to confirm the run itself.
+
+## Use the logs and plans together
+
+The bottom panel provides three views of the shared `/rosout` stream:
+
+- **All** for the complete log;
+- **Navigation** for Nav2 and localization nodes;
+- **Mapping & App** for SLAM and application services.
+
+If the robot does not move, the visible layers help narrow the problem:
+
+- no map usually points to the session or map server;
+- no global plan points to localization, the goal, or the planner;
+- a global plan with no motion points farther down the command path;
+- a changing local plan with repeated stops often points to sensors, costmaps,
+  or collision monitoring.
+
+The 3D visibility settings are stored in the Lichtblick layout. If a plan is
+missing, confirm its topic is visible before treating it as a Nav2 failure. A
+plan also exists only after Nav2 receives a goal and publishes one.
+
+## What is running underneath
+
+The application keeps the data path conventional:
 
 ```text
-lidar + odometry
-       |
-       v
-slam_toolbox ---> saved occupancy map
-                          |
-                          v
-                   AMCL localization
-                          |
-                          v
-goal ---> planner ---> controller ---> /cmd_vel ---> simulated robot
+Gazebo sensors and motion
+          |
+          v
+ROS 2 + slam_toolbox + Nav2
+          |
+          v
+foxglove_bridge + app services
+          |
+          v
+Lichtblick + Robium Dashboard
 ```
 
-A visible map proves that sensing works. A visible path proves that planning
-works. Neither proves that a velocity command reaches the robot.
+Gazebo publishes lidar, odometry, IMU, camera, and transform data for the
+TurtleBot3 Waffle Pi. During mapping, `slam_toolbox` turns lidar and odometry
+into an occupancy map. During localization, AMCL estimates the robot pose on a
+saved map. Nav2 plans a route and publishes velocity commands. The bridge makes
+ROS topics and services available to the browser.
 
-## Why we used a conventional stack
+The main workflow keeps these ROS processes in one container and network
+namespace. This avoids DDS multicast discovery problems across Docker
+containers on macOS. It also gives the project one portable image for local and
+hosted runs.
 
-We started with the desired behavior and the host constraints. A
-Robium-assisted architecture pass selected ROS 2 Jazzy, Gazebo Harmonic,
-Nav2, `slam_toolbox`, and the TurtleBot 3 Waffle Pi.
+The Dashboard is a reusable Lichtblick extension rather than app-specific
+HTML. This app enables mapping, navigation, waypoints, simulation, movement,
+and stop controls through its committed layout. Another application can use
+the same extension with a smaller set of sections and different ROS interface
+names.
 
-The choices were intentionally ordinary. This project was about integrating
-the standard navigation path, not evaluating planners or training a policy.
-Waffle Pi provides lidar, odometry, IMU, and a robot-mounted pinhole camera.
-Its 640×480 camera is deliberately limited to 10 Hz so the headless path stays
-practical while the native path still shows the robot's viewpoint. The
-TurtleBot packages supply the model, furnished-house geometry, and a useful
-starting configuration for Nav2.
+## Three lessons from the integration
 
-Docker remains the portable headless artifact, but it is no longer required
-for the interactive Apple Silicon experience. The native path uses a locked
-Pixi/RoboStack environment under `experiments/native-macos`; the Docker image
-contains the equivalent simulator, ROS packages, launch files, saved map,
-tests, and browser viewer. Compose profiles still expose simulation, SLAM,
-navigation, demo, and test scenarios.
+The interactive workflow hides a fair amount of plumbing. These three checks
+were more useful during development than immediately tuning the planner.
 
-For an interactive run, the public path is deliberately short:
+### A visible path does not prove the robot can move
 
-```bash
-make native-setup  # one time on Apple Silicon
-make demo-native
-```
-
-Gazebo and the viewer open automatically. The viewer shows the map, scan,
-transforms, costmaps, plan, and robot camera; Gazebo shows the furnished house
-and robot directly. `make build && make demo` remains the Docker equivalent.
-The footage above is simulation; the application has not been tested on a
-physical TurtleBot.
-
-## Failure 1: two processes owned SLAM
-
-Our initial SLAM launch combined two reasonable instructions:
-
-- start Nav2's bringup with `slam:=True`;
-- include `slam_toolbox`'s online asynchronous launch file.
-
-Together they were wrong. On Jazzy, that Nav2 bringup path already starts
-`slam_toolbox`. Adding the second launch created another SLAM node and another
-lifecycle owner. Goals then failed around lifecycle transitions and action
-server startup.
-
-The important question was not “which SLAM parameter is wrong?” but “who is
-responsible for starting this node?” There should be one answer.
-
-We chose to launch the navigation servers directly instead of continuing to
-wrap the stock bringup. That decision also solved two constraints elsewhere in
-the application:
-
-- the stock navigation launch fixes lifecycle-manager settings that we needed
-  to control for Docker Desktop;
-- package-share substitutions in the TurtleBot parameter file needed
-  `ParameterFile(..., allow_substs=True)` to resolve before reaching a node.
-
-The resulting launch files are longer than a stock include. They are also
-explicit: every server appears once, the velocity remappings are visible, and
-one lifecycle manager receives the complete node list.
-
-This is not a general argument against `nav2_bringup`. It is a useful default.
-For this application, direct composition became simpler once we needed to
-change behavior hidden inside that default.
-
-## Failure 2: a VM pause looked like a dead Nav2 server
-
-During activation and the first goal, Docker Desktop sometimes paused the
-container long enough for the lifecycle manager to miss bond heartbeats. It
-then reported a critical server failure even though the server had not
-actually crashed.
-
-The observed pause was around eight seconds. That exceeded the configured
-bond timeout, so a host scheduling delay was interpreted as a failed ROS
-process.
-
-Because the application owns its lifecycle manager, its simulation launch can
-set:
-
-```python
-{
-    'autostart': True,
-    'bond_timeout': 0.0,
-    'node_names': lifecycle_nodes,
-}
-```
-
-Setting `bond_timeout` to zero disables bond checking. That trade-off is
-acceptable for this single-container demo: if a server really exits, the
-launch system can respawn it, although a respawned lifecycle node returns
-unconfigured and is not automatically reactivated. It would be the wrong
-default for a physical robot, where losing a navigation server must be
-detected and handled safely.
-
-The broader lesson was to inspect the layer below the reported failure. A
-lifecycle error can be caused by lifecycle configuration, but it can also be
-the first visible symptom of the runtime pausing underneath it.
-
-## Failure 3: `/cmd_vel` existed, but its endpoints disagreed
-
-Once the stack stayed active, Nav2 accepted a goal and produced a path. The
-robot remained still because the two ends of `/cmd_vel` used different ROS
-message types.
-
-The TurtleBot 3 Gazebo integration on this Jazzy setup subscribes to
-`geometry_msgs/TwistStamped`. A publisher using `geometry_msgs/Twist` can use
-the same topic name without ever matching that subscriber. ROS does not
-convert one type into the other, and the absence of a connection is easy to
-miss in a busy launch log.
-
-This command made the mismatch visible:
+Nav2 can accept a goal and draw a valid plan even when its velocity publisher
+does not connect to the simulated robot. Inspect both ends of the command topic
+inside the ROS environment:
 
 ```bash
 ros2 topic info -v /cmd_vel
 ```
 
-It reports the type and QoS information for each publisher and subscriber,
-which is more useful here than checking that the topic merely exists.
-
-The project configuration enables stamped velocity commands in every Nav2
-component that may publish them:
+The output shows publisher and subscriber message types and QoS settings. In
+this application, the Gazebo integration expects
+`geometry_msgs/msg/TwistStamped`. The Nav2 components that publish velocity
+commands therefore use:
 
 ```yaml
 enable_stamped_cmd_vel: true
 ```
 
-That includes the controller, velocity smoother, behavior server, collision
-monitor, and docking server. Applying the setting only to the main controller
-would leave recovery or safety behavior on a different interface.
+A topic name by itself is not a contract. The type and QoS must also match.
 
-The collision monitor exposed a second issue on the same command path. The
-simulated TurtleBot lidar publishes at about 5 Hz, one scan every 0.2 seconds.
-The starting configuration also treated a source as stale after 0.2 seconds.
-Normal timing variation was therefore enough to reject a valid scan and stop
-the robot. The application gives the scan source a one-second timeout:
+### Sensor timing needs margin
+
+The simulated lidar publishes at about 5 Hz, or one scan every 0.2 seconds. A
+collision-monitor timeout set to the same 0.2 seconds treated ordinary timing
+variation as stale data and stopped the robot. This application uses:
 
 ```yaml
 source_timeout: 1.0
 ```
 
-The value is a project setting, not a recommended universal default. What
-matters is leaving real margin above the expected sensor period.
+That value belongs to this simulation. The reusable rule is to measure the
+sensor period and leave real margin in freshness checks.
 
-## Failure 4: Gazebo and the saved map had different origins
+### World coordinates are not map coordinates
 
-The last problem appeared in scripted navigation. We selected goal
-coordinates from the Gazebo world, sent them in the `map` frame, and saw the
-same positional offset on every attempt.
+Gazebo places the robot in a simulation world frame. SLAM creates a map frame
+from the robot's mapping start pose. A location copied from Gazebo is therefore
+not automatically a valid Nav2 goal.
 
-The robot spawns at `(-2.0, -0.5)` in Gazebo. For this mapping run,
-`slam_toolbox` established the map origin at that starting pose. The same
-point was therefore `(0.0, 0.0)` in the saved map:
+For one of the project's mapping runs, the Gazebo start pose `(-2.0, -0.5)`
+became `(0.0, 0.0)` in the saved map:
 
 ```text
-Gazebo world                 saved map
-
-(-2.0, -0.5)      <---->    (0.0, 0.0)
-
 map_x = world_x + 2.0
 map_y = world_y + 0.5
 ```
 
-The saved map retains that frame convention. Clicking a goal in the viewer
-naturally gives a map-frame pose, but code that starts with world coordinates
-must convert them. The application records that conversion beside the default
-goals in `send_goals.py` instead of leaving it as unexplained numbers.
+Goals selected in the 3D map already use the map frame. Scripts that begin
+with world coordinates must perform the conversion explicitly.
 
-This also changed our debugging order. Before adjusting a costmap or planner,
-we now check that the full `map -> odom -> base_link` transform exists, that
-timestamps use the same clock, and that a goal is expressed in the frame named
-in its header.
+## Stop and inspect the app
 
-## Why the scenarios share one container
+Press Ctrl-C in the `make run` terminal, or stop the services from another
+terminal:
 
-We initially considered splitting simulation, navigation, and visualization
-into separate containers. On Docker Desktop for macOS, DDS discovery across
-those container boundaries added another source of uncertainty. We did not
-need that separation for one simulated robot, so each scenario now keeps its
-ROS processes in a single container and network namespace.
+```bash
+make stop
+```
 
-This choice is narrow rather than architectural doctrine. A native Linux
-deployment, multiple robots, or independently deployed services would justify
-revisiting the transport and container boundaries. Here, one container made
-local behavior repeatable and produced one artifact for the hosted demo.
+Useful lifecycle commands include:
 
-## What the navigation run exercises
+```bash
+make status
+make logs
+make help
+```
 
-The goal sender used by the navigation scenario:
+`make help` also prints the equivalent `robium app` commands.
 
-1. publishes the initial pose AMCL needs before it can establish
-   `map -> odom`;
-2. waits for Nav2 to become active;
-3. sends the two map-frame goals `(3.7, 0.5)` and `(0.3, 0.5)` in sequence;
-4. requires `TaskResult.SUCCEEDED` for each goal;
-5. reports timeout or any other result at runtime.
+The source is available in the
+[indoor-navigation application](https://github.com/robium-ai/robium-apps/tree/main/indoor-navigation).
+The repository also contains the full
+[architecture brief](https://github.com/robium-ai/robium-apps/blob/main/indoor-navigation/docs/architecture-brief.md)
+and the reusable
+[Robium Dashboard](https://github.com/robium-ai/robium-apps/tree/main/shared/lichtblick-dashboard).
 
-This is a development scenario for observing behavior, not an automated test
-or release gate. Failures are diagnosed from the running system when they
-occur.
-
-## The debugging order we kept
-
-The failures arrived from different parts of the stack, but they left us with
-a useful order of operations:
-
-1. Confirm that `/clock` advances and every simulated node uses simulation
-   time.
-2. Confirm there is exactly one owner for SLAM and one lifecycle manager for
-   the intended navigation servers.
-3. Set AMCL's initial pose and verify `map -> odom -> base_link` before tuning
-   navigation.
-4. Inspect both endpoints of `/cmd_vel`, including message types and QoS.
-5. Compare sensor periods with freshness and watchdog timeouts.
-6. Express every scripted pose in the frame named in its message header.
-7. Run an end-to-end behavioral test, not just process and topic checks.
-
-Most of our time on this application was spent at interfaces: launch ownership,
-runtime timing, message contracts, and coordinate frames. Once those were
-consistent, the conventional Nav2 stack did the conventional job we selected
-it for.
-
-The application source, launch files, saved map, and smoke test are available
-in the [Robium applications repository](https://github.com/robium-ai/robium-apps/tree/main/indoor-navigation).
+This project currently proves the workflow in simulation with one TurtleBot3
+Waffle Pi. Connecting the same control surface to a physical robot will require
+separate work on hardware interfaces, networking, safety, and configuration.
