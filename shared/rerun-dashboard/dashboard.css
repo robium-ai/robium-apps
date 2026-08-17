@@ -1,0 +1,228 @@
+/* robium workspace shell for Gradio + Rerun demo apps.
+ *
+ * Palette and bar geometry are deliberately identical to robium-website's
+ * src/components/demo/robot-navigation/robot-navigation.css, so a visitor
+ * moving between a ROS demo (Lichtblick) and a learning demo (Rerun) sees
+ * one product rather than two. Change them together or not at all.
+ */
+
+:root {
+  --rd-bg: #090c12;
+  --rd-panel: #0e131b;
+  --rd-sunken: #06080d;
+  --rd-line: rgba(255, 255, 255, 0.13);
+  --rd-ink: #f7f8fa;
+  --rd-muted: #aab1bf;
+  --rd-accent: #2563eb;
+  --rd-accent-hover: #1d4ed8;
+  --rd-ok: #4ade80;
+  --rd-warn: #fb923c;
+  --rd-boot: #60a5fa;
+  --rd-sans: 'Inter Variable', Inter, system-ui, sans-serif;
+  --rd-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --rd-rail: 360px;
+  --rd-bar-h: 62px;
+}
+
+/* --- kill the page scroll -------------------------------------------------
+ * Gradio nests the app several levels deep and every level defaults to auto
+ * height with its own max-width, so a lone height:100% on the leaf does
+ * nothing. The chain Gradio 6.20 actually emits, verified in the DOM:
+ *
+ *   gradio-app > .gradio-container > .main > .wrap > main.contain > div.column
+ *
+ * `.main` carries `max-width: 1280px` (that is what insets the top bar), and
+ * the trailing unclassed `div.column` is Gradio's implicit root column — it
+ * is easy to miss and, left unpinned, is enough on its own to reintroduce a
+ * scrollbar. Every level below needs height, zero padding, and no max-width.
+ */
+html, body { height: 100%; margin: 0; overflow: hidden; }
+gradio-app { display: block; height: 100%; overflow: hidden; background: var(--rd-bg); }
+gradio-app .gradio-container {
+  width: 100% !important;
+  max-width: none !important;
+  height: 100dvh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  background: var(--rd-bg) !important;
+  color: var(--rd-ink);
+  font-family: var(--rd-sans);
+}
+gradio-app .gradio-container > .main,
+gradio-app .main > .wrap,
+gradio-app .wrap > .contain,
+gradio-app .contain > .column {
+  display: flex !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  flex: 1 1 auto !important;
+  flex-direction: column !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  overflow: hidden !important;
+}
+/* Gradio's default footer ("Use via API", settings) would add a scroll. */
+gradio-app footer { display: none !important; }
+
+/* --- top bar (mirrors .rnd-bar) ------------------------------------------ */
+/* The bar is a gr.HTML block; Gradio pads and margins blocks by default. */
+/* No min-height reset here: `.rd-bar` is the direct child, and zeroing its
+   min-height collapses the bar to the height of its text (~29px). */
+gradio-app .rd-bar-host,
+gradio-app .rd-bar-host > * { flex: 0 0 auto !important; margin: 0 !important; padding: 0 !important; border: 0 !important; background: transparent !important; }
+.rd-bar {
+  display: grid;
+  min-height: var(--rd-bar-h);
+  flex: 0 0 auto;
+  grid-template-columns: 170px minmax(180px, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--rd-line);
+  background: rgba(9, 12, 18, 0.98);
+  font: 13px/1.35 var(--rd-sans);
+}
+.rd-brand { display: inline-flex; width: max-content; align-items: center; gap: 10px; color: var(--rd-ink) !important; text-decoration: none !important; }
+.rd-brand-word { color: var(--rd-ink); font: 400 25px/1 'Aldrich', system-ui, sans-serif; }
+.rd-health { display: flex; min-width: 0; align-items: center; gap: 10px; }
+.rd-health strong { font-size: 12px; letter-spacing: .06em; }
+.rd-health span { overflow: hidden; color: var(--rd-muted); text-overflow: ellipsis; white-space: nowrap; }
+.rd-dot { flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; background: #7d8492; }
+.rd-state-ready .rd-dot { background: var(--rd-ok); box-shadow: 0 0 0 4px rgba(74, 222, 128, .12); }
+.rd-state-booting .rd-dot { background: var(--rd-boot); box-shadow: 0 0 0 4px rgba(96, 165, 250, .12); }
+.rd-state-running .rd-dot { background: var(--rd-boot); box-shadow: 0 0 0 4px rgba(96, 165, 250, .12); }
+.rd-state-failed .rd-dot { background: var(--rd-warn); }
+.rd-meta { display: flex; justify-content: flex-end; align-items: center; gap: 14px; color: var(--rd-muted); font: 11px/1.4 var(--rd-mono); }
+.rd-meta code { color: var(--rd-muted); font: inherit; }
+
+/* --- split: viewer left, rail right ---------------------------------------
+ * Every flex declaration here needs !important: Gradio's own `.row`/`.column`
+ * classes set `flex: 1 1 0%`, so an un-forced `flex: 0 0 360px` on the rail
+ * loses its grow value and the rail eats the viewer's width.
+ */
+gradio-app .rd-split {
+  display: flex !important;
+  min-height: 0 !important;
+  height: auto !important;
+  flex: 1 1 auto !important;
+  flex-direction: row !important;
+  /* Gradio's Row emits `unequal-height` (align-items: flex-start) unless you
+     ask for equal height, which leaves the viewer at its intrinsic 566px
+     inside a 671px split — a dead band under the canvas that looks like a
+     rendering bug. The rail is unaffected because it sizes itself. */
+  align-items: stretch !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+gradio-app .rd-viewer {
+  display: flex !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  flex: 1 1 auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: var(--rd-sunken) !important;
+}
+/* The Rerun component's own wrappers stop at their intrinsic height. */
+gradio-app .rd-viewer > *,
+gradio-app .rd-viewer canvas,
+gradio-app .rd-viewer iframe { width: 100% !important; height: 100% !important; min-height: 0 !important; flex: 1 1 auto !important; border: 0 !important; }
+gradio-app .rd-rail {
+  display: flex !important;
+  width: var(--rd-rail) !important;
+  max-width: var(--rd-rail) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  flex: 0 0 var(--rd-rail) !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  overflow-y: auto !important;
+  padding: 0 !important;
+  border-left: 1px solid var(--rd-line);
+  background: var(--rd-panel) !important;
+}
+gradio-app .rd-section { flex: 0 0 auto !important; gap: 0 !important; padding: 16px 18px !important; border-bottom: 1px solid var(--rd-line); }
+/* Descendant, not child: gr.HTML wraps its markup in its own block div, so
+   `.rd-section > .rd-label` matches nothing and the heading silently falls
+   back to body sans. */
+.rd-section .rd-label { margin: 0 0 10px; color: #8a93a3; font: 500 10px/1.4 var(--rd-mono); letter-spacing: .13em; text-transform: uppercase; }
+.rd-note { margin: 10px 0 0; color: var(--rd-muted); font-size: 12px; line-height: 1.5; }
+.rd-note b { color: var(--rd-ink); font-weight: 620; }
+.rd-note code { color: var(--rd-ink); font: 11px var(--rd-mono); overflow-wrap: anywhere; }
+/* The log is the one thing allowed to scroll, and only inside itself. */
+.rd-log { flex: 1; min-height: 90px; }
+.rd-log textarea { height: 100% !important; background: var(--rd-sunken) !important; font: 11px/1.6 var(--rd-mono) !important; }
+
+/* --- Gradio widget restyling ----------------------------------------------
+ * Deliberately NOT restyling `label > span`: the sections carry their own
+ * `.rd-label` headings and every input is built with show_label=False, so
+ * the only `label` elements left in the rail are radio OPTIONS. Uppercasing
+ * those turns readable choices into shouted mono.
+ */
+gradio-app .rd-rail .block,
+gradio-app .rd-rail .form { padding: 0 !important; border: 0 !important; background: transparent !important; box-shadow: none !important; }
+/* Stack radio options: 360px cannot hold two side by side. */
+gradio-app .rd-rail fieldset > div,
+gradio-app .rd-rail .wrap { display: flex !important; flex-direction: column !important; gap: 8px !important; }
+gradio-app .rd-rail input[type="text"],
+gradio-app .rd-rail textarea {
+  border: 1px solid var(--rd-line) !important;
+  border-radius: 5px !important;
+  background: var(--rd-sunken) !important;
+  color: var(--rd-ink) !important;
+  font-size: 13px !important;
+}
+gradio-app .rd-rail input[type="text"]:focus,
+gradio-app .rd-rail textarea:focus { border-color: var(--rd-accent) !important; outline: none !important; box-shadow: none !important; }
+gradio-app .rd-rail .wrap label,
+gradio-app .rd-rail fieldset label {
+  border: 1px solid var(--rd-line) !important;
+  border-radius: 5px !important;
+  background: var(--rd-sunken) !important;
+  color: var(--rd-ink) !important;
+  font-size: 12.5px !important;
+  line-height: 1.45 !important;
+}
+gradio-app .rd-rail .wrap label.selected,
+gradio-app .rd-rail fieldset label:has(input:checked) { border-color: var(--rd-accent) !important; background: rgba(37, 99, 235, .14) !important; }
+gradio-app .rd-rail button.primary,
+gradio-app .rd-rail button[variant="primary"] {
+  border: 1px solid var(--rd-accent) !important;
+  border-radius: 5px !important;
+  background: var(--rd-accent) !important;
+  color: #fff !important;
+  font: 600 13px var(--rd-sans) !important;
+}
+gradio-app .rd-rail button.primary:hover { background: var(--rd-accent-hover) !important; }
+/* Gradio's stock accent is orange. Its radios/checkboxes are
+   `appearance: none` with the fill painted as background-color and the glyph
+   as a background-image, so `accent-color` does nothing — the background is
+   what has to be overridden. */
+gradio-app .rd-rail input[type="radio"],
+gradio-app .rd-rail input[type="checkbox"] { accent-color: var(--rd-accent); border-color: var(--rd-line) !important; }
+gradio-app .rd-rail input[type="radio"]:checked,
+gradio-app .rd-rail input[type="checkbox"]:checked { border-color: var(--rd-accent) !important; background-color: var(--rd-accent) !important; }
+gradio-app .rd-rail button.primary:disabled { opacity: .45; cursor: wait; }
+
+/* --- narrow: rail under the viewer, still no page scroll ------------------ */
+@media (max-width: 900px) {
+  :root { --rd-rail: 100%; }
+  .rd-split { flex-direction: column; }
+  .rd-viewer { flex: 1 1 55%; }
+  .rd-rail { width: 100%; flex: 1 1 45%; border-top: 1px solid var(--rd-line); border-left: 0; }
+}
+@media (max-width: 620px) {
+  .rd-bar { grid-template-columns: 32px minmax(20px, 1fr) auto; min-height: 56px; gap: 8px; }
+  .rd-brand-word { display: none; }
+  .rd-meta { font-size: 10px; gap: 8px; }
+  .rd-meta .rd-ckpt { display: none; }
+}

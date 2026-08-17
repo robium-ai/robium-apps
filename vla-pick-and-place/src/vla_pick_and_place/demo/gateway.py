@@ -35,6 +35,7 @@ from vla_pick_and_place.config import (
     DEMO_SESSION_SECONDS,
     INFERENCE_DEVICE,
 )
+from vla_pick_and_place.demo import dashboard
 from vla_pick_and_place.demo.ui import build_ui
 
 state = {
@@ -131,12 +132,49 @@ def shutdown(session: str | None = None):
     return {"bye": True}
 
 
+@app.get("/ui-status")
+def ui_status():
+    """Boot state for the demo page's own top bar. Session-free by design.
+
+    /status is session-guarded and 409s a foreign session. A hosted demo
+    claims the instance for the PARENT page's session and then iframes /ui,
+    so the iframe polling /status would be exactly that foreign session and
+    the bar would sit on BOOTING forever. This exposes strictly what the bar
+    already renders to whoever is looking at the page.
+    """
+    log = state["log"]
+    return {
+        "ready": state["ready"],
+        "message": (
+            f"Ready — {max(0, DEMO_SESSION_SECONDS - int(time.time() - (state['claimed_at'] or state['start']))) // 60} min left in this session"
+            if state["ready"]
+            else (log[-1] if log else "Starting…")
+        ),
+    }
+
+
 @app.get("/")
 def root():
     return {"service": "robium demo gateway (vla-pick-and-place)"}
 
 
-app = gr.mount_gradio_app(app, build_ui(lambda: state["runner"]), path="/ui")
+# dashboard.mount, not gr.mount_gradio_app: Gradio 6 takes the stylesheet
+# here rather than on the Blocks constructor, and getting that wrong yields
+# an unstyled, scrolling page with no error.
+app = dashboard.mount(
+    app,
+    build_ui(
+        lambda: state["runner"],
+        # The bar reads the status dict in-process. Polling GET /status from
+        # the browser instead would 409 the moment a hosted session claims
+        # the instance: the iframe would be a second, foreign session.
+        get_status=lambda: status(session=state["session"]),
+    ),
+    path="/ui",
+    # Keeps the bar honest between page load and DEMO READY; stops polling
+    # the moment the app reports ready.
+    head=dashboard.boot_watch_js("/ui-status"),
+)
 
 
 def main() -> None:
