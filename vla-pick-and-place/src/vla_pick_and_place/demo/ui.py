@@ -11,14 +11,18 @@ shared/rerun-dashboard) — one viewport tall, never scrolls, the viewer takes
 every pixel the bar and rail do not. The palette is robot-navigation's, so a
 visitor moving between the ROS demo and this one sees one product.
 
-Honesty is part of the layout: the trained controller is labeled as the
-100-step pipe-test checkpoint that does NOT complete the task yet, and the
-oracle is labeled scripted-and-blind. No success theater. The intro prose
-that used to sit above the fold now lives where it is still unmissable — the
-checkpoint id in the top bar, the caveats beside the controls they qualify.
+The controller descriptions state what each controller reads and pin the
+included checkpoint's current evaluation result. The checkpoint id stays in
+the top bar so a new model can be verified without digging through logs.
 """
 
 import uuid
+from functools import lru_cache
+import os
+from pathlib import Path
+import tempfile
+
+import numpy as np
 
 import gradio as gr
 import rerun as rr
@@ -39,21 +43,19 @@ from vla_pick_and_place.demo.dashboard import (
 APP_ID = "vla_pick_and_place_demo"
 
 CONTROLLER_CHOICES = [
-    ("oracle — scripted, completes the task", "oracle"),
-    ("trained — SmolVLA, acts from pixels + your text", "trained"),
+    ("Scripted controller — task reference", "oracle"),
+    ("SmolVLA checkpoint — 100 steps", "trained"),
 ]
 
 CONTROLLER_NOTE = (
-    "<b>oracle</b> uses the ground-truth cube pose and ignores your text — it "
-    "proves the scene, not the policy.<br><b>trained</b> reads only pixels and "
-    "your sentence, and <b>currently flails</b>: the checkpoint has 100 "
-    "training steps, so it scores 0%. That is the correct result at 100 steps, "
-    "not a bug."
+    "The scripted controller reads simulator state and follows a fixed motion "
+    "sequence. SmolVLA reads the two cameras and your instruction. "
+    "<b>Current checkpoint result: 0/10 successful evaluation episodes.</b>"
 )
 
 TASK_NOTE = (
-    f"Trained on episodes of <code>{TASK}</code>. Off-distribution "
-    "instructions produce honest flailing, not magic."
+    f"Training instruction: <code>{TASK}</code>. Use this wording when "
+    "evaluating the included checkpoint."
 )
 
 # Bar meta: permanently visible, because both facts qualify everything the
@@ -78,6 +80,35 @@ def _blueprint() -> rrb.Blueprint:
         ),
         collapse_panels=True,
     )
+
+
+@lru_cache(maxsize=1)
+def _preview_recording() -> Path:
+    """Return one real reset frame so the viewer is useful before Run.
+
+    The environment is created and closed in this call because MuJoCo's CGL
+    context is thread-affine on macOS. The preview uses the same entity paths
+    and blueprint as a live episode, so the first streamed run replaces it
+    cleanly instead of changing layouts.
+    """
+    from vla_pick_and_place.demo.episode_runner import _log_step
+    from vla_pick_and_place.env.so101_pick import SO101PickEnv
+
+    rec = rr.RecordingStream(
+        application_id=APP_ID,
+        recording_id="vla-pick-and-place-preview",
+    )
+    path = Path(tempfile.gettempdir()) / f"vla-pick-and-place-preview-{os.getpid()}.rrd"
+    rec.save(path, default_blueprint=_blueprint())
+    env = SO101PickEnv(task=TASK)
+    try:
+        obs, _ = env.reset(seed=0)
+        action = np.zeros_like(obs["observation.state"], dtype=np.float32)
+        _log_step(rec, 0, obs, action, task=TASK)
+        rec.flush()
+        return path
+    finally:
+        env.close()
 
 
 def build_ui(get_runner, get_status=None) -> gr.Blocks:
@@ -134,16 +165,16 @@ def build_ui(get_runner, get_status=None) -> gr.Blocks:
                     print(f"[demo] step {ev.step} done={ev.done} success={ev.success}", flush=True)
                 if ev.done:
                     if ev.aborted:
-                        verdict = "⏹ aborted — the instance was reclaimed (page refresh or new visitor)"
+                        verdict = "Run stopped after the workspace changed sessions"
                         state = "failed"
                     elif ev.success:
-                        verdict = "✅ cube in the bin"
+                        verdict = "Cube placed in the bin"
                         state = "ready"
                     elif controller == "trained":
-                        verdict = "❌ no success — expected for the pipe-test checkpoint"
+                        verdict = "Task not completed by the included checkpoint"
                         state = "ready"
                     else:
-                        verdict = "❌ oracle miss — off its tuned seed band; run it again"
+                        verdict = "Scripted controller did not complete the task"
                         state = "failed"
                     yield stream.read(), f"finished at step {ev.step + 1}: {verdict}", _bar(
                         state, "READY", verdict
@@ -160,6 +191,7 @@ def build_ui(get_runner, get_status=None) -> gr.Blocks:
 
         with split():
             viewer = Rerun(
+                value=_preview_recording,
                 streaming=True,
                 # "100%", never a pixel count: an int pins the height and the
                 # viewer stops filling the split.
@@ -187,7 +219,7 @@ def build_ui(get_runner, get_status=None) -> gr.Blocks:
 
                 with section("status"):
                     status = gr.Textbox(
-                        value="idle", show_label=False, interactive=False,
+                        value="Ready to run", show_label=False, interactive=False,
                         elem_classes=["rd-log"], lines=3, max_lines=3,
                     )
 

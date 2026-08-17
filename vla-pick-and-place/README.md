@@ -9,14 +9,11 @@ simulation, the scripted expert that generates demonstrations, policy
 evaluation, and a browser demo. Fine-tuning happens on a rented cloud GPU
 (Hugging Face Jobs) because a laptop is orders of magnitude too slow for it.
 
-**Current state: the pipeline is validated end-to-end; there is no working
-policy yet.** Every stage — scene, scripted oracle, dataset recording, remote
-GPU fine-tuning, evaluation, demo — has run for real and produced correct
-output. But the fine-tune has only ever run for 100 steps (a pipe-test, not
-training), so it scores ~0%, exactly as a 100-step checkpoint should. The
-real 20k-step run (expected to clear the 60% success bar) is a deliberate
-cost deferral (~$20-40), not a technical blocker — see "What's actually
-proven" below.
+**Current state:** the scripted controller completes the task, and the full
+record → train → evaluate pipeline is working. The included SmolVLA
+checkpoint has 100 training steps and currently scores 0/10 evaluation
+episodes. A longer training run is still needed before the learned policy can
+complete the task reliably.
 
 **Stack:** SmolVLA 450M · LeRobot 0.6.0 · MuJoCo 3.10 (SO-101 arm) ·
 uv + Python 3.12 (Apple Silicon MPS) · HF Jobs (GPU training) · Rerun ·
@@ -31,9 +28,9 @@ Gradio
   recorded as a LeRobot dataset (failed episodes discarded and re-rolled).
 - **The training loop:** the dataset pushed to the Hub, SmolVLA fine-tuned on
   a cloud GPU, the checkpoint pulled back and scored in sim.
-- **The demo page:** a Gradio UI with an embedded Rerun viewer — type an
-  instruction, pick a controller (scripted oracle vs. trained policy), and
-  scrub the episode's cameras/joints/actions on a timeline.
+- **The demo page:** a Robium workspace with an embedded Rerun viewer. It opens
+  on a real reset frame, then streams cameras, joints, and actions while the
+  selected controller runs.
 
 ## Prerequisites
 
@@ -115,9 +112,9 @@ There is a free, local, CPU-only gate in front of every paid step:
 must pass before `make train` ever touches HF Jobs money. This caught a real
 bug for free once already (see Hard-won facts).
 
-## What's actually proven vs. what's deferred
+## Checkpoint status
 
-**Proven, for real, no shortcuts:**
+**Available now:**
 - The scene, IK, and success predicate are correct: the oracle picks and
   releases the cube into the bin 10/10 on tuned seeds using real MuJoCo
   physics, not a scripted animation.
@@ -133,13 +130,11 @@ bug for free once already (see Hard-won facts).
   the sim rollout loop are all exercised against a real trained checkpoint,
   not mocked.
 
-**Deferred, honestly:**
+**Still to train:**
 - **No checkpoint has been trained long enough to succeed.** The pipe-test
   checkpoint is 100 steps (a10g-small, ~$1-2) — essentially the base model —
-  and scores 0/10 = 0%, which is the *correct* result for 100 steps, not a
-  bug. The real fine-tune is `make train-full` (20k steps, ~$20-40,
-  reference success rate 60-80%) — a deliberate cost decision, not a
-  technical blocker.
+  and scores 0/10 = 0%. The next model run is `make train-full` (20k steps,
+  ~$20-40; reference success rate 60-80%).
 - The narrative test (`tests/test_narrative.py`) proves the comparison
   *harness* works, not the demo's eventual "base flails, fine-tuned clears
   60%" claim — that assertion is commented out with a grep-able

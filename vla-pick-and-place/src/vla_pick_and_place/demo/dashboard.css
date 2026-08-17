@@ -87,6 +87,7 @@ gradio-app .rd-bar-host > * { flex: 0 0 auto !important; margin: 0 !important; p
   font: 13px/1.35 var(--rd-sans);
 }
 .rd-brand { display: inline-flex; width: max-content; align-items: center; gap: 10px; color: var(--rd-ink) !important; text-decoration: none !important; }
+.rd-brand-mark { display: block; width: 38px; height: auto; flex: none; }
 .rd-brand-word { color: var(--rd-ink); font: 400 25px/1 'Aldrich', system-ui, sans-serif; }
 .rd-health { display: flex; min-width: 0; align-items: center; gap: 10px; }
 .rd-health strong { font-size: 12px; letter-spacing: .06em; }
@@ -223,6 +224,7 @@ gradio-app .rd-rail button.primary:disabled { opacity: .45; cursor: wait; }
 @media (max-width: 620px) {
   .rd-bar { grid-template-columns: 32px minmax(20px, 1fr) auto; min-height: 56px; gap: 8px; }
   .rd-brand-word { display: none; }
+  .rd-brand-mark { width: 30px; }
   .rd-meta { font-size: 10px; gap: 8px; }
   .rd-meta .rd-ckpt { display: none; }
 }

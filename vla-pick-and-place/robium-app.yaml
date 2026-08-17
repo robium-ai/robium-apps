@@ -1,9 +1,9 @@
 schema_version: "1"
 id: vla-pick-and-place
 name: VLA pick and place (SmolVLA + SO-101)
-summary: Language-conditioned pick-and-place with a SmolVLA policy driving a simulated SO-101 arm; pipeline proven end-to-end, full-training policy pending.
+summary: Run language-conditioned pick-and-place with a SmolVLA checkpoint and a simulated SO-101 arm in MuJoCo.
 version: 0.1.0
-status: experimental     # honest: no checkpoint trained long enough to succeed yet
+status: experimental     # the included 100-step checkpoint currently scores 0%
 license: MIT
 tags: [vla, smolvla, lerobot, mujoco, so-101, language]
 
@@ -57,5 +57,5 @@ demo:
   estimated_startup_seconds: 60
 
 artifacts:
-  thumbnail: null
+  thumbnail: assets/oracle-run.gif
   case_study: docs/case-study.md

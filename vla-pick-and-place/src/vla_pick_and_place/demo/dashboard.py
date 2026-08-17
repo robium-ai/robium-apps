@@ -25,11 +25,13 @@ down Gradio's wrapper chain (see dashboard.css), which no theme API exposes.
 """
 
 from contextlib import contextmanager
+import base64
 from pathlib import Path
 
 import gradio as gr
 
 CSS_PATH = Path(__file__).with_name("dashboard.css")
+BRAND_MARK_PATH = Path(__file__).with_name("robium-mark-white.png")
 
 # Bar states -> the CSS modifier that colors the dot. Kept as data so an app
 # can add its own without touching the stylesheet's meaning.
@@ -81,9 +83,11 @@ def bar_html(
         f'<span class="rd-{key}"><code>{value}</code></span>'
         for key, value in (meta or {}).items()
     )
+    brand_mark = base64.b64encode(BRAND_MARK_PATH.read_bytes()).decode("ascii")
     return f"""
 <header class="rd-bar rd-state-{state}">
   <a class="rd-brand" href="{brand_href}" target="_blank" rel="noreferrer">
+    <img class="rd-brand-mark" src="data:image/png;base64,{brand_mark}" alt="">
     <span class="rd-brand-word">robium</span>
   </a>
   <div class="rd-health">
@@ -181,5 +185,5 @@ def section(label: str):
 
 
 def note(markup: str) -> gr.HTML:
-    """Secondary text — caveats, checkpoint provenance, honesty notes."""
+    """Secondary text for context such as checkpoint provenance."""
     return gr.HTML(f'<p class="rd-note">{markup}</p>', padding=False)

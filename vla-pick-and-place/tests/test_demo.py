@@ -128,7 +128,9 @@ def test_oracle_episode_succeeds_via_gradio_api(gateway):
                 if "finished at step" in final_status:
                     break
     assert final_status is not None, "no status updates arrived on the SSE stream"
-    assert "✅" in final_status, f"oracle episode did not succeed: {final_status!r}"
+    assert "Cube placed in the bin" in final_status, (
+        f"oracle episode did not succeed: {final_status!r}"
+    )
 
 
 def test_shutdown_exits_process(gateway):
