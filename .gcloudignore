@@ -1,0 +1,12 @@
+# Robot Navigation is the only application built from this repository context.
+# Keep unrelated app environments, recordings, and local caches out of Cloud Build.
+*
+!.gcloudignore
+!robot-navigation/
+!robot-navigation/**
+robot-navigation/experiments/**
+!shared/
+!shared/assets/
+!shared/assets/**
+!shared/lichtblick-dashboard/
+!shared/lichtblick-dashboard/**

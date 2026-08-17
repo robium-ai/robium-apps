@@ -1,15 +1,17 @@
 steps:
   - name: gcr.io/cloud-builders/docker
+    env:
+      - DOCKER_BUILDKIT=1
     args:
       - build
       - -f
       - robot-navigation/docker/Dockerfile
       - -t
-      - us-central1-docker.pkg.dev/robium-prod/robium/demo-nav-trial:latest
+      - us-central1-docker.pkg.dev/${PROJECT_ID}/robium/demo-robot-navigation:${BUILD_ID}
       - .
 
 images:
-  - us-central1-docker.pkg.dev/robium-prod/robium/demo-nav-trial:latest
+  - us-central1-docker.pkg.dev/${PROJECT_ID}/robium/demo-robot-navigation:${BUILD_ID}
 
 options:
   machineType: E2_HIGHCPU_8

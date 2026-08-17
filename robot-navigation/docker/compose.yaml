@@ -65,7 +65,11 @@ services:
     # apps/robot-navigation/scripts/*, then `docker compose restart demo` (seconds).
     volumes:
       - ../scripts:/ws/scripts:ro
-    command: ros2 launch robot_nav_bringup demo.launch.py
+    environment:
+      ROS_DOMAIN_ID: "42"
+      TURTLEBOT3_MODEL: waffle_pi
+      DEMO_SHUTDOWN_MODE: parent
+    command: ros2 launch robot_nav_bringup cloud_demo.launch.py
 
 volumes:
   gazebo-fuel:

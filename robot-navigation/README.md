@@ -96,7 +96,7 @@ Advanced modes are available for focused workflows:
 | `./app sim` | Run the headless simulation without SLAM or Nav2 |
 | `./app slam` | Run the scripted mapping route and save a map |
 | `./app nav` | Start navigation on a saved map |
-| `./app demo` | Run the autonomous hosted-demo flow locally |
+| `./app demo` | Run the Cloud Run launch path locally on port 8765 |
 
 ## Local data and shared assets
 
@@ -181,8 +181,13 @@ To use another Foxglove-compatible viewer, connect it to
 - [Shared asset catalog](../shared/assets/README.md)
 - [Robium Dashboard](../shared/lichtblick-dashboard/README.md)
 
-## Live demo deployment
+## Live demo
 
-Maintainers can build and deploy the hosted demo with `./app demo-image` and
-`./app demo-deploy`. This requires access to the Robium Google Cloud project and
-is not part of the local setup.
+Try the public application at
+[robium.ai/demos/robot-navigation](https://robium.ai/demos/robot-navigation/).
+It creates one private, temporary Cloud Run service only after you press Start,
+then removes it when you press Stop or after 30 minutes.
+
+Maintainers can publish the application image with `./app demo-image`. The
+controller, cleanup scheduler, and website deployment live in the sibling
+`robium-website` repository. Cloud deployment is not part of local setup.

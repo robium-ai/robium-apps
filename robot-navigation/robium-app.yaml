@@ -60,14 +60,14 @@ assets:
 demo:
   default_mode: demo
   hosted: true
-  orchestrator:            # source for demo-orchestrator demos/<demo_id>.json
-    demo_id: nav-trial     # legacy id kept by live-demo infra through the rename
-    title: TurtleBot 3 autonomous navigation (ROS 2 + Nav2 + Gazebo)
-    image: robot-navigation:latest
-    command: [/entrypoint.sh, ros2, launch, robot_nav_bringup, demo.launch.py]
+  orchestrator:
+    demo_id: robot-navigation
+    title: Robot Navigation — ROS 2, Nav2, Gazebo, and Lichtblick
+    image: demo-robot-navigation:latest
+    command: [/entrypoint.sh, ros2, launch, robot_nav_bringup, cloud_demo.launch.py]
     gateway_port: 8765
     ready_log: DEMO READY
-    max_instances: 3
+    max_instances: 5
     session_seconds: 1800
     env:
       GZ_RELAY: 127.0.0.1

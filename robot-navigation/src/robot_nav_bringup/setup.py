@@ -38,6 +38,7 @@ setup(
         'console_scripts': [
             'drive_mapping_route = robot_nav_bringup.drive_mapping_route:main',
             'send_goals = robot_nav_bringup.send_goals:main',
+            'cloud_demo_status = robot_nav_bringup.cloud_demo_status:main',
             'demo_init = robot_nav_bringup.demo_init:main',
             'teleop_relay = robot_nav_bringup.teleop_relay:main',
             'map_manager = robot_nav_bringup.map_manager:main',

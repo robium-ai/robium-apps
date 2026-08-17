@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 # Lichtblick web bundle donor. Assets are arch-neutral JS/wasm, so pinning
 # the platform lets arm64 hosts pull the amd64 image just to copy files.
 # Web assets live at /src in this image; index.html carries the literal

@@ -9,7 +9,7 @@ Detailed battle scars live in each app's architecture brief and in the sibling
 
 | App | Vertical | Stack | Sim | Env | Viz | Smoke |
 | --- | --- | --- | --- | --- | --- | --- |
-| [robot-navigation](robot-navigation/) | Classical ROS navigation | ROS 2 Jazzy + Nav2 + slam_toolbox | Gazebo Harmonic; Waffle Pi in selectable House and Warehouse environments from the shared pinned-asset catalog | Pixi/RoboStack (macOS arm64) + Docker | Native Gazebo + bundled Lichtblick + configurable Robium Dashboard `.foxe` | `tests/test_app_cli.sh` + runtime validation |
+| [robot-navigation](robot-navigation/) | Classical ROS navigation | ROS 2 Jazzy + Nav2 + slam_toolbox | Gazebo Harmonic; Waffle Pi in selectable House and Warehouse environments from the shared pinned-asset catalog | Pixi/RoboStack (macOS arm64) + Docker + per-visitor Cloud Run | Native Gazebo + bundled Lichtblick + configurable Robium Dashboard `.foxe` | `./app doctor` + local and Cloud Run runtime validation (2026-08-16) |
 | [imitation-manipulation](imitation-manipulation/) | Physical AI / ML manipulation | LeRobot 0.6.0 (ACT) | gym-pusht + PushShape variants | uv + Python 3.12 (MPS) + Docker (demo) | Gradio + Rerun (browser) | `make smoke` + `make demo-smoke` |
 | [vla-language-learning](vla-language-learning/) | Language-conditioned VLA (experimental) | LeRobot 0.6.0 + SmolVLA 450M | MuJoCo 3.10 (SO-101) | uv + Python 3.12 (MPS) + HF Jobs (GPU train) | Rerun (+ gradio_rerun demo UI) | `make smoke` |
 | [robot-teleoperation](robot-teleoperation/) | Real-robot teleoperation | ROS 2 Humble + foxglove_bridge | TurtleBot 4 hardware | Robot host + browser client | Foxglove (browser) | `make smoke` (hardware-in-the-loop) |

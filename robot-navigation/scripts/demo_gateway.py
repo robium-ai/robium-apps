@@ -18,7 +18,9 @@ stdlib only; runs alongside ros2 launch inside the demo container.
 import asyncio
 import base64
 import contextvars
+from datetime import datetime, timezone
 import hashlib
+import hmac
 import json
 import os
 import signal
@@ -35,17 +37,21 @@ BRIDGE = (
     int(os.environ.get('DEMO_BRIDGE_PORT', '8766')),
 )
 STATUS_PATH = os.environ.get('DEMO_STATUS_PATH', '/tmp/demo_status.json')
-SESSION_SECONDS = 1800
+SESSION_SECONDS = int(os.environ.get('DEMO_SESSION_SECONDS', '1800'))
+FIXED_SESSION = os.environ.get('DEMO_SESSION_ID')
+EXPIRES_AT = os.environ.get('DEMO_EXPIRES_AT')
 FLEET_BUDGET = 5  # keep in sync with Cloud Run --max-instances
 FLEET_CACHE_S = 30
 WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 STATIC_ROOT = os.path.realpath(
     os.environ.get('DEMO_STATIC_ROOT', '/opt/lichtblick'))
-SHUTDOWN_MODE = os.environ.get('DEMO_SHUTDOWN_MODE', 'pid1')
-if SHUTDOWN_MODE not in ('pid1', 'parent'):
-    raise ValueError('DEMO_SHUTDOWN_MODE must be pid1 or parent')
+SHUTDOWN_MODE = os.environ.get(
+    'DEMO_SHUTDOWN_MODE', 'disabled' if FIXED_SESSION else 'pid1')
+if SHUTDOWN_MODE not in ('pid1', 'parent', 'disabled'):
+    raise ValueError('DEMO_SHUTDOWN_MODE must be pid1, parent, or disabled')
 MIME = {
     '.html': 'text/html; charset=utf-8', '.js': 'application/javascript',
+    '.mjs': 'application/javascript',
     '.css': 'text/css', '.json': 'application/json', '.map': 'application/json',
     '.wasm': 'application/wasm', '.svg': 'image/svg+xml', '.png': 'image/png',
     '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff',
@@ -165,7 +171,33 @@ def read_status_file():
             return json.load(f)
     except (OSError, json.JSONDecodeError):
         return {'start': time.time(), 'ready': False, 'rtf': None,
-                'nodes': 0, 'log': ['stack booting…']}
+                'nodes': 0, 'phase': 'BOOTING',
+                'message': 'Stack booting', 'log': ['stack booting…']}
+
+
+def session_matches(session):
+    """Cloud services have one immutable bearer capability.
+
+    Local development omits DEMO_SESSION_ID and retains the original dynamic
+    claim behavior so a refreshed local page can claim the same container.
+    """
+    if FIXED_SESSION is None:
+        return True
+    if session is None:
+        return False
+    return hmac.compare_digest(session, FIXED_SESSION)
+
+
+def remaining_seconds(claimed_at):
+    if EXPIRES_AT:
+        try:
+            expires = datetime.fromisoformat(
+                EXPIRES_AT.replace('Z', '+00:00')).astimezone(timezone.utc).timestamp()
+            return max(0, min(SESSION_SECONDS, int(expires - time.time())))
+        except ValueError:
+            pass
+    uptime = int(time.time() - claimed_at)
+    return max(0, SESSION_SECONDS - uptime)
 
 
 def signal_shutdown(mode):
@@ -241,10 +273,18 @@ async def handle(reader, writer):
                       'Content-Length: 0\r\nConnection: close\r\n\r\n').encode())
         await writer.drain(); writer.close(); return
 
-    # Session-guard for the control/logs surfaces (not the Foxglove
-    # tunnel, which claims). Foreign session on a claimed instance → reject.
+    if (url.path in ('/start', '/status', '/shutdown', '/logs') or is_upgrade) and not session_matches(session):
+        writer.write(http_response(
+            '403 Forbidden', json.dumps({'error': 'invalid session'})))
+        await writer.drain()
+        writer.close()
+        return
+
+    # Dynamic local sessions use the current claim. Fixed cloud sessions have
+    # already passed the immutable capability check above.
     def guarded_ok():
-        return not state['session'] or session == state['session']
+        return (FIXED_SESSION is not None or not state['session']
+                or session == state['session'])
 
     if is_upgrade and url.path == '/logs':
         if not guarded_ok():
@@ -266,7 +306,7 @@ async def handle(reader, writer):
             return
         if session != state['session']:
             state['claimed_at'] = time.time()  # new visitor: fresh clock
-        state['session'] = session or 'anonymous'
+        state['session'] = FIXED_SESSION or session or 'anonymous'
         state['tunnel_open'] = True
         state['claimed_at'] = state['claimed_at'] or time.time()
         try:
@@ -294,7 +334,7 @@ async def handle(reader, writer):
         else:
             if session != state['session']:
                 state['claimed_at'] = time.time()
-            state['session'] = session or 'anonymous'
+            state['session'] = FIXED_SESSION or session or 'anonymous'
             state['claimed_at'] = state['claimed_at'] or time.time()
             writer.write(http_response('200 OK', json.dumps({'ok': True})))
         await writer.drain()
@@ -302,7 +342,7 @@ async def handle(reader, writer):
         return
 
     if url.path == '/status':
-        if state['session'] and session != state['session']:
+        if FIXED_SESSION is None and state['session'] and session != state['session']:
             writer.write(http_response('409 Conflict', json.dumps({'error': 'not your instance'})))
         else:
             s = read_status_file()
@@ -310,7 +350,10 @@ async def handle(reader, writer):
             body = json.dumps({
                 'claimed': state['session'] is not None,
                 'ready': s['ready'], 'rtf': s['rtf'], 'nodes': s['nodes'],
-                'uptime_s': up, 'remaining_s': max(0, SESSION_SECONDS - up),
+                'phase': s.get('phase', 'READY' if s['ready'] else 'BOOTING'),
+                'message': s.get('message', 'Robot Navigation is ready' if s['ready'] else 'Stack booting'),
+                'uptime_s': up,
+                'remaining_s': remaining_seconds(state['claimed_at'] or s['start']),
                 'fleet': {'running': fleet_running(), 'budget': FLEET_BUDGET},
                 'log': s['log'],
             })
@@ -322,6 +365,13 @@ async def handle(reader, writer):
     if url.path == '/shutdown' and method == 'POST':
         if state['session'] is None or session != state['session']:
             writer.write(http_response('403 Forbidden', json.dumps({'error': 'forbidden'})))
+            await writer.drain()
+            writer.close()
+            return
+        if SHUTDOWN_MODE == 'disabled':
+            writer.write(http_response(
+                '405 Method Not Allowed',
+                json.dumps({'error': 'delete the Cloud Run session through the controller'})))
             await writer.drain()
             writer.close()
             return
