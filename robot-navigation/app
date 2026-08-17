@@ -1,0 +1,216 @@
+#!/bin/sh
+set -eu
+
+APP_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cd "$APP_DIR"
+
+compose() {
+  docker compose -f docker/compose.yaml "$@"
+}
+
+show_help() {
+  cat <<'EOF'
+Robot Navigation
+
+Command                  Description
+./app help               Show commands and examples
+./app doctor             Diagnose prerequisites and conflicts
+./app build              Build the Docker image
+./app run                Build if needed, then run the simulator and dashboard
+./app status             Show running services and URLs
+./app logs               Follow application logs
+./app stop               Stop all application services
+
+Modes: ./app sim | ./app slam | ./app nav | ./app demo
+EOF
+}
+
+doctor() {
+  ok=1
+  command -v docker >/dev/null 2>&1 || {
+    echo "FAIL: docker not installed (install Docker Desktop or compatible)"
+    ok=0
+  }
+  if [ "$ok" -eq 1 ] && ! docker info >/dev/null 2>&1; then
+    echo "FAIL: docker daemon not running"
+    ok=0
+  fi
+  if [ "$ok" -eq 1 ] && ! docker compose version >/dev/null 2>&1; then
+    echo "FAIL: docker compose v2 not available"
+    ok=0
+  fi
+
+  app_running=$(compose --profile mapping ps --status running -q mapping 2>/dev/null || true)
+  for port in 8080 8765; do
+    if command -v lsof >/dev/null 2>&1 && lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+      if [ -n "$app_running" ]; then
+        echo "ok: port $port is owned by the running app"
+      else
+        echo "FAIL: port $port already in use (stop the process using it)"
+        ok=0
+      fi
+    else
+      echo "ok: port $port available"
+    fi
+  done
+
+  if docker image inspect robot-navigation:latest >/dev/null 2>&1; then
+    echo "ok: image robot-navigation:latest present"
+  else
+    echo "note: image not built yet — './app run' will build it on first use (~10 min cold)"
+  fi
+
+  if [ "$ok" -eq 1 ]; then
+    echo "DOCTOR PASS"
+  else
+    echo "DOCTOR FAIL"
+    return 1
+  fi
+}
+
+build() {
+  compose build sim
+}
+
+run() {
+  if ! docker image inspect robot-navigation:latest >/dev/null 2>&1; then
+    echo "Robot Navigation image not found; building it first..."
+    build
+  fi
+  echo "dashboard -> http://localhost:8080   (bridge on :8765)"
+  compose --profile mapping up --abort-on-container-exit
+}
+
+status() {
+  services=$(compose --profile "*" ps --status running --services 2>/dev/null || true)
+  if [ -z "$services" ]; then
+    echo "Robot Navigation: STOPPED"
+    echo "Run: ./app run"
+    return
+  fi
+
+  echo "Robot Navigation: RUNNING"
+  compose --profile "*" ps
+  if printf '%s\n' "$services" | grep -q '^mapping$'; then
+    echo "Dashboard: http://localhost:8080"
+    echo "ROS bridge: ws://localhost:8765"
+  fi
+}
+
+rtf() {
+  samples=${RTF_SAMPLES:-6}
+  world=${WORLD:-furnished_house}
+  export WORLD="$world"
+  compose --profile sim up -d sim
+  echo "world=$world: waiting for gz world stats (up to ~2 min)..."
+  n=0
+  until compose --profile sim exec -T sim /entrypoint.sh gz topic -l 2>/dev/null | grep -q '/stats'; do
+    n=$((n + 1))
+    if [ "$n" -ge 40 ]; then
+      echo "TIMEOUT: gz never published world stats"
+      compose --profile sim logs --tail 40 sim
+      compose --profile "*" down --remove-orphans
+      return 1
+    fi
+    sleep 3
+  done
+  echo "settling 20 s so boot transients do not skew the sample..."
+  sleep 20
+  cid=$(compose --profile sim ps -q sim)
+  topic=$(compose --profile sim exec -T sim /entrypoint.sh gz topic -l 2>/dev/null | grep '/stats' | head -1 | tr -d '\r')
+  echo "--- world=$world  stats topic=$topic  (100% = 1 core) ---"
+  i=1
+  while [ "$i" -le "$samples" ]; do
+    factor=$(compose --profile sim exec -T sim /entrypoint.sh gz topic -e -t "$topic" -n 1 2>/dev/null | awk '/real_time_factor/{print $2}' | head -1)
+    cpu=$(docker stats --no-stream --format '{{.CPUPerc}}' "$cid" 2>/dev/null || true)
+    echo "  sample $i: RTF=${factor:-?}  CPU=${cpu:-?}"
+    i=$((i + 1))
+  done
+  compose --profile "*" down --remove-orphans
+  echo "RTF PROBE DONE"
+}
+
+command=${1:-help}
+if [ "$#" -gt 0 ]; then
+  shift
+fi
+
+case "$command" in
+  help|-h|--help)
+    show_help
+    ;;
+  doctor)
+    doctor
+    ;;
+  build)
+    build
+    ;;
+  run)
+    run
+    ;;
+  status)
+    status
+    ;;
+  logs)
+    compose --profile "*" logs --tail=100 -f
+    ;;
+  stop)
+    compose --profile "*" down --remove-orphans
+    ;;
+  sim|slam|nav|demo)
+    compose --profile "$command" up --abort-on-container-exit
+    ;;
+  drive)
+    echo "Keys: u i o / j k l / m , .   q,z speed   anything else = stop   Ctrl-C to quit"
+    compose --profile mapping exec -it mapping /entrypoint.sh \
+      ros2 run teleop_twist_keyboard teleop_twist_keyboard \
+      --ros-args -p stamped:=true -p use_sim_time:=true
+    ;;
+  save-map)
+    compose --profile mapping exec -T mapping /entrypoint.sh \
+      ros2 service call /mapping/stop std_srvs/srv/Trigger
+    ;;
+  load-map)
+    map_name=${MAP_NAME:-map}
+    compose --profile mapping exec -T mapping /entrypoint.sh \
+      bash -lc "ros2 param set /session_manager map_name '$map_name' && ros2 service call /mapping/load std_srvs/srv/Trigger"
+    ;;
+  dashboard-extension)
+    npm ci --prefix ../shared/lichtblick-dashboard
+    npm run package --prefix ../shared/lichtblick-dashboard
+    echo "Dashboard extension: $APP_DIR/../shared/lichtblick-dashboard/robium.dashboard-0.9.0.foxe"
+    ;;
+  native-setup)
+    python3 scripts/native_setup.py
+    ;;
+  demo-native)
+    python3 scripts/native_demo.py run
+    ;;
+  native-down)
+    python3 scripts/native_demo.py down
+    ;;
+  rtf)
+    rtf
+    ;;
+  demo-image)
+    gcloud builds submit --project=robium-prod --config=robot-navigation/cloudbuild.yaml ..
+    ;;
+  demo-deploy)
+    gcloud run deploy demo-nav-trial \
+      --image=us-central1-docker.pkg.dev/robium-prod/robium/demo-nav-trial:latest \
+      --region=us-central1 --project=robium-prod --platform=managed \
+      --port=8765 --concurrency=4 --session-affinity --min-instances=0 --max-instances=5 \
+      --timeout=1800 --cpu=8 --memory=8Gi --cpu-boost --no-cpu-throttling \
+      --execution-environment=gen2 \
+      --service-account=demo-nav-trial-sa@robium-prod.iam.gserviceaccount.com \
+      --network=demo-net --subnet=demo-subnet --vpc-egress=all-traffic \
+      --set-env-vars=GZ_RELAY=127.0.0.1,GZ_IP=127.0.0.1,FASTDDS_BUILTIN_TRANSPORTS=UDPv4 \
+      --command=/entrypoint.sh --args=ros2,launch,robot_nav_bringup,demo.launch.py \
+      --allow-unauthenticated --quiet
+    ;;
+  *)
+    echo "Unknown command: $command" >&2
+    echo "Run './app help' to see available commands." >&2
+    exit 2
+    ;;
+esac

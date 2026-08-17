@@ -1,0 +1,294 @@
+{
+  "configById": {
+    "RosOut!logs-all": {
+      "topicToRender": "/rosout",
+      "searchTerms": [],
+      "minLogLevel": 2
+    },
+    "RosOut!logs-navigation": {
+      "topicToRender": "/rosout",
+      "searchTerms": [
+        "amcl",
+        "map_server",
+        "controller_server",
+        "smoother_server",
+        "planner_server",
+        "behavior_server",
+        "bt_navigator",
+        "waypoint_follower",
+        "velocity_smoother",
+        "collision_monitor",
+        "lifecycle_manager_navigation"
+      ],
+      "minLogLevel": 2
+    },
+    "RosOut!logs-mapping-app": {
+      "topicToRender": "/rosout",
+      "searchTerms": [
+        "slam_toolbox",
+        "session_manager",
+        "teleop_relay"
+      ],
+      "minLogLevel": 2
+    },
+    "Image!robotcam": {
+      "imageMode": {
+        "imageTopic": "/camera/image_raw"
+      },
+      "cameraState": {
+        "distance": 20,
+        "perspective": true,
+        "phi": 60,
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "targetOffset": [
+          0,
+          0,
+          0
+        ],
+        "targetOrientation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "thetaOffset": 45,
+        "fovy": 45,
+        "near": 0.5,
+        "far": 5000
+      },
+      "followMode": "follow-pose",
+      "scene": {},
+      "transforms": {},
+      "topics": {},
+      "layers": {},
+      "publish": {
+        "type": "point",
+        "poseTopic": "/move_base_simple/goal",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26179939
+      }
+    },
+    "3D!dash": {
+      "cameraState": {
+        "perspective": false,
+        "distance": 9.287886038034445,
+        "phi": 68.7,
+        "thetaOffset": 1.158248454059801,
+        "targetOffset": [
+          -0.0021061628351006327,
+          -0.2306967697651006,
+          -1.2720753537064176e-17
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "targetOrientation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "fovy": 46.7,
+        "near": 0.5,
+        "far": 5000
+      },
+      "followMode": "follow-pose",
+      "followTf": "odom",
+      "scene": {
+        "transforms": {
+          "showLabel": false
+        },
+        "syncCamera": false,
+        "ignoreColladaUpAxis": false
+      },
+      "transforms": {
+        "frame:map": {
+          "visible": false
+        },
+        "frame:odom": {
+          "visible": false
+        },
+        "frame:base_footprint": {
+          "visible": false
+        },
+        "frame:base_link": {
+          "visible": false
+        },
+        "frame:base_scan": {
+          "visible": false
+        },
+        "frame:camera_link": {
+          "visible": false
+        },
+        "frame:camera_rgb_frame": {
+          "visible": false
+        },
+        "frame:camera_rgb_optical_frame": {
+          "visible": false
+        },
+        "frame:caster_back_left_link": {
+          "visible": false
+        },
+        "frame:caster_back_right_link": {
+          "visible": false
+        },
+        "frame:imu_link": {
+          "visible": false
+        },
+        "frame:wheel_left_link": {
+          "visible": false
+        },
+        "frame:wheel_right_link": {
+          "visible": false
+        }
+      },
+      "topics": {
+        "/map": {
+          "visible": true,
+          "colorMode": "map"
+        },
+        "/scan": {
+          "visible": true,
+          "colorField": "intensity",
+          "colorMode": "flat",
+          "flatColor": "#e04040",
+          "pointSize": 2
+        },
+        "/plan": {
+          "visible": true,
+          "lineWidth": 0.12,
+          "gradient": [
+            "#00c8ff",
+            "#00c8ff"
+          ]
+        },
+        "/local_plan": {
+          "visible": true,
+          "lineWidth": 0.08,
+          "gradient": [
+            "#ff9f1c",
+            "#ff9f1c"
+          ]
+        },
+        "/plan_smoothed": {
+          "visible": false
+        },
+        "/received_global_plan": {
+          "visible": false
+        },
+        "/transformed_global_plan": {
+          "visible": false
+        },
+        "/global_costmap/costmap": {
+          "visible": false,
+          "colorMode": "costmap",
+          "alpha": 0.35
+        },
+        "/local_costmap/costmap": {
+          "visible": false
+        },
+        "/robot_description": {
+          "visible": true,
+          "displayMode": "collision",
+          "fallbackColor": "#0000ff"
+        }
+      },
+      "publish": {
+        "type": "pose",
+        "poseTopic": "/goal_pose",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26
+      },
+      "layers": {},
+      "imageMode": {}
+    },
+    "Tab!logs": {
+      "activeTabIdx": 0,
+      "tabs": [
+        {
+          "title": "All",
+          "layout": "RosOut!logs-all"
+        },
+        {
+          "title": "Navigation",
+          "layout": "RosOut!logs-navigation"
+        },
+        {
+          "title": "Mapping & App",
+          "layout": "RosOut!logs-mapping-app"
+        }
+      ]
+    },
+    "Robium Dashboard.dashboard!control": {
+      "version": 4,
+      "showMovement": true,
+      "showMaps": true,
+      "showNavigation": true,
+      "showSimulation": true,
+      "showQuickActions": true,
+      "simulationWorlds": [
+        {
+          "value": "furnished_house",
+          "label": "House"
+        },
+        {
+          "value": "tugbot_warehouse",
+          "label": "Warehouse"
+        }
+      ],
+      "teleopTopic": "/cmd_vel_teleop",
+      "mappingStateTopic": "/mapping/state",
+      "availableMapsTopic": "/maps/available",
+      "simulationStateTopic": "/simulation/state",
+      "availableWaypointsTopic": "/waypoints/available",
+      "navigationStateTopic": "/navigation/state",
+      "mapNameParameter": "/session_manager.map_name",
+      "worldParameter": "/session_manager.world",
+      "waypointNameParameter": "/session_manager.waypoint_name",
+      "startMappingService": "/mapping/start",
+      "stopMappingService": "/mapping/stop",
+      "loadMapService": "/mapping/load",
+      "restartSimulationService": "/simulation/restart",
+      "saveWaypointService": "/waypoints/save",
+      "navigateWaypointService": "/waypoints/navigate",
+      "deleteWaypointService": "/waypoints/delete",
+      "navigationStopService": "/navigation/stop",
+      "linearSpeed": 0.2,
+      "angularSpeed": 0.8,
+      "publishRateHz": 10
+    }
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "layout": {
+    "direction": "row",
+    "first": {
+      "direction": "column",
+      "first": {
+        "direction": "row",
+        "first": "Image!robotcam",
+        "second": "3D!dash",
+        "splitPercentage": 48.800661703887506
+      },
+      "second": "Tab!logs",
+      "splitPercentage": 67.84203102961918
+    },
+    "second": "Robium Dashboard.dashboard!control",
+    "splitPercentage": 81.03217158176945
+  }
+}

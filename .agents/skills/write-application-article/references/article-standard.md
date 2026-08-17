@@ -344,7 +344,7 @@ voice: team
 author: Robium team
 audience: robotics-developer
 level: intermediate
-app: indoor-navigation
+app: robot-navigation
 date: 2026-08-05
 tested: 2026-08-03
 tags: [ros2, nav2, gazebo, slam]

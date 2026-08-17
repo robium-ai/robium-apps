@@ -1,0 +1,71 @@
+# All ROS nodes of a scenario run in ONE container (one `ros2 launch`):
+# DDS multicast does not cross Docker's bridge network, and network_mode:host
+# is not a real host namespace on Docker Desktop/macOS (robium integration
+# skill gotcha). Single-host sim demo => one supervisable unit per scenario.
+x-app: &app
+  build:
+    context: ../..
+    dockerfile: robot-navigation/docker/Dockerfile
+  image: robot-navigation:latest
+  environment:
+    ROS_DOMAIN_ID: "42"
+    TURTLEBOT3_MODEL: waffle_pi
+
+services:
+  sim:
+    <<: *app
+    profiles: [sim]
+    ports: ["8765:8765"]
+    volumes:
+      - gazebo-fuel:/root/.gz/fuel
+    command: >
+      ros2 launch robot_nav_bringup sim.launch.py
+      world:=${WORLD:-furnished_house}
+
+  # Persistent interactive dashboard. The supervisor starts in IDLE and owns
+  # restartable simulator and mapping/localization child process groups.
+  mapping:
+    <<: *app
+    profiles: [mapping]
+    # 8765 foxglove_bridge (the data), 8080 bundled Lichtblick (the page).
+    ports: ["8765:8765", "8080:8080"]
+    stdin_open: true
+    tty: true
+    volumes:
+      - ../src/robot_nav_bringup/maps:/ws/maps
+      - gazebo-fuel:/root/.gz/fuel
+      # Live-edit the dashboard without an image rebuild: viz_server re-reads
+      # the layout on every request, so editing either file and reloading the
+      # tab is enough.
+      - ../scripts:/ws/scripts:ro
+      - ../lichtblick/mapping-layout.json:/opt/lichtblick/mapping-layout.json:ro
+    command: >
+      ros2 launch robot_nav_bringup mapping.launch.py
+      world:=${WORLD:-furnished_house} map_name:=${MAP_NAME:-map}
+
+  slam:
+    <<: *app
+    profiles: [slam]
+    ports: ["8765:8765"]
+    volumes:
+      - ../src/robot_nav_bringup/maps:/ws/maps
+    command: bash /ws/scripts/run_slam.sh
+
+  nav:
+    <<: *app
+    profiles: [nav]
+    ports: ["8765:8765"]
+    command: ros2 launch robot_nav_bringup nav.launch.py
+
+  demo:
+    <<: *app
+    profiles: [demo]
+    ports: ["8765:8765"]
+    # Live-edit the gateway/scripts without an image rebuild: edit
+    # apps/robot-navigation/scripts/*, then `docker compose restart demo` (seconds).
+    volumes:
+      - ../scripts:/ws/scripts:ro
+    command: ros2 launch robot_nav_bringup demo.launch.py
+
+volumes:
+  gazebo-fuel:

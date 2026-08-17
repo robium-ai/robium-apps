@@ -1,7 +1,7 @@
 # demo-gateway — the hosted-demo session contract (reusable reference copy)
 
 The single-process gateway every hosted robium demo speaks. Battle-tested in
-indoor-navigation (Cloud Run + orchestrator) and mirrored by the FastAPI
+robot-navigation (Cloud Run + orchestrator) and mirrored by the FastAPI
 gateways in imitation-manipulation and vla-language-learning. Apps **vendor**
 this file (copy `demo_gateway.py` into their `scripts/`) so each app stays
 self-contained and promotion-ready; this copy is the source they vendor from
@@ -52,7 +52,7 @@ on every push (see .github/workflows/validate.yml).
 
 ## Vendoring status
 
-- indoor-navigation: vendors the pre-extraction copy (identical behavior;
+- robot-navigation: vendors the pre-extraction copy (identical behavior;
   env parameterization only here). Re-vendor on its next touch.
 - imitation-manipulation / vla-language-learning: FastAPI implementations of
   this contract; candidates to re-vendor when next touched.

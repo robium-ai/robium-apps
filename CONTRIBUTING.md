@@ -10,10 +10,10 @@ this page is the short path through it.
 
 - `robium-app.yaml` — the machine-readable contract (schema in the design
   doc, section 5). `robium-ai app validate` must pass.
-- A `Makefile` speaking the standard verbs: `build` (when there is
-  something to build), `demo` (the default showable experience), `smoke`
-  (the pass bar, exits nonzero on failure), `check` (preflight), `down`
-  (teardown where applicable).
+- A repository-local command surface declared by `robium-app.yaml`. Prefer an
+  executable `./app` launcher for new applications; existing Make-based apps
+  remain valid. It must expose the app's build/run, diagnosis, smoke/status,
+  logging, and teardown operations as applicable.
 - `README.md` with a five-minute quick start, tested exactly as written.
 - `docs/architecture-brief.md` and `docs/case-study.md` — the case study IS
   the app's public article: frontmatter (title, summary, app, date, hero,
@@ -38,8 +38,8 @@ hardware-in-the-loop.
    audience, robium value, default scenario, execution modes, success
    criteria, known limitations.
 2. **Prototype:** prove the end-to-end path with one reproducible scenario.
-3. **Reference-ready:** metadata + verbs + docs complete; `make smoke`
-   green from a clean clone; `robium-ai app validate` green.
+3. **Reference-ready:** metadata + verbs + docs complete; the manifest's smoke
+   command is green from a clean clone; `robium-ai app validate` is green.
 4. **Published:** promoted into this repo as one clean commit (app
    directory + its README index row, nothing else).
 5. **Maintained or archived:** archived apps stay runnable and are marked
@@ -50,7 +50,7 @@ hardware-in-the-loop.
 Start from the closest shipped app, not from scratch:
 
 ```bash
-npx robium-ai app new my-app --from indoor-navigation
+npx robium-ai app new my-app --from robot-navigation
 ```
 
 Then run the release checklist in the design doc before proposing

@@ -133,7 +133,7 @@ export function normalizeConfig(value: unknown): PanelConfig {
     typeof candidate.version === "number" && Number.isFinite(candidate.version)
       ? candidate.version
       : 0;
-  const config = { ...DEFAULT_CONFIG, simulationWorlds: [] };
+  const config: PanelConfig = { ...DEFAULT_CONFIG, simulationWorlds: [] };
 
   for (const key of stringKeys) {
     if (key === "navigationStopService" && candidateVersion < 3 && candidate[key] === "") {

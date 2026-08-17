@@ -1,0 +1,82 @@
+schema_version: "1"
+id: robot-navigation
+name: Robot Navigation (TurtleBot 3 + Nav2)
+summary: SLAM builds a map, Nav2 drives clicked goals, fully in sim, viewer bundled.
+version: 1.0.0
+status: stable
+license: MIT
+tags: [navigation, ros2, nav2, gazebo, slam, foxglove, lichtblick]
+
+runtime:
+  kind: docker
+  entrypoint: ./app run
+
+verbs:
+  help:
+    command: ./app help
+    summary: Show commands and examples
+  doctor:
+    command: ./app doctor
+    summary: Diagnose Docker, Compose, ports, and image readiness
+  build:
+    command: ./app build
+    summary: Build the robot-navigation Docker image
+  run:
+    command: ./app run
+    summary: Run the simulator and interactive control panel
+  status:
+    command: ./app status
+    summary: Show running services and dashboard endpoints
+  logs:
+    command: ./app logs
+    summary: Follow application process logs
+  stop:
+    command: ./app stop
+    summary: Stop all robot-navigation services
+
+modes:
+  sim:
+    command: ./app sim
+    summary: headless simulation bringup only, no SLAM or Nav2
+  slam:
+    command: ./app slam
+    summary: drive the mapping route and save the map
+  nav:
+    command: ./app nav
+    summary: navigation on the saved map, initial pose set manually
+  demo:
+    command: ./app demo
+    summary: autonomous hosted-demo flow running locally
+
+requirements:
+  hardware: []
+  gpu: none
+  network: optional
+
+assets:
+  worlds: [world.aws-small-house, world.tugbot-warehouse]
+  maps: []
+
+demo:
+  default_mode: demo
+  hosted: true
+  orchestrator:            # source for demo-orchestrator demos/<demo_id>.json
+    demo_id: nav-trial     # legacy id kept by live-demo infra through the rename
+    title: TurtleBot 3 autonomous navigation (ROS 2 + Nav2 + Gazebo)
+    image: robot-navigation:latest
+    command: [/entrypoint.sh, ros2, launch, robot_nav_bringup, demo.launch.py]
+    gateway_port: 8765
+    ready_log: DEMO READY
+    max_instances: 3
+    session_seconds: 1800
+    env:
+      GZ_RELAY: 127.0.0.1
+      GZ_IP: 127.0.0.1
+      FASTDDS_BUILTIN_TRANSPORTS: UDPv4
+      ROS_DOMAIN_ID: "42"
+      TURTLEBOT3_MODEL: waffle_pi
+  estimated_startup_seconds: 45
+
+artifacts:
+  thumbnail: null
+  case_study: docs/case-study.md

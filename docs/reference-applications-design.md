@@ -8,7 +8,7 @@ v2 keeps v1's direction and principles and reconciles them with what already
 exists: the `robium-ai` CLI (npm, `cli/` in the robium monorepo), the five
 shipped apps in robium-apps, REGISTRY.md, the learnings loop, and the
 demo-gateway/orchestrator/bundled-viewer hosting
-pattern proven by indoor-navigation.
+pattern proven by robot-navigation.
 
 ## 1. Vision and principles
 
@@ -45,7 +45,7 @@ Required files per app (merge of v1's tree and the shipped apps' shape):
 <app-id>/
 ├── README.md              # 5-minute quick start first; troubleshooting; cleanup
 ├── robium-app.yaml        # machine-readable contract (section 5)
-├── Makefile               # the per-app command surface (section 4)
+├── app or Makefile        # repository-local command surface (section 4)
 ├── docs/architecture-brief.md   # written by the robium-architect agent at kickoff
 ├── src/                   # app code (colcon pkg, python pkg, ...)
 ├── tests/                 # smoke test = the pass bar
@@ -96,8 +96,8 @@ inventing per app:
   budgets; it is never in the data path. One `demos/<id>.json` per app.
 - **Bundled viewer** when the app is viewer-centric: bake the Lichtblick web
   build into the image and serve it from the gateway, so the hosted iframe and
-  the local `make demo` show the identical, self-contained experience
-  (indoor-navigation two-flavor pattern).
+  the app's local demo command show the identical, self-contained experience
+  (robot-navigation two-flavor pattern).
 - Resource limits, scale-to-zero, a reset mechanism, and a fallback
   screenshot/video are mandatory. Never imply prerecorded or simulated output
   is live hardware output.
@@ -134,20 +134,23 @@ registry's bootstrap rule: copy the closest shipped app and diverge, instead
 of abstract templates. Every command supports non-interactive use and `--json`
 where output is data.
 
-### 4b. The per-app surface: Make verbs (exists in all five apps)
+### 4b. The per-app command surface
 
-The stable, agent- and human-facing entry point per app is its Makefile.
-Standard verbs (an app may add more):
+Each app exposes stable, agent- and human-facing commands through
+`robium-app.yaml`. New applications should use a repository-local executable
+named `./app`; existing Make-based applications remain valid because the
+manifest records the actual command. Standard operations include:
 
 ```text
-make build   # one-time environment/image build (omit when nothing to build)
-make demo    # the default showable end-to-end experience
-make smoke   # the pass bar; exits nonzero on failure
-make check   # preflight: deps, files, ports, credentials, hardware
-make down    # teardown/cleanup
+./app build    # explicit environment/image build when one exists
+./app run      # default end-to-end local experience; may build when missing
+./app doctor   # preflight: deps, files, ports, credentials, hardware
+./app status   # running state and endpoints
+./app logs     # runtime diagnostics
+./app stop     # teardown/cleanup
 ```
 
-Mode-shaped targets (like indoor-navigation's `sim` / `slam` / `nav`) are
+Mode-shaped targets (like robot-navigation's `sim` / `slam` / `nav`) are
 declared in `robium-app.yaml` so `robium-ai app run <id> --mode slam`
 resolves them. Commands fail with actionable messages; interactive prompts are
 allowed only where a non-interactive path also exists.
@@ -161,8 +164,8 @@ consistent.
 
 ```yaml
 schema_version: "1"
-id: indoor-navigation
-name: Indoor navigation (TurtleBot 3 + Nav2)
+id: robot-navigation
+name: Robot Navigation (TurtleBot 3 + Nav2)
 summary: SLAM builds a map, Nav2 drives clicked goals, fully in sim, viewer bundled.
 version: 1.0.0
 status: stable             # experimental | stable | archived
@@ -171,21 +174,22 @@ tags: [navigation, ros2, nav2, gazebo, foxglove]
 
 runtime:
   kind: docker             # docker | uv | remote-gpu | hardware
-  entrypoint: make demo
+  entrypoint: ./app run
 
 verbs:                     # standard verbs -> actual commands (section 4b)
-  build: make build
-  demo: make demo
-  smoke: make smoke
-  check: make check
-  down: make down
+  doctor: ./app doctor
+  build: ./app build
+  run: ./app run
+  status: ./app status
+  logs: ./app logs
+  stop: ./app stop
 
 modes:                     # optional; name -> command + one-line description
   slam:
-    command: make slam
+    command: ./app slam
     summary: drive the mapping route and save the map
   nav:
-    command: make nav
+    command: ./app nav
     summary: navigation on the saved map, manual init pose
 
 requirements:
@@ -281,7 +285,7 @@ when cross-posting:
 ---
 title: The article headline
 summary: One or two sentences shown on cards and list pages.
-app: indoor-navigation        # must equal the app id
+app: robot-navigation        # must equal the app id
 date: 2026-08-05              # last substantive revision (living document)
 hero: assets/trailer.gif      # app-relative short clip (or image); optional
 featured: true                # frontpage candidates; the site shows up to 3

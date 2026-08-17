@@ -108,15 +108,19 @@ export function DashboardPanel({ adapter }: { adapter: DashboardPanelAdapter }):
   }, [mapName, snapshot.selectedParameter]);
 
   useEffect(() => {
-    if (
-      snapshot.world !== "UNKNOWN" &&
-      isSimulationWorld(snapshot.world, snapshot.config.simulationWorlds)
-    ) {
-      setSelectedWorld(snapshot.world);
-    } else if (!isSimulationWorld(selectedWorld, snapshot.config.simulationWorlds)) {
-      setSelectedWorld(snapshot.config.simulationWorlds[0]?.value ?? "");
-    }
-  }, [selectedWorld, snapshot.config.simulationWorlds, snapshot.world]);
+    setSelectedWorld((currentWorld) => {
+      if (
+        snapshot.world !== "UNKNOWN" &&
+        isSimulationWorld(snapshot.world, snapshot.config.simulationWorlds)
+      ) {
+        return snapshot.world;
+      }
+      if (!isSimulationWorld(currentWorld, snapshot.config.simulationWorlds)) {
+        return snapshot.config.simulationWorlds[0]?.value ?? "";
+      }
+      return currentWorld;
+    });
+  }, [snapshot.config.simulationWorlds, snapshot.world]);
 
   useEffect(() => {
     if (!snapshot.config.showMovement) {

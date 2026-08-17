@@ -1,13 +1,13 @@
 """Demo session gateway — one process, one port (8765), per the demo spec.
 
-FastAPI implementing indoor-navigation's session contract (so robium-website's
+FastAPI implementing robot-navigation's session contract (so robium-website's
 Controls/demoClient/orchestrator reuse unchanged) + the Gradio app mounted at
-/ui. Unlike indoor-navigation's gateway there is no WebSocket tunnel: the "viewer" is
+/ui. Unlike robot-navigation's gateway there is no WebSocket tunnel: the "viewer" is
 the Gradio app itself, and "busy" means an episode is executing.
 
-Contract (mirrors indoor-navigation's scripts/demo_gateway.py):
+Contract (mirrors robot-navigation's scripts/demo_gateway.py):
   POST /start?session=U    -> claim; foreign session while a run executes -> 503
-  GET  /status?session=U   -> indoor-navigation's JSON shape; foreign session -> 409
+  GET  /status?session=U   -> robot-navigation's JSON shape; foreign session -> 409
   POST /shutdown?session=U -> foreign -> 403; own -> exit the process
   /ui                      -> the Gradio app (iframed by the website)
 
@@ -74,7 +74,7 @@ app = FastAPI(lifespan=_lifespan)
 app.add_middleware(
     CORSMiddleware,
     # Exact-origin reflect (ACAO:* is invalid with credentials): prod site +
-    # localhost dev, same shape as indoor-navigation's gateway.
+    # localhost dev, same shape as robot-navigation's gateway.
     allow_origin_regex=r"^https://(www\.)?robium\.(ai|org)$|^http://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
@@ -90,7 +90,7 @@ def _busy() -> bool:
 def start(session: str | None = None):
     # Claims are ALWAYS takeable here, even mid-run: a page refresh generates
     # a new session id while Gradio keeps executing the orphaned episode —
-    # indoor-navigation can 503 and let Cloud Run route the retry to a fresh
+    # robot-navigation can 503 and let Cloud Run route the retry to a fresh
     # instance, but locally this is the only instance, so the refresh must
     # win. Foreign takeover aborts the in-flight run (next control step).
     # v1-local tradeoff, stated honestly: a second visitor can steal the

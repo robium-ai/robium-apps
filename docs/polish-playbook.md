@@ -5,7 +5,7 @@ The goal per app: **validated** (real smoke pass, no drift) and **polished**
 (public-ready docs, generic naming, no stale paths, no secrets) so the human
 can publish it confidently in the public robium-apps repo.
 
-`indoor-navigation` completed this pass on 2026-08-03 — use it as the
+`robot-navigation` completed this pass on 2026-08-03 — use it as the
 reference for what done looks like (its README is the template for yours).
 
 ## The checklist (run in order)
@@ -40,7 +40,7 @@ reference for what done looks like (its README is the template for yours).
    private IPs/hostnames, and robot network details. Anything found:
    remove/generalize, and flag it loudly in your report (it may also live in
    git history — the human decides on history).
-6. **Public README rewrite.** Follow indoor-navigation/README.md's shape:
+6. **Public README rewrite.** Follow robot-navigation/README.md's shape:
    title = capability, one-paragraph plain-language intro (assume the reader
    has never heard of the stack), a `**Stack:**` tag-chip line, What you'll
    see, Prerequisites, Quick start (the make targets), then operator detail.
@@ -55,9 +55,9 @@ reference for what done looks like (its README is the template for yours).
 
 ## Per-app status & specifics
 
-### indoor-navigation — DONE 2026-08-03 (reference example)
+### robot-navigation — DONE 2026-08-03 (reference example)
 Cold-build smoke pass + post-rename smoke pass. Internal rename complete
-(`nav_trial_bringup` → `indoor_nav_bringup`). Public README done.
+(`nav_trial_bringup` → `robot_nav_bringup`). Public README done.
 
 ### imitation-manipulation — needs the pass
 - Bar: `make smoke` (uv + MPS native, ~40 s warm) and `make demo-smoke`
