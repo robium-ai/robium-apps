@@ -1,0 +1,61 @@
+schema_version: "1"
+id: vla-pick-and-place
+name: VLA pick and place (SmolVLA + SO-101)
+summary: Language-conditioned pick-and-place with a SmolVLA policy driving a simulated SO-101 arm; pipeline proven end-to-end, full-training policy pending.
+version: 0.1.0
+status: experimental     # honest: no checkpoint trained long enough to succeed yet
+license: MIT
+tags: [vla, smolvla, lerobot, mujoco, so-101, language]
+
+runtime:
+  kind: uv
+  entrypoint: make demo
+
+verbs:
+  build: make sync assets
+  demo: make demo
+  smoke: make smoke
+  check: make check
+  test: make test
+
+modes:
+  oracle:
+    command: make oracle
+    summary: scripted-IK canary, 10/10 on tuned seeds, proves scene/physics/success predicate
+  viz-oracle:
+    command: make viz-oracle
+    summary: one oracle episode logged to a Rerun .rrd for eyeballing
+  train-smoke:
+    command: make train-smoke
+    summary: free local config/shape gate before any paid remote training run
+
+requirements:
+  hardware: []
+  gpu: remote            # HF Jobs GPU for training; local eval runs on MPS/CPU
+  network: required      # Hub assets + HF Jobs
+
+demo:
+  default_mode: demo
+  # The demo runs on the visitor's own machine (`./app run`), not on hosted
+  # infrastructure. robium-website's /demos/vla-pick-and-place/ page offers
+  # three local paths — run it, evaluate our checkpoint, train your own — and
+  # no "try in browser" card, so nothing publishes this app as hosted.
+  hosted: false
+  # DORMANT: how `make demo-image`'s container is launched. Kept because the
+  # container path is still a supported local option, and because standing a
+  # hosted demo back up should not mean re-deriving this. Not consumed by
+  # demo-orchestrator while `hosted: false`.
+  orchestrator:
+    demo_id: vla-pick-and-place
+    title: Language-conditioned VLA arm (SmolVLA + MuJoCo + Rerun)
+    image: vla-pick-and-place:latest
+    command: [python, -m, vla_pick_and_place.demo.gateway]
+    gateway_port: 8765
+    ready_log: DEMO READY
+    max_instances: 1
+    session_seconds: 1800
+  estimated_startup_seconds: 60
+
+artifacts:
+  thumbnail: null
+  case_study: docs/case-study.md

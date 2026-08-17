@@ -21,7 +21,7 @@ reference for what done looks like (its README is the template for yours).
    | App | Old snake_case | New snake_case |
    | --- | --- | --- |
    | imitation-manipulation | `manip_trial` | `imitation_manipulation` |
-   | vla-language-learning | `vla_trial` | `vla_language_learning` |
+   | vla-pick-and-place | `vla_trial` | `vla_pick_and_place` |
    | quadruped-locomotion | `go2_locomotion` | `quadruped_locomotion` |
    | robot-teleoperation | (uses `tb4`/`tb4_teleop` strings) | `robot_teleoperation` / keep `tb4` where it names the physical robot |
 
@@ -44,7 +44,7 @@ reference for what done looks like (its README is the template for yours).
    title = capability, one-paragraph plain-language intro (assume the reader
    has never heard of the stack), a `**Stack:**` tag-chip line, What you'll
    see, Prerequisites, Quick start (the make targets), then operator detail.
-   Honesty rules from the registry carry over (e.g. vla-language-learning's
+   Honesty rules from the registry carry over (e.g. vla-pick-and-place's
    "pipeline proven, checkpoint not trained to success" must stay prominent).
 7. **REGISTRY.md card.** Update your app's card + quick-index row ONLY:
    new names, `verified` date = your re-verified smoke date (or unchanged if
@@ -67,7 +67,7 @@ Cold-build smoke pass + post-rename smoke pass. Internal rename complete
 - Watch: the demo image bakes artifacts from local outputs; if `outputs/`
   is empty you must run `make train-baseline` first (~15 min) — see card.
 
-### vla-language-learning — needs the pass
+### vla-pick-and-place — needs the pass
 - Bar: `make smoke` (pipeline mechanics) + `make oracle` (10/10 scripted IK
   canary). uv + MPS native, `MUJOCO_GL=cgl`. `make demo-smoke` for the demo.
 - Rename surface: `src/vla_trial/` package, pyproject, Makefile, both

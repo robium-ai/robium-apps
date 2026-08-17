@@ -71,7 +71,7 @@ touches, following the robium environments skill:
 - **Python/ML apps (LeRobot, MuJoCo, training/eval): uv-first.**
   `uv sync` + `uv run ...`, Python pinned, `uv.lock` committed. Docker is a
   documented exception when it would cost the accelerator (containers lose
-  MPS on Apple Silicon). Example: imitation-manipulation, vla-language-learning.
+  MPS on Apple Silicon). Example: imitation-manipulation, vla-pick-and-place.
 - **GPU-cloud apps: remote-first.** The local machine is a thin client; the
   smoke test runs on the remote GPU and must not fake-pass off it.
   Example: quadruped-locomotion (RunPod).

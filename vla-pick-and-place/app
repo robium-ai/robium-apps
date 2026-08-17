@@ -1,0 +1,170 @@
+#!/bin/sh
+# Local launcher, matching robot-navigation's ./app verb surface.
+#
+# This app is uv-native, not Docker-native: the sim, the scripted oracle, the
+# policy rollouts, and the demo UI all run directly on the host (MPS on Apple
+# Silicon). So these verbs wrap `make`/`uv` rather than `docker compose`, and
+# `./app run` is a foreground process on :8765, not a detached stack — which
+# is why there is no `status`/`logs` pair here. `./app stop` exists only to
+# clear a port left held by a crashed run.
+set -eu
+
+APP_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cd "$APP_DIR"
+
+# MuJoCo's GL backend is not optional and not auto-detected: CGL on macOS,
+# EGL on Linux. Getting it wrong is a hang or a blank render, not an error.
+if [ -z "${MUJOCO_GL:-}" ]; then
+  if [ "$(uname)" = "Darwin" ]; then MUJOCO_GL=cgl; else MUJOCO_GL=egl; fi
+  export MUJOCO_GL
+fi
+
+MENAGERIE_ASSET="src/vla_pick_and_place/env/assets/so101.xml"
+PORT=8765
+
+show_help() {
+  cat <<'EOF'
+VLA Pick and Place
+
+Command                  Description
+./app help               Show commands and examples
+./app doctor             Diagnose prerequisites and conflicts
+./app build              Install dependencies and vendor the SO-101 model
+./app run                Build if needed, then serve the demo UI on :8765
+./app oracle             Scripted-IK canary: 10 pick-and-place episodes
+./app eval [CKPT]        Roll a checkpoint out in sim and score it
+./app test               Run the regression suite
+./app stop               Free port 8765 if a crashed run still holds it
+
+Examples:
+  ./app eval                                  # the checkpoint the demo ships
+  ./app eval outputs/train/.../pretrained_model   # your own local checkpoint
+  ./app eval your-name/train_2026-08-17_12-00-00  # your own Hub checkpoint
+
+Training your own policy: docs/training-guide.md
+EOF
+}
+
+port_holder() {
+  command -v lsof >/dev/null 2>&1 || return 0
+  lsof -nP -iTCP:"$PORT" -sTCP:LISTEN -t 2>/dev/null || true
+}
+
+assets_present() {
+  [ -f "$MENAGERIE_ASSET" ]
+}
+
+doctor() {
+  ok=1
+
+  if command -v uv >/dev/null 2>&1; then
+    echo "ok: uv present"
+  else
+    echo "FAIL: uv not installed (https://docs.astral.sh/uv/)"
+    ok=0
+  fi
+
+  [ -f uv.lock ] || { echo "FAIL: uv.lock missing (broken checkout)"; ok=0; }
+
+  # Deliberately checks a menagerie-owned file. `scene_pick.xml` is ours and
+  # tracked, so "the assets dir is non-empty" is true in a fresh clone that
+  # has no robot in it — that false positive let this app sit broken.
+  if assets_present; then
+    echo "ok: SO-101 menagerie asset vendored"
+  else
+    echo "note: SO-101 asset missing — './app build' will vendor it"
+  fi
+
+  if [ -d .venv ]; then
+    echo "ok: .venv present"
+  else
+    echo "note: no .venv yet — './app build' will create it"
+  fi
+
+  echo "ok: MUJOCO_GL=$MUJOCO_GL"
+
+  holder=$(port_holder)
+  if [ -n "$holder" ]; then
+    echo "FAIL: port $PORT already in use (pid $holder) — './app stop' or quit it"
+    ok=0
+  else
+    echo "ok: port $PORT available"
+  fi
+
+  # Only the trained-checkpoint path needs the Hub; the oracle and the sim do
+  # not. A logged-out machine is a note, not a failure.
+  if command -v hf >/dev/null 2>&1 && hf auth whoami >/dev/null 2>&1; then
+    echo "ok: Hugging Face auth present (trained checkpoints readable)"
+  else
+    echo "note: not logged in to Hugging Face — './app oracle' still works;"
+    echo "      './app eval' and the demo's trained controller need 'hf auth login'"
+  fi
+
+  if [ "$ok" -eq 1 ]; then
+    echo "DOCTOR PASS"
+  else
+    echo "DOCTOR FAIL"
+    return 1
+  fi
+}
+
+build() {
+  make sync
+  assets_present || make assets
+}
+
+run() {
+  [ -d .venv ] && assets_present || {
+    echo "First run — installing dependencies and vendoring the SO-101 model..."
+    build
+  }
+  echo "demo UI -> http://localhost:$PORT"
+  make demo
+}
+
+stop() {
+  holder=$(port_holder)
+  if [ -z "$holder" ]; then
+    echo "nothing listening on :$PORT"
+    return 0
+  fi
+  echo "killing pid $holder holding :$PORT"
+  kill "$holder"
+}
+
+command=${1:-help}
+if [ "$#" -gt 0 ]; then
+  shift
+fi
+
+case "$command" in
+  help|-h|--help) show_help ;;
+  doctor) doctor ;;
+  build) build ;;
+  run) run ;;
+  oracle) make oracle ;;
+  test) make test ;;
+  stop) stop ;;
+  eval)
+    # `make eval` exits non-zero below the 60% success floor — correct for a
+    # pass bar, misleading as a report. Say what a 0% actually means, since
+    # the checkpoint we ship is a 100-step pipe-test that scores exactly that.
+    if make eval CKPT="${1:-}"; then
+      :
+    else
+      status=$?
+      echo ""
+      echo "Scored below the success floor (exit $status; SUCCESS_RATE_FLOOR"
+      echo "in src/vla_pick_and_place/config.py is the bar)."
+      echo "For the checkpoint this app ships, that is the CORRECT result: it"
+      echo "is a 100-step pipe-test artifact, near-identical to the base model."
+      echo "See docs/training-guide.md to train one that clears the bar."
+      exit "$status"
+    fi
+    ;;
+  *)
+    echo "Unknown command: $command" >&2
+    echo "Run './app help' to see available commands." >&2
+    exit 2
+    ;;
+esac
