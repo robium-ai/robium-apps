@@ -1,61 +1,62 @@
 schema_version: "1"
 id: vla-pick-and-place
-name: VLA pick and place (SmolVLA + SO-101)
-summary: Run language-conditioned pick-and-place with a SmolVLA checkpoint and a simulated SO-101 arm in MuJoCo.
-version: 0.1.0
-status: experimental     # the included 100-step checkpoint currently scores 0%
+name: VLA pick and place (SO-101 on SO101-Nexus)
+summary: Drive a simulated SO-101 arm joint by joint and replay published expert demonstrations of the same pick-and-place task, in the same pinned MuJoCo environment.
+version: 0.2.0
+status: experimental     # no trained controller matches this environment yet
 license: MIT
-tags: [vla, smolvla, lerobot, mujoco, so-101, language]
+tags: [mujoco, so-101, so101-nexus, lerobot, manipulation, teleoperation]
 
 runtime:
   kind: uv
   entrypoint: make demo
 
 verbs:
-  build: make sync assets
+  build: make sync
   demo: make demo
-  smoke: make smoke
+  smoke: make demo-smoke
   check: make check
   test: make test
 
 modes:
-  oracle:
-    command: make oracle
-    summary: scripted-IK canary, 10/10 on tuned seeds, proves scene/physics/success predicate
-  viz-oracle:
-    command: make viz-oracle
-    summary: one oracle episode logged to a Rerun .rrd for eyeballing
-  train-smoke:
-    command: make train-smoke
-    summary: free local config/shape gate before any paid remote training run
+  contract:
+    command: make contract
+    summary: re-measure the pinned environment's schema and fail on drift
+  dataset-check:
+    command: make dataset-check
+    summary: verify the pinned demonstrations match this environment, schema and scene
+  controllers:
+    command: make controllers
+    summary: list controllers and the named reason each unavailable one cannot run
+  sim:
+    command: make sim
+    summary: drive the simulator headless and write a Rerun .rrd
+  play:
+    command: make play
+    summary: replay a pinned recorded episode headless and write a Rerun .rrd
 
 requirements:
   hardware: []
-  gpu: remote            # HF Jobs GPU for training; local eval runs on MPS/CPU
-  network: required      # Hub assets + HF Jobs
+  gpu: none              # nothing in this milestone runs a policy
+  network: required      # first dataset playback pulls the pinned Hub revision
 
 demo:
   default_mode: demo
   # The demo runs on the visitor's own machine (`./app run`), not on hosted
-  # infrastructure. robium-website's /demos/vla-pick-and-place/ page offers
-  # three local paths — run it, evaluate our checkpoint, train your own — and
-  # no "try in browser" card, so nothing publishes this app as hosted.
+  # infrastructure.
   hosted: false
   # DORMANT: how `make demo-image`'s container is launched. Kept because the
-  # container path is still a supported local option, and because standing a
-  # hosted demo back up should not mean re-deriving this. Not consumed by
+  # container path is still a supported local option. Not consumed by
   # demo-orchestrator while `hosted: false`.
   orchestrator:
     demo_id: vla-pick-and-place
-    title: Language-conditioned VLA arm (SmolVLA + MuJoCo + Rerun)
+    title: SO-101 pick and place (SO101-Nexus + MuJoCo)
     image: vla-pick-and-place:latest
     command: [python, -m, vla_pick_and_place.demo.gateway]
     gateway_port: 8765
     ready_log: DEMO READY
     max_instances: 1
     session_seconds: 1800
-  estimated_startup_seconds: 60
+  estimated_startup_seconds: 20
 
-artifacts:
-  thumbnail: assets/oracle-run.gif
-  case_study: docs/case-study.md
+artifacts: {}

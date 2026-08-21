@@ -1,20 +1,12 @@
-.PHONY: sync assets test test-all spike-test clean spike-render spike-policy spike-policy-container oracle viz-oracle record push-dataset spot-check train-smoke train train-full eval smoke demo demo-image demo-smoke
+.PHONY: sync test test-all clean contract dataset-check controllers expert record sim play demo demo-image demo-smoke check
 
 sync:
 	uv sync
 
-assets:
-	bash scripts/fetch_assets.sh
-
-# The regression suite. Excludes the `slow` M0 benchmarks — they re-derive
-# already-committed numbers at ~9 s per SmolVLA forward pass and were 56% of
-# the runtime. Benchmarks are not regression tests.
+# The regression suite. Excludes `slow` — the tests that boot the real gateway
+# or pull a pinned dataset from the Hub. Everything left is fast and offline.
 test:
 	uv run pytest tests/ -v
-
-# The M0 benchmark guards, on demand. Slow by design (real SmolVLA inference).
-spike-test:
-	uv run pytest tests/ -v -m slow
 
 test-all:
 	uv run pytest tests/ -v -m ""
@@ -22,110 +14,68 @@ test-all:
 clean:
 	rm -rf outputs
 
-# M0: MuJoCo offscreen render throughput (spec risk 2).
-spike-render:
-	uv run python -m vla_pick_and_place.run spike-render
+# What the pinned environment actually is: spaces, cameras, control rate,
+# info keys, success key. Writes outputs/contract.json and exits non-zero if
+# the live environment has drifted from the contract the app was built on.
+contract:
+	uv run python -m vla_pick_and_place.run contract
 
-# M0: SmolVLA forward-pass latency, native (spec risk 1).
-spike-policy:
-	uv run python -m vla_pick_and_place.run spike-policy cpu mps
+# Whether the pinned datasets match this environment — schema AND scene. The
+# second candidate is expected to fail the scene check; that is the report,
+# not a regression. Exits non-zero only if the PRIMARY dataset fails.
+dataset-check:
+	uv run python -m vla_pick_and_place.run dataset-check
 
-# M0: the decisive number — CPU inside linux/arm64, because Docker on macOS
-# cannot see MPS, so the demo container is CPU here AND on Cloud Run.
-spike-policy-container:
-	docker build -f docker/spike.Dockerfile -t vla-pick-and-place-spike:latest .
-	docker run --rm -v $(PWD)/outputs:/app/outputs vla-pick-and-place-spike:latest
+# Which controllers may run here, and the named reason the rest may not.
+controllers:
+	uv run python -m vla_pick_and_place.run controllers
 
-# The day-1 canary. The oracle sees ground truth; anything but N/N is a bug.
-# Currently 10/10. Three things are load-bearing and coupled — the pedestal
-# (scene_pick.xml), the wrist-roll solve (so the jaws pinch HORIZONTALLY), and
-# the calibrated grasp offset. Changing any one without re-running the others'
-# sweeps quietly degrades the pick. See .superpowers/sdd/task-5-report.md.
-oracle:
-	uv run python -m vla_pick_and_place.run oracle 10
+# The scripted expert's pass bar: success rate over a fixed seed band.
+N ?= 30
+expert:
+	uv run python -m vla_pick_and_place.run expert $(N)
 
-# Task 6: one oracle episode (seed 0), logged to a Rerun .rrd for eyeballing.
-# open with: uv run rerun outputs/viz/oracle.rrd
-viz-oracle:
-	uv run python -m vla_pick_and_place.run viz-oracle
-
-# Task 7: record N clean episodes LOCALLY (discard/retry on oracle misses).
-# No Hub push — the user reviews the dataset first.
+# Record N SUCCESSFUL expert demonstrations into outputs/dataset/ (never pushed).
+EPISODES ?= 50
 record:
-	uv run python -m vla_pick_and_place.run record
+	uv run python -m vla_pick_and_place.run record $(EPISODES)
 
-# Task 7: push the already-recorded LOCAL dataset to the Hub (private) — run
-# ONLY after reviewing it. Not invoked by `record` or by any test.
-push-dataset:
-	uv run python -m vla_pick_and_place.run push-dataset
+# Drive the simulator headless and write an .rrd: `make sim SEED=3 STEPS=60`.
+# open with: uv run rerun outputs/viz/sim_seed3.rrd
+SEED ?= 0
+STEPS ?= 60
+sim:
+	uv run python -m vla_pick_and_place.run sim $(SEED) $(STEPS)
 
-# Task 7: re-roll a handful of kept seeds through the oracle with RerunLogger
-# attached, one .rrd per episode under outputs/viz/, for visual spot-checking.
-spot-check:
-	uv run python -m vla_pick_and_place.run spot-check
+# Replay a pinned recorded episode headless and write an .rrd.
+EPISODE ?= 0
+play:
+	uv run python -m vla_pick_and_place.run play $(EPISODE)
 
-# Task 8: prove the training loop assembles — a few steps on CPU, free, ~2 min.
-# NOT training (MPS is ~2 h per 20 steps). Catches config/shape errors before
-# any GPU spend.
-train-smoke:
-	uv run python -m vla_pick_and_place.run train-smoke
+# --- demo page --------------------------------------------------------------
 
-# Task 8: submit the fine-tune to HF Jobs. Default is the CHEAP PIPE-TEST run
-# (PIPE_TEST_STEPS — currently 100 steps, a10g-small, ~$1) that proves the
-# remote loop end-to-end. The real 20k-step run is `make train-full` (~$20-40)
-# — a separate, deliberate spend. See config.py for the current step count.
-train:
-	uv run python -m vla_pick_and_place.run train
-
-train-full:
-	uv run python -m vla_pick_and_place.run train full
-
-# Task 9: roll a checkpoint out in sim and score it. Defaults to
-# DEMO_CHECKPOINT (what the demo page ships); pass a path/repo_id to eval
-# something else, e.g.:
-#   make eval CKPT=outputs/train/smolvla_so101_smoke/checkpoints/000005/pretrained_model
-# Exits non-zero below SUCCESS_RATE_FLOOR — it is a pass bar, not a report.
-eval:
-	uv run python -m vla_pick_and_place.run eval $(CKPT)
-
-# Task 9 PIPE-TEST pass bar: proves the eval pipeline runs end to end (loads
-# the local 5-step smoke checkpoint, rolls out N episodes, writes
-# eval_info.json with a numeric success_rate). NOT the >=60% score bar — the
-# real fine-tune (SUCCESS_RATE_FLOOR) hasn't run yet; see tests/test_smoke.py.
-smoke:
-	uv run pytest tests/test_smoke.py -v -m slow
-
-# --- demo page (spec: 2026-07-15-vla-trial-demo-page-design.md in the robium repo)
-
-# The demo gateway, NATIVE (fast MPS inference on Apple silicon). Pair with
-# the website's dev backend dropdown: "direct localhost:8765".
-# MUJOCO_GL=cgl is required on macOS; contexts are thread-affine — see
-# src/vla_pick_and_place/demo/episode_runner.py's docstring before "simplifying" this.
+# The demo gateway, NATIVE. MUJOCO_GL=cgl is required on macOS and contexts
+# are thread-affine — read src/vla_pick_and_place/demo/session.py's docstring
+# before "simplifying" the worker thread away.
 demo:
 	MUJOCO_GL=cgl uv run python -m vla_pick_and_place.demo.gateway
 
-# Build the demo container (CPU inference, ~9 s/forward-pass). The checkpoint
-# repos are private, so the bake step gets the HF token as a BuildKit secret.
+# The demo container. No build secret: the environment is a public pip package
+# and the demonstration dataset is a public Hub repo.
 demo-image:
-	HF_TOKEN=$$(uv run hf auth token) docker build \
-	  --secret id=hf_token,env=HF_TOKEN \
-	  -f docker/demo.Dockerfile -t vla-pick-and-place:latest .
+	docker build -f docker/demo.Dockerfile -t vla-pick-and-place:latest .
 
-# The live-demo skill's ship bar: gateway boots to DEMO READY, session guards
-# hold (409/403), ONE ORACLE EPISODE SUCCEEDS through the Gradio API, and
-# /shutdown exits the process. Boots the real model — takes a few minutes.
+# The ship bar: gateway boots to DEMO READY, session guards hold (409/403),
+# a real reset frame and a real driven step arrive through the Gradio API,
+# dataset playback advances, and /shutdown exits the process.
 demo-smoke:
 	uv run pytest tests/test_demo.py -v -m slow
 
-# Preflight: catch the likely setup failures (reference-apps spec v1).
-.PHONY: check
+# Preflight: catch the likely setup failures.
 check:
 	@ok=1; \
 	command -v uv >/dev/null 2>&1 || { echo "FAIL: uv not installed (https://docs.astral.sh/uv/)"; ok=0; }; \
 	[ -f uv.lock ] || { echo "FAIL: uv.lock missing (broken checkout)"; ok=0; }; \
-	if [ -f src/vla_pick_and_place/env/assets/so101.xml ]; then \
-	  echo "ok: MuJoCo assets fetched"; \
-	else echo "note: menagerie assets missing — run 'make assets' first"; fi; \
 	if [ -d .venv ]; then echo "ok: .venv present"; else echo "note: no .venv yet — run 'make sync' first"; fi; \
-	[ "$$(uname)" = "Darwin" ] && echo "note: Apple Silicon requires MUJOCO_GL=cgl (set by config, see README)"; \
+	[ "$$(uname)" = "Darwin" ] && echo "note: macOS requires MUJOCO_GL=cgl (./app sets it)"; \
 	[ $$ok -eq 1 ] && echo "CHECK PASS" || { echo "CHECK FAIL"; exit 1; }

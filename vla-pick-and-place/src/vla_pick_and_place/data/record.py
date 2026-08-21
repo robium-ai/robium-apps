@@ -1,119 +1,151 @@
-"""Roll the oracle out N times and write a LeRobotDataset v3.
+"""Record scripted-expert demonstrations as a LeRobot dataset.
 
-Scripted-oracle collection, not teleop: we own the MJCF, so the cube's pose is
-known, and 75 episodes take minutes unattended and are regenerable after any
-scene tweak. Teleop would be an hour of tedium with variable quality.
+This is the app's answer to a problem the migration survey made concrete:
+**no trained controller exists for the stock `MuJoCoPickAndPlace-v1` scene,
+from anyone**, and neither published dataset was recorded in it — one has a
+wood floor and an orange robot, the other a second target disc. Training
+against someone else's scene is what produced the 0%-success checkpoint this
+app used to ship.
 
-API note (Task 7 Step 1, installed lerobot==0.6.0): the brief's sample code
-called ``dataset.add_frame(frame, task=TASK)`` — that signature does not
-exist. The installed ``LeRobotDataset.add_frame(self, frame: dict) -> None``
-takes ONLY the frame dict, and its docstring says the frame "must include a
-'task' key"; the writer does ``frame.pop("task")`` internally. So the task
-string goes INSIDE the per-frame dict, not as a call kwarg. ``save_episode``
-similarly takes no ``task`` argument in this release.
+So the data is generated here, in the exact pinned environment the demo runs,
+and three choices keep it that way:
+
+  * **Simulator units, not LeRobot motor units.** `observation.state` and
+    `action` are joint angles in RADIANS — the environment's own action space.
+    The published datasets record degrees plus a gripper percent, which needs
+    a conversion at every boundary and silently corrupts the gripper channel
+    if anyone reaches for `np.deg2rad`. A policy trained on this data emits
+    actions that `env.step()` accepts directly.
+  * **fps 50 = the real control rate.** `control_dt` is 0.02 s and one
+    recorded frame is exactly one env step, so the dataset's fps is not a
+    playback convention here — it is the truth.
+  * **Successes only.** An episode is written only if `info["success"]` holds
+    at the end. The expert clears ~79% of seeds; the rest cost collection
+    time, not data quality.
+
+Nothing here modifies the physics. Other projects on this simulator harden the
+contact model to make the grasp easier; that would make the recording describe
+a world the demo does not run in.
 """
+
+from __future__ import annotations
 
 from pathlib import Path
 
-from lerobot.configs.video import RGBEncoderConfig
-from lerobot.datasets.lerobot_dataset import LeRobotDataset
+import numpy as np
 
 from vla_pick_and_place.config import (
+    APP_ROOT,
+    CAMERA_H,
+    CAMERA_W,
     CONTROL_FPS,
-    DATASET_REPO_ID,
-    IMG_H,
-    IMG_W,
-    N_EPISODES,
+    JOINT_NAMES,
+    LOCAL_DATASET_REPO_ID,
     N_JOINTS,
-    RECORD_VCODEC,
+    OBS_OVERHEAD,
+    OBS_STATE,
+    OBS_WRIST,
     TASK,
 )
-from vla_pick_and_place.env.so101_pick import SO101PickEnv
-from vla_pick_and_place.oracle.scripted_pick import rollout
 
-FEATURES = {
-    "observation.images.wrist": {
-        "dtype": "video",
-        "shape": (IMG_H, IMG_W, 3),
-        "names": ["height", "width", "channel"],
-    },
-    "observation.images.scene": {
-        "dtype": "video",
-        "shape": (IMG_H, IMG_W, 3),
-        "names": ["height", "width", "channel"],
-    },
-    "observation.state": {
-        "dtype": "float32",
-        "shape": (N_JOINTS,),
-        "names": [f"joint_{i}" for i in range(N_JOINTS)],
-    },
-    "action": {
-        "dtype": "float32",
-        "shape": (N_JOINTS,),
-        "names": [f"joint_{i}" for i in range(N_JOINTS)],
-    },
-}
+DEFAULT_ROOT = APP_ROOT / "outputs" / "dataset"
+
+
+def features() -> dict:
+    """The dataset schema. Mirrors the environment's observation contract."""
+    joint_names = list(JOINT_NAMES)
+    return {
+        "observation.state": {
+            "dtype": "float32",
+            "shape": (N_JOINTS,),
+            "names": joint_names,
+        },
+        "action": {"dtype": "float32", "shape": (N_JOINTS,), "names": joint_names},
+        "observation.images.wrist": {
+            "dtype": "video",
+            "shape": (CAMERA_H, CAMERA_W, 3),
+            "names": ["height", "width", "channel"],
+        },
+        "observation.images.overhead": {
+            "dtype": "video",
+            "shape": (CAMERA_H, CAMERA_W, 3),
+            "names": ["height", "width", "channel"],
+        },
+        "reward": {"dtype": "float32", "shape": (1,), "names": None},
+        "success": {"dtype": "float32", "shape": (1,), "names": None},
+    }
 
 
 def record(
-    n_episodes: int = N_EPISODES,
-    repo_id: str = DATASET_REPO_ID,
-    push: bool = False,
-) -> Path:
+    n_episodes: int = 50,
+    *,
+    repo_id: str = LOCAL_DATASET_REPO_ID,
+    root: Path | None = None,
+    start_seed: int = 0,
+    max_attempts: int | None = None,
+    progress=print,
+) -> dict:
+    """Collect `n_episodes` SUCCESSFUL expert episodes. Never pushes to the Hub.
+
+    Returns a summary dict. Seeds are consumed in order from `start_seed`, so
+    a rerun with the same start reproduces the same dataset exactly.
+    """
+    from lerobot.datasets.lerobot_dataset import LeRobotDataset
+
+    from vla_pick_and_place.data.expert import ScriptedExpert
+    from vla_pick_and_place.env.nexus import NexusPickAndPlace
+
+    root = Path(root) if root is not None else DEFAULT_ROOT
+    max_attempts = max_attempts if max_attempts is not None else n_episodes * 3
+
     dataset = LeRobotDataset.create(
         repo_id=repo_id,
         fps=CONTROL_FPS,
-        features=FEATURES,
+        features=features(),
+        root=root,
         robot_type="so101",
         use_videos=True,
-        # RECORD_VCODEC, not LeRobot's libsvtav1 default — see config.py for
-        # the macOS SVT-AV1 teardown-crash rationale.
-        rgb_encoder=RGBEncoderConfig(vcodec=RECORD_VCODEC),
     )
 
-    env = SO101PickEnv()
-    kept = 0
-    seed = 0
-    discarded = 0
-    # DISCARD/RETRY, not "skip". The oracle succeeds ~85-92% on UNSEEN spawns
-    # (Task 5 review measured 9/10 on seeds outside 0-9), so a ~10% discard rate
-    # here is EXPECTED, not a bug — a discarded episode is one where the cube was
-    # ejected off the pedestal on an untuned corner, and it must never enter the
-    # training data (that is the poison the canary exists to keep out). We keep
-    # drawing fresh seeds until N clean episodes exist.
-    #
-    # But guard against a real regression masquerading as bad luck: if the
-    # success rate collapses, something broke (a scene edit, a detuned grasp),
-    # and we must fail loudly rather than loop forever writing nothing.
-    max_attempts = n_episodes * 3
-    while kept < n_episodes:
-        attempts = kept + discarded
-        if attempts >= max_attempts:
-            env.close()
-            raise RuntimeError(
-                f"oracle success rate collapsed: {kept} kept / {attempts} attempts "
-                f"({kept / attempts:.0%}) after {max_attempts} tries. Expected ~85-92%. "
-                "Something regressed — re-run `make oracle` before recording."
-            )
-        result = rollout(env, seed=seed)
-        seed += 1
-        if not result["success"]:
-            discarded += 1
-            print(f"seed {seed - 1}: discarded (oracle miss, expected ~10%)")
-            continue
+    kept, attempted, discarded = 0, 0, []
+    with NexusPickAndPlace(control_mode="pd_ee_pose") as env:
+        expert = ScriptedExpert(env)
+        seed = start_seed
+        while kept < n_episodes and attempted < max_attempts:
+            frames, info = [], {}
+            for obs, joint_action, reward, info in expert.run(seed):
+                frames.append(
+                    {
+                        OBS_STATE: np.asarray(obs[OBS_STATE], dtype=np.float32),
+                        "action": np.asarray(joint_action, dtype=np.float32),
+                        OBS_WRIST: np.asarray(obs[OBS_WRIST]),
+                        OBS_OVERHEAD: np.asarray(obs[OBS_OVERHEAD]),
+                        "reward": np.array([reward], dtype=np.float32),
+                        "success": np.array(
+                            [1.0 if info.get("success") else 0.0], dtype=np.float32
+                        ),
+                    }
+                )
+            attempted += 1
+            if not info.get("success"):
+                discarded.append(seed)
+                seed += 1
+                continue
+            for frame in frames:
+                dataset.add_frame({**frame, "task": TASK})
+            dataset.save_episode()
+            kept += 1
+            progress(f"episode {kept}/{n_episodes} kept (seed {seed}, {len(frames)} frames)")
+            seed += 1
 
-        for frame in result["frames"]:
-            dataset.add_frame({**frame, "task": TASK})
-        dataset.save_episode()
-        kept += 1
-        print(f"episode {kept}/{n_episodes} (seed {seed - 1}, {result['n_steps']} steps)")
-
-    env.close()
-    rate = kept / (kept + discarded)
-    print(f"recorded {kept} clean episodes; discarded {discarded} "
-          f"(oracle success {rate:.0%} on unseen seeds)")
-
-    if push:
-        dataset.push_to_hub()
-
-    return dataset.root
+    return {
+        "repo_id": repo_id,
+        "root": str(root),
+        "episodes": kept,
+        "attempted": attempted,
+        "discarded_seeds": discarded,
+        "success_rate": round(kept / attempted, 3) if attempted else 0.0,
+        "seeds": f"{start_seed}..{seed - 1}",
+        "fps": CONTROL_FPS,
+        "units": "radians (absolute joint position) — the environment's own",
+    }

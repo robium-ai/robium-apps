@@ -1,255 +1,293 @@
-# vla-pick-and-place — architecture brief
+# Architecture brief — vla-pick-and-place
 
-Language-conditioned VLA control of a simulated SO-101 arm: type an instruction
-and a SmolVLA policy drives a MuJoCo SO-101 to carry it out.
+**Last verified:** 2026-08-17 on macOS 26.5 / arm64 / Python 3.12.13 /
+mujoco 3.10.0 / gymnasium 1.3.0 / lerobot 0.6.0 / so101-nexus 0.5.1.
 
-This file is written incrementally as the milestones land. Task 11 adds the full
-stack rationale and the `§8 Battle scars` section; Task 10 adds `## Results`.
+## What this app is
 
-## M0 spike results
+A local workspace for the SO-101 arm on the published SO101-Nexus MuJoCo
+environment. A visitor can drive the arm by hand and watch published expert
+demonstrations of the same task in the same scene. It runs natively on Apple
+Silicon and Linux with no GPU.
 
-**Date: 2026-07-13.** Both M0 spikes are now measured. Every later task's
-assumption about *where inference runs* traces back to this section.
+It is deliberately not a trained-policy demo. There is no checkpoint that
+matches this environment yet, and the app says so rather than shipping one
+that does not.
 
-### Spike 2 — MuJoCo offscreen render throughput (spec risk 2): PASS
+## The decision that shaped everything
 
-| Metric | Value |
+The app used to own its physics: a hand-written MJCF scene built on vendored
+menagerie meshes, a damped-least-squares IK solver, a brute-force-calibrated
+grasp offset, and a five-condition success predicate with a settle debounce.
+That stack worked, and it was the reason nothing else could be reused — no
+published dataset and no published checkpoint had ever seen that scene, so the
+one SmolVLA checkpoint trained for it scored 0% and nothing else could be
+plugged in at all.
+
+`so101-nexus` now publishes what was missing: the same robot in the same
+simulator, installable from PyPI, with golden-trajectory regression tests, a
+documented stability contract, LeRobot-compatible recording, and published
+datasets recorded in it. So the app stopped simulating and started
+translating. Everything below follows from that.
+
+## Stack
+
+| Layer | Choice | Why |
+| --- | --- | --- |
+| Environment | `so101-nexus==0.5.1`, `MuJoCoPickAndPlace-v1` | Published, pinned, tested upstream; the only SO-101 MuJoCo layer with matching public datasets |
+| Simulator | MuJoCo 3.10 (upstream's backend) | Native on macOS and Linux; the local-first promise depends on it |
+| Backend | MuJoCo, not Warp | Warp needs CUDA. Optional upstream, deliberately unused |
+| Data (playback) | LeRobot v3 datasets from the Hub, pinned to commit shas | Verified against a live render before use |
+| Data (training) | Recorded here by a scripted expert, in this exact scene | No published dataset larger than 10 episodes exists for the stock scene |
+| Web | FastAPI gateway + Gradio workspace on `:8765` | Same session contract as `robot-navigation`, so the shared orchestrator reuses unchanged |
+| Visualization | Direct frame rendering in-page; Rerun `.rrd` offline | See "Rerun" below |
+| Env manager | `uv` + Python 3.12 | Pure-Python stack, no ROS, no system deps |
+
+## Measured environment contract
+
+Captured by `python -m vla_pick_and_place.run contract`, asserted by
+`tests/test_app.py`, and re-checked at gateway boot.
+
+```
+env_id                     MuJoCoPickAndPlace-v1
+max_episode_steps          1024
+control_dt                 0.02 s (50 Hz)
+action                     Box(6) float32, absolute joint position, RADIANS
+observation.state          (6,)      joint positions
+observation.environment_state (43,)  privileged state, 10 components
+observation.images.wrist   (480, 640, 3) uint8
+observation.images.overhead(480, 640, 3) uint8
+success key                info["success"]
+```
+
+Additional facts established by measurement, not assumption:
+
+- **Deterministic resets.** A fixed seed reproduces the observation *and* the
+  rendered frame exactly; a different seed does not.
+- **Throughput.** ~60 env steps/s with both camera observations active,
+  measured at 256×256, 320×240 and 640×480 — within noise of each other. The
+  per-render fixed cost dominates, so the smaller sizes buy nothing and lose
+  the dataset match. 640×480 it is.
+- **Camera randomization.** The wrist camera's FOV, pitch and mount offset are
+  randomized per reset by design. Only the static overhead view is usable as a
+  scene-identity probe.
+- **Reset noise.** `robot_init_qpos_noise` means a reset joint *position* can
+  settle marginally outside the actuator *control* range — the gripper comes
+  back at −0.17454 against a −0.17453 bound. Anything binding joint state to a
+  bounded widget must clamp.
+- **Dataset fps is not control rate.** Upstream is explicit that a recorder
+  sleeps to pace an operator but advances the simulation exactly one step per
+  recorded frame. So one dataset frame is one env step, and the datasets' 30 /
+  33 fps figures are playback rates, not a control-rate mismatch.
+
+## Data source: why the smaller dataset won
+
+Two published datasets exist for `MuJoCoPickAndPlace-v1`. Both load cleanly
+under LeRobot 0.6.0, both have 6-dim state and action, both record the same
+task string, both have two 480×640 cameras. **A schema check cannot tell them
+apart.**
+
+Rendering a frame from each next to a fresh render from the pinned environment
+can:
+
+| | `johnsutor/MuJoCoPickAndPlace-v1` | `ataghof/so101nexus-cube500-binary` |
+| --- | --- | --- |
+| Pinned revision | `8e295eba` | `bdd2d23b` |
+| Episodes / frames | 10 / 4,725 | 500 / 20,647 |
+| Camera names | `wrist`, `overhead` | `cam0`, `cam1` |
+| Ground | grey, matches | wood texture |
+| Robot colour | yellow, matches | orange |
+| Static view | top-down overhead, matches | angled side view |
+| Overhead colour distance from a live render | **0.0023** | not comparable |
+| Env provenance | ships `meta/so101_nexus_env.json` | none |
+| Reward / success channels | yes | no |
+| Gripper actions | continuous | binary {0, 45} |
+
+The `ataghof` collector clearly overrode the scene configuration. Its dataset
+is the better *training* material — 500 episodes, a published collector, and a
+trained MolmoAct2 checkpoint — and it stays registered for that reason. It is
+not a stand-in for this environment's demonstrations, and playback and
+evaluation must not point at it until its scene config is reproduced.
+
+`SCENE_COLOR_TOLERANCE` is 0.05, checked on the overhead view only. The
+matching dataset sits 20× inside it; the test asserts the *margin*, not just
+the threshold, so a scene change surfaces before the threshold stops working.
+
+## Units: the trap
+
+LeRobot dataset rows are **not** simulator units. Body joints are recorded in
+degrees and the gripper as a percent of jaw travel; the environment's action
+space is radians. A whole-vector `np.deg2rad` silently corrupts the gripper
+channel. `so101-nexus` publishes the correct converters
+(`dataset_row_to_sim_qpos` and its inverse) and this app uses them — nothing
+here hand-rolls the conversion. The UI shows recorded numbers in the dataset's
+own units and labels them, rather than converting behind the visitor's back.
+
+## Controller compatibility
+
+`policy/controllers.py` makes compatibility a declared, checked property
+rather than something discovered by watching an arm flail. Each controller
+records repo and pinned revision, policy family and LeRobot version,
+observation and action schema, camera names and resolution, control rate and
+horizon, device and memory, the environment it was trained against, and both
+published and locally reproduced evaluation results.
+
+Two rules it enforces:
+
+- **Nothing falls back.** A selected controller that fails its check raises
+  with the mismatched field named. It never degrades into dataset playback or
+  a scripted motion, because a viewer cannot tell those apart by looking.
+- **Unproven is unavailable.** "A published evaluation exists" is not a local
+  check.
+
+Currently registered, both unavailable:
+
+- **`ataghof/molmoact2-so101nexus-lora-champion`** — blocked twice over. It
+  was trained on the mismatched dataset, so its observations would not match
+  these frames (`check_against_env` reports the camera-key and action-unit
+  mismatches concretely). And it is a ~6B model its authors evaluated on a
+  24 GB CUDA GPU; no Apple Silicon measurement of it exists here. Its
+  published result — 93% grasp, 50% loose placement, 30% strict placement over
+  30 held-out cube positions — is recorded as *their* number in *their* scene.
+- **`zwan1003/pickplace_skills_vla_v3_2_ckpt060k`** — the closest published
+  policy to this environment, and still a fork away. Trained on a **two-disc**
+  subclass where a green and a blue target are both always visible and the
+  instruction alone identifies the goal; this scene has one disc, so the
+  distinction the policy exists to make is absent. Measured 0.091 overhead
+  colour distance against a 0.05 tolerance. It also targets so101-nexus 0.3.12
+  (its code imports the `so101_nexus_core` / `so101_nexus_mujoco` split
+  packages 0.5.1 no longer has) and LeRobot 0.4.4, and needs its authors'
+  contact hardening at evaluation. Worth knowing it exists: 33% grasp / 97%
+  placement / 37% whole task, with an ablation showing it follows language
+  rather than colour.
+- **Local ACT baseline** — not trained yet. Its declared schema already
+  matches this environment; only the checkpoint is missing.
+
+A Hub-wide survey on 2026-08-17 (metadata, dataset filters, full-text) plus the
+upstream repo found exactly **two** published policies touching so101-nexus —
+the two above — and **no checkpoints at all** from the upstream maintainer, who
+ships environments, datasets and BC/PPO training scripts only. There is no
+trained controller for the stock scene anywhere.
+
+## Threading
+
+MuJoCo's GL context is thread-affine, CGL on macOS especially: an environment
+built on one thread and rendered from another deadlocks in `make_current`,
+forever, with no exception. This app has hit that for real.
+
+Gradio runs each request on whatever worker is free, so a shared env is a
+guaranteed hang — and a per-request env would throw away the arm pose between
+clicks, which makes driving the arm by hand impossible. `demo/session.py`
+therefore gives the environment **one owner thread for its whole life** and
+posts commands to it over a queue. Construction, every step, every render and
+`close()` happen there. `tests/test_app.py` drives the worker from a
+different thread on purpose.
+
+## Rerun
+
+The page does not embed Rerun. It did, and the embedded viewer rendered a
+black canvas. Measured rather than guessed:
+
+- the recording bytes are a valid RRF2 stream (85 KB carrying real image data,
+  readable off disk),
+- Gradio's media-stream chunks are fetched by the browser with 200s,
+- `gradio_rerun` logs "Rerun viewer ready" and "Adding new log receiver",
+- wgpu initialises and the canvas is correctly sized (2160×1404 backing),
+- no error appears in the console,
+- and the canvas is black — through both an initial `value=` and a
+  `blocks.load` stream.
+
+Shipping that means shipping a demo whose main surface shows nothing, so the
+page renders frames directly. Rerun remains the offline surface and works
+there: `./app sim` and `./app play` write `.rrd` files that open correctly in
+the desktop viewer, which is where scrubbing a timeline belongs anyway.
+
+## Layout hazard worth recording
+
+Gradio's `.row`/`.column` classes carry `flex-wrap: wrap`, and every container
+in the workspace shell is one of them. In a column-direction box that means a
+child which does not fit starts a **new column to the right**, off screen. The
+panel renders at full size, reports `visibility: visible`, and is nowhere
+anyone can see it; `overflow-y: auto` never engages because nothing overflows
+vertically. It fails silently and differently per viewport, which is how it
+survived — a rail with few enough short sections fits in one column and the
+bug is invisible. `dashboard.css` now forces `flex-wrap: nowrap` on every
+container in the shell, and `tests/test_app.py` asserts it per selector.
+
+## Test pyramid
+
+Deliberately small: 14 tests in two files, and the default run is 10 tests in
+~2.5 s. Only failures that have actually happened here, or that would ship
+something false, earn a test — a suite slow enough to skip is worse than no
+suite. Everything else was cut.
+
+| What it guards | File | Default run |
+| --- | --- | --- |
+| Pins agree with config; revisions are shas | `test_app.py` | yes |
+| The live env still matches the recorded contract, frames not black | `test_app.py` | yes |
+| The arm is drivable from another thread, and the command is not rewritten | `test_app.py` | yes |
+| No controller is available and each says why | `test_app.py` | yes |
+| The page names its source and units; playback is never called a policy | `test_app.py` | yes |
+| No shell container may wrap; reset state is clamped to slider bounds | `test_app.py` | yes |
+| Pinned demonstrations match schema **and** scene | `test_app.py` | `-m slow` |
+| Gateway boots, guards sessions, returns real frames, shuts down | `test_demo.py` | `-m slow` |
+
+The gateway smoke asserts pixels and labels, not just status codes: a returned
+camera frame must not be black or flat, and a recorded episode must announce
+itself as a recording. "The endpoint answered 200" was true of the version
+whose viewer showed nothing.
+
+Verified 2026-08-17 from a clean checkout with an empty `HF_HOME`: `./app
+doctor`, `./app build`, `./app contract`, `./app dataset-check`, `./app test`
+(10 passed in 2.4 s), `make demo-smoke` (3 passed), `./app sim`, `./app play`.
+Full suite including slow: 14 passed in ~11 s.
+
+## Known limitations
+
+- No trained controller matches this environment.
+- The primary dataset is 10 episodes — a reference and a playback source, not
+  a training set.
+- One visitor at a time; a second session can take the instance over.
+- The embedded-Rerun path is unresolved upstream, not worked around.
+
+## Collecting training data
+
+The survey found no dataset recorded in the stock scene larger than ten
+episodes, so the app generates its own: `./app record N` runs a scripted
+expert and keeps only the episodes upstream scores as successful.
+
+The expert is thin by construction. The environment is built in `pd_ee_pose`
+control mode, so an action is a TCP pose and **upstream solves the IK** — this
+app inverts no Jacobian, owns no scene, and does not touch the contact model.
+What is left is a waypoint sequence and four measured constants.
+
+`GRASP_Z` is the load-bearing one, and its sensitivity is the reason the first
+attempt scored 13%. The jaws pinch ~9 mm below the TCP site (measured from
+MuJoCo contact positions, std 2.6 mm over seeds), so the TCP must be commanded
+low. Grasp-then-lift survival over 12 seeds:
+
+| TCP height above cube centre | survives |
 | --- | --- |
-| Offscreen render, 256x256, `MUJOCO_GL=cgl`, Apple Silicon | **84.0–84.9 fps** |
-| Floor (`RENDER_FPS_FLOOR`, 2 cams x 30 FPS) | 60 fps |
-| Verdict | **Clears with ~40% margin** |
+| 0.006 m | **100%** |
+| 0.009 m | 83% |
+| 0.012 m | 33% |
+| 0.016 m | 0% |
 
-`mj_step` costs 0.012 ms vs ~11.8 ms/render, so physics is free on this scene —
-rendering is the cost, and it is affordable. ~42 control-steps/sec achievable at
-2 cameras/step vs the 30 Hz target. Caveat: scene-specific; a heavier scene
-should re-measure. **Rendering is not the bottleneck.**
+Two more findings worth keeping: commanding the gripper fully closed on a
+25 mm cube *extrudes* it (at -0.174 rad a slower carry scored worse than a
+fast one — 0/12 vs 3/12), and a 108 mm setpoint jump forms a grasp then pops
+it, so motion is interpolated. End to end the expert clears **79/100 seeds**.
 
-### Spike 1 — SmolVLA forward-pass latency (spec risk 1): FAIL on CPU
+The recorded data is in simulator radians at fps 50 (the real control rate),
+and the expert records the JOINT targets the env derived rather than the TCP
+poses it sent — so a recorded episode replayed through the demo's own
+`pd_joint_pos` env reproduces the success. That equivalence is a test, not a
+claim.
 
-The demo's core unverified assumption. HuggingFace's "runs on a MacBook" is a
-marketing claim, not a measurement; no published SmolVLA-on-Apple-Silicon
-benchmark exists. It does now.
+## Next
 
-`lerobot/smolvla_base` (450M), 20 timed passes after 5 warm-up passes, one
-`policy.reset()` before every timed call so each call is a genuine forward pass
-and not a cached action-chunk lookup. Reproduce with `make spike-policy` and
-`make spike-policy-container`; raw data in `outputs/spike/policy.json`.
-
-**MPS number is sync-corrected (2026-07-13 fix pass).** MPS ops are
-asynchronous and nothing in the LeRobot `select_action` call chain forces a
-wait, so a bare `time.perf_counter()` was measuring dispatch time, not
-compute time. `bench_policy.py` now calls `torch.mps.synchronize()` (device-
-agnostic `_sync()` helper, no-op on CPU) both immediately before starting the
-timer and immediately before stopping it, around every warm-up and timed
-pass. The corrected MPS mean moved from 0.536 s to 0.549 s (+2.4%) — a small,
-expected shift, not a qualitative change to the verdict.
-
-| Config | mean | median | p95 | vs 1 s ceiling |
-| --- | --- | --- | --- | --- |
-| **MPS, native** (uv, Apple Silicon, sync-corrected) | **0.549 s** | 0.547 s | 0.571 s | **PASS** (~1.8x headroom) |
-| **CPU, native** (uv, Apple Silicon) | **9.004 s** | 8.953 s | 9.244 s | FAIL (9.0x over) |
-| **CPU, linux/arm64 container** | **9.318 s** | 9.258 s | 9.621 s | **FAIL (9.3x over)** |
-
-Native CPU was measured three independent times (9.159 / 9.186 / 9.004 s mean) —
-the result is stable to within ~2%, so the verdict does not hinge on one run.
-(CPU is synchronous already, so the sync fix does not change the CPU numbers;
-a fourth CPU run during the fix pass measured 9.648 s, consistent with normal
-run-to-run variance from other load on the machine, not a fix effect.)
-
-Bar is `POLICY_LATENCY_CEILING_S = 1.0` s, not 30 Hz: action chunking means one
-forward pass yields ~50 actions ≈ 1.7 s of robot motion at 30 FPS.
-
-**The container number is the decisive one.** Docker on macOS cannot see MPS
-(the container logs `No accelerated backend detected. Using default cpu`), and
-Cloud Run has no GPU — so the deployed demo is CPU-in-a-container *both* locally
-and in production. Containerising costs almost nothing over native CPU
-(9.32 s vs ~9.0–9.2 s, a few percent): the penalty is **not** the container, it
-is the **absence of MPS**. MPS is ~17x faster than CPU on the same machine.
-
-### M0 verdict: local CPU inference is dead
-
-Against the gate in the Task 3 brief:
-
-| Container-CPU mean | Band | Measured |
-| --- | --- | --- |
-| ≤ 1.0 s | In-process everywhere, no GPU | — |
-| 1–3 s | Borderline; async policy-server split | — |
-| **> 3 s** | **Local inference dead; remote GPU policy server needed** | **9.318 s** |
-
-We land in the **third band, by a factor of 3.1x** — and async chunk-ahead does
-not rescue it. One chunk buys ~1.7 s of robot motion but costs 9.3 s to compute,
-so the executor starves ~5.5x faster than the producer can refill it. No amount
-of overlapping hides a deficit that large; the demo would stutter, not stream.
-
-**Consequences — these are decisions, not suggestions, and Part 2 must not be
-built until they are confirmed with the user:**
-
-1. **The deployed demo needs a remote GPU policy server.** CPU-only Cloud Run
-   cannot serve this policy at interactive rates. This is materially more
-   expensive per visitor than the plan assumed and the plan's costing should be
-   revisited.
-2. **A laptop demo is still viable — but only natively (uv), never in Docker.**
-   MPS at 0.549 s (sync-corrected) clears the ceiling with ~1.8x headroom. This
-   mirrors `imitation-manipulation`, which chose uv over Docker for exactly this
-   reason. So local dev and the deployed demo now have *genuinely different*
-   inference paths, and the code must abstract over that seam from the start.
-3. **The 1 s ceiling itself deserves a second look.** It came from the chunking
-   argument, and MPS meets it — but 0.549 s per chunk still means a visible
-   half-second pause at every chunk boundary unless chunk N+1 is computed while
-   chunk N executes. Async is worth building even on the passing path.
-
-**Open question for the user (blocks Part 2):** accept the cost of GPU instances
-in the deployed demo, or change the deal — e.g. serve pre-recorded rollouts to
-web visitors and reserve live inference for local runs. That is a product call,
-not an engineering one.
-
-## Stack rationale
-
-| Layer | Choice | Why (and what was rejected) |
-| --- | --- | --- |
-| Policy | SmolVLA 450M (`lerobot/smolvla_base`) | The only VLA family that plausibly runs without a GPU — 450M parameters vs. the multi-billion-parameter OpenVLA/pi0-class models. Its pretraining corpus is SO-100 data exclusively, so an SO-101 fine-tune is in-embodiment (same robot family, not a cross-embodiment transfer). No published Apple-Silicon benchmark existed before this app's M0 spike — HuggingFace's "runs on a MacBook" claim was marketing, not measurement, until Task 3 measured it directly (0.549 s/pass on MPS). |
-| Robot | SO-101 (`mujoco_menagerie`'s `robotstudio_so101`) | Cheap ($~100s), open-hardware, 6-DOF (5 arm joints + 1 gripper) arm with an actively maintained MuJoCo MJCF and a real teleop/community dataset ecosystem on the Hub. Chosen specifically because SmolVLA's pretraining corpus is SO-100/SO-101 data — picking a different arm would have made every fine-tune an out-of-embodiment transfer, a much harder and less demo-honest claim. |
-| Simulator | MuJoCo 3.10+, `MUJOCO_GL=cgl` offscreen rendering | menagerie's SO-101 asset requires mujoco>=3.10 (the floor is enforced in `pyproject.toml` with an explicit comment: LeRobot's other bundled sim envs — gym-hil, gym-aloha, gym-xarm — pin OLDER mujoco floors and would silently downgrade the install if pulled in as a dependency). `cgl` is the macOS-native offscreen GL backend; `osmesa`/`egl` are Linux-only and do not work on Apple Silicon. M0 spike 2 measured 84-85 fps at 256x256 (2 cameras), clearing the 60 fps floor with ~40% margin — rendering was never the bottleneck. |
-| Visualization | Rerun 0.34.1 (exact-pinned) | Matches robium's `rerun` skill pin and the `gradio_rerun` component Part 2 (the deferred web demo) depends on — pinning early avoids a version-drift surprise later. File-based recording (`rr.save()` right after `rr.init(spawn=False)`) needs no GUI/display, which matters for a headless macOS dev loop and for CI. |
-| Training | Hugging Face Jobs (remote GPU, `a10g-small`) | M0's decisive finding: MPS fine-tuning is ~2h/20 steps (untimed directly but implied by the ~0.55s/forward-pass inference number plus backward-pass overhead — confirmed empirically painful enough that no local training run was ever attempted), and CPU is 17x slower again. There is no local GPU on this Apple Silicon host. HF Jobs was chosen over standing up a cloud VM by hand because `lerobot-train --job.target=<flavor>` is a single CLI flag on top of the exact same command used for local smoke runs — zero additional tooling, and the Hub is already the dataset/checkpoint hand-off point. |
-| Env tooling | uv, Python 3.12 (pinned, `>=3.12` hard-required by LeRobot 0.6.0) | Same reasoning as `imitation-manipulation`: a pure-Python ML stack with no ROS/system deps belongs in uv, not Docker — and here it is a documented *requirement*, not just a preference, because Docker on macOS cannot see MPS at all (`No accelerated backend detected. Using default cpu` in the spike container logs). Containerizing costs ~nothing over native CPU (+3%); the entire 17x penalty is losing MPS. So local dev must run natively; only the *deployed* (Cloud Run) path is container-based, and it is CPU-bound there by definition (no Cloud Run GPU in this deal), which is exactly the M0 gate that pushed real inference to HF Jobs / a remote GPU policy server for Part 2. |
-
-## Pipe-test results (2026-07-15)
-
-The full 20k-step fine-tune was deferred (user cost decision — no further
-spend after the pipe validated). What *did* run, for real, on billed GPU
-hardware:
-
-| Run | Steps | Target | Result |
-| --- | --- | --- | --- |
-| First remote submit | 2,000 | a10g-small | Trained to completion, **crashed at checkpoint save** (`REMOTE_OUTPUT_DIR` bug — see Battle scars #7). ~$2-4 spent, no artifact. |
-| Second remote submit | 100 | a10g-small | **Full loop green.** Checkpoint pushed to `robium-admin/train_2026-07-15_08-09-36` (not `POLICY_REPO_ID` — see Battle scars #8). Eval: 10 seeded episodes, **0/10 = 0% success** on MPS locally. Re-verified 2026-08-17: same artifact, same 0%. |
-| Re-mint attempt | 100 | a10g-small | **Died before pushing weights** (2026-08-04). `robium-admin/train_2026-08-04_05-35-54` exists and resolves, but contains only `train_config.json`. A repo that exists is not a checkpoint — see Battle scars #11. |
-
-0% is the *correct* result for a 100-step checkpoint (effectively the base
-model plus 100 gradient steps) — the deliverable of this run was proving the
-whole `record -> push -> HF-Jobs-submit -> train -> save -> push -> pull ->
-eval` loop end-to-end with a genuine GPU-trained artifact, not a score. The
-reference expectation (`SUCCESS_RATE_FLOOR = 0.60`) applies to the deferred
-20k-step run, not to either pipe-test checkpoint; `tests/test_smoke.py` and
-`tests/test_narrative.py` both assert pipeline *mechanics* against these
-checkpoints, never the score bar (see each file's docstring/`TODO`).
-
-## Battle scars
-
-Gotchas hit during the build, each with its fix. Full detail (verbatim
-errors, dead ends ruled out) is in `learnings/2026-07-14-vla-trial.md` and
-`learnings/2026-07-15-vla-trial.md`; this section is the index.
-
-1. **The end-effector site is not the grasp point.** `gripperframe` (the
-   MJCF site an obvious IK target) sits near the fingertips; the arm
-   actually holds a 4x4x6cm cube in the jaw *throat*, ~7cm away. Found by
-   brute-force calibration (teleport the object to a grid of candidate
-   gripper-local offsets, close the gripper, lift, keep the offsets that
-   hold). Fixed via `ORACLE_GRASP_LOCAL` in `config.py`, empirically
-   calibrated, not assumed.
-2. **Position-only IK leaves the wrist roll free, and a free roll can make
-   grasping geometrically impossible.** On this 5-DOF arm the roll settled
-   near vertical, making the gripper's pinch axis 91% vertical — trying to
-   span the cube's 6cm *height* with a 4.2cm aperture instead of its 4cm
-   *width*. Diagnostic: print the pinch axis in world coordinates and check
-   it's perpendicular to the dimension you intend to grasp; position-only
-   IK "converging" (residual 1e-5) tells you nothing about orientation.
-   Fixed by solving roll as a 1-D root-find (folding it into the DLS
-   objective diverges), then re-solving position with roll pinned. Took the
-   oracle 0/10 -> 8/10 in one change.
-3. **The floor sits at the arm's own base level; a real SO-101 rig doesn't.**
-   menagerie's stock scene forced the fingers to a ~32deg down-pitch to
-   reach the workspace at all, which drove the fixed jaw's shaft through
-   the cube. Fixed with a 0.06m pedestal under the cube (`scene_pick.xml`)
-   restoring the raised-work-surface geometry the arm was designed for.
-   Pedestal height and grasp offset are a **matched, coupled pair** — both
-   were swept end-to-end together (0.06 -> 10/10, 0.09 -> 3/10, 0.12+ ->
-   0/10; higher clearance is not monotonically better). Change one without
-   re-sweeping the other and the dataset degrades quietly.
-4. **Unnamed MJCF collision geoms are invisible to name-based contact
-   checks.** The geom that actually blocks the grasp
-   (`wrist_roll_follower_so101_gripper_part0_v1`) has no `name` attribute in
-   the vendored MJCF, so the original `GRIPPER_GEOMS` name-list config could
-   never see it — a latent false-success bug (a still-held cube could read
-   as "released"). Fixed by resolving gripper geoms via `model.geom_bodyid`
-   membership (`GRIPPER_BODIES` in `config.py`) instead of a name list —
-   robust to unnamed meshes by construction.
-5. **`qfrc_actuator` saturated against `forcerange` means BLOCKED, not
-   slowly converging.** "Raise settle steps" (the brief's own debug
-   suggestion) was swept 12 -> 60 with zero effect, because the arm was
-   stalled against a solid object with two joints at their force limits,
-   not still settling. The decisive diagnostic that separates the two
-   hypotheses: teleport the obstructing object out of the scene and re-run
-   the identical control — `arm_err` collapsing from 0.18 to 0.0006 with
-   the object removed proves the object is the obstruction, instantly
-   ruling out IK error, gravity, and torque limits.
-6. **Rerun 0.34.1 renamed the timeline setter, not just the archetypes.**
-   `rr.Scalar` -> `rr.Scalars` is documented; `rr.set_time_sequence` being
-   replaced by a unified `rr.set_time(timeline, sequence=...)` is not
-   covered by the obvious migration checklist and throws
-   `AttributeError: module 'rerun' has no attribute 'set_time_sequence'`.
-7. **A remote `--output_dir` must be a container path.** `--output_dir` is
-   passed verbatim to the HF Jobs container. The first real submit
-   (2,000 steps) trained to completion and only then crashed at checkpoint
-   save with `PermissionError: '/Users'` — a full paid run, zero artifact,
-   because the config held this Mac's local `TRAIN_OUTPUT_DIR`. Fixed with
-   a dedicated `REMOTE_OUTPUT_DIR = "/tmp/vla_train/..."` constant plus a
-   regression test asserting no remote command string contains `~` or
-   `/Users/`.
-8. **HF Jobs ignores `--policy.repo_id` for the final push, AND pushes to
-   the submitting user's namespace, not the org's.** The trained model
-   landed at an auto-generated `robium-admin/train_2026-07-15_08-09-36`
-   repo, not the `robium/smolvla_so101_pick` that `--policy.repo_id`
-   requested. Both halves bite: `config.py` recorded the artifact as
-   `robium/train_2026-07-15_08-09-36` — right timestamp, wrong namespace —
-   and that 404'd every "trained" demo and eval run for two weeks while
-   looking like a plausible id. The only way to find the real checkpoint is
-   to read the "Model pushed to `<url>`" line in the job log. Never assume
-   `POLICY_REPO_ID` is where a remote run landed, and never retype the id
-   from memory. `policy/resolve.py` now fails on this with the namespace
-   named in the message.
-9. **HF Jobs requires prepaid credits, separate from being authenticated.**
-   A correctly-formed, fully-validated `--job.target` submission fails with
-   `402 Payment Required` if the account has none. Useful as a free,
-   zero-risk way to validate an entire submission (auth, dataset-on-Hub,
-   command shape) before adding money — a rejected job never bills.
-10. **A test asserting an exact rendered config value can go stale
-    silently.** `test_pipe_test_and_full_differ_in_steps` hardcoded
-    `"--steps=2000"`; when `PIPE_TEST_STEPS` dropped to 100 under a later
-    cost-minimization directive, the command builder updated correctly but
-    the test's literal didn't, and nothing caught it until the next full
-    `make test` run. Fixed by asserting against the config constant, not a
-    re-typed literal — see `learnings/2026-07-15-vla-trial.md`.
-11. **The `.gitignore` negation pattern around `scene_pick.xml` is a
-    maintainer trap.** The vendored menagerie dump is bulk-ignored
-    (`src/vla_pick_and_place/env/assets/*`) and re-fetched by `make assets`, but
-    `scene_pick.xml` — this app's *own* file, tracked in git, not vendored
-    — lives inside that same ignored directory and is pulled back in with
-    an explicit negation line (`!src/vla_pick_and_place/env/assets/scene_pick.xml`)
-    because MuJoCo resolves `<include>`/mesh paths relative to the
-    including file's own directory, so it cannot live anywhere else. A
-    maintainer skimming the directory and seeing "vendored, gitignored,
-    regenerated by a script" could delete `scene_pick.xml` as assumed
-    cruft — it is the file that adds the "scene" overview camera
-    (menagerie ships only a wrist camera) and is NOT regenerated by
-    `fetch_assets.sh`. If it's ever missing, `make assets` will not bring
-    it back; restore it from git history.
-12. **That same layout made `make check` lie for weeks.** The preflight
-    tested `[ -n "$(ls -A .../assets)" ]` — "the assets dir is non-empty."
-    But `scene_pick.xml` is tracked and lives in that dir, so a fresh clone
-    that has never run `make assets` still passes: non-empty directory, no
-    robot in it. `make check` printed `ok: MuJoCo assets fetched` and
-    `CHECK PASS` while every scene load died with a bare
-    `XML Error: Error opening file 'scene_box.xml'`. **A presence check must
-    name a file the fetch step owns, never the directory it lands in.**
-    Fixed 2026-08-17 to assert `so101.xml`, with
-    `test_menagerie_asset_is_vendored` guarding it. Note that `make test`
-    *did* catch this all along (the scene fails to load) — the rot was that
-    the cheap, fast gate people actually run before the slow one said PASS.
-13. **A checkpoint repo that resolves is not a checkpoint that loads.**
-    `robium-admin/train_2026-08-04_05-35-54` is a real, listable Hub repo
-    holding exactly `train_config.json` and `.gitattributes` — a job that
-    died between writing its config and pushing its weights. Anything that
-    validates a checkpoint by "does the repo exist" accepts it and then
-    fails deep inside `from_pretrained`. Check for `model.safetensors`.
+The follow-up training block, deliberately separate: train ACT on a pinned
+SO101-Nexus dataset, evaluate it in this exact environment over a fixed seed
+set, publish it with full processor files and environment/dataset revisions,
+and only then make it the local trained-controller option. SmolVLA follows
+once ACT is credible. See `docs/training-guide.md`.

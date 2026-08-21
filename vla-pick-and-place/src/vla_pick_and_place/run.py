@@ -1,144 +1,183 @@
-"""CLI dispatcher: python -m vla_pick_and_place.run <subcommand>."""
+"""CLI dispatcher: python -m vla_pick_and_place.run <subcommand>.
+
+Every subcommand here is something a person can run and read the output of,
+because each one is also the evidence behind a claim the app makes:
+
+  contract       what the pinned environment actually is
+  dataset-check  whether a pinned dataset matches that environment
+  controllers    which controllers may run, and why the rest may not
+  expert         measure the scripted expert's success rate
+  record N       record N successful expert demonstrations as a LeRobot dataset
+  sim            drive the simulator headless and write an .rrd
+  play           replay a published episode headless and write an .rrd
+"""
 
 import json
 import sys
 
 
+def _print(obj) -> None:
+    print(json.dumps(obj, indent=2, default=str))
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv:
-        print("usage: python -m vla_pick_and_place.run <subcommand>", file=sys.stderr)
+        print(__doc__.strip(), file=sys.stderr)
         return 2
 
     cmd, *rest = argv
-    if cmd == "spike-render":
-        from vla_pick_and_place.spike.bench_render import bench_render
-        print(json.dumps(bench_render(), indent=2))
-        return 0
 
-    if cmd == "spike-policy":
-        from vla_pick_and_place.config import POLICY_SPIKE_N_PASSES
-        from vla_pick_and_place.spike.bench_policy import bench_policy
+    if cmd == "contract":
+        from vla_pick_and_place.config import CONTRACT_JSON
+        from vla_pick_and_place.env import contract
 
-        devices = rest or ["cpu", "mps"]
-        measured = 0
-        for device in devices:
-            try:
-                print(json.dumps(bench_policy(device=device, n_passes=POLICY_SPIKE_N_PASSES), indent=2))
-                measured += 1
-            except Exception as exc:  # a device may genuinely be unavailable
-                print(f"{device}: unavailable ({exc})", file=sys.stderr)
-        # Fail loudly if NOTHING was measured. The whole point of this
-        # subcommand is to produce a number; a run that measured nothing
-        # (e.g. the container hitting an HF Hub 401 while fetching weights)
-        # must not exit 0 and look like a successful benchmark.
-        if measured == 0:
-            print(
-                f"spike-policy: measured 0 of {len(devices)} device(s) — no benchmark produced",
-                file=sys.stderr,
-            )
+        measured = contract.capture()
+        problems = contract.diff(measured)
+        CONTRACT_JSON.parent.mkdir(parents=True, exist_ok=True)
+        CONTRACT_JSON.write_text(json.dumps(measured, indent=2) + "\n")
+        _print(measured)
+        print(f"\nwritten to {CONTRACT_JSON}", file=sys.stderr)
+        if problems:
+            print("\nCONTRACT MISMATCH:", file=sys.stderr)
+            for p in problems:
+                print(f"  - {p}", file=sys.stderr)
             return 1
+        print("CONTRACT OK", file=sys.stderr)
         return 0
 
-    if cmd == "oracle":
-        from vla_pick_and_place.env.so101_pick import SO101PickEnv
-        from vla_pick_and_place.oracle.scripted_pick import rollout
+    if cmd == "dataset-check":
+        from vla_pick_and_place.config import OBS_OVERHEAD, OBS_WRIST
+        from vla_pick_and_place.data import datasets
+        from vla_pick_and_place.env.nexus import NexusPickAndPlace
 
-        env = SO101PickEnv()
-        n = int(rest[0]) if rest else 5
-        wins = sum(rollout(env, seed=s)["success"] for s in range(n))
-        env.close()
-        print(f"oracle: {wins}/{n} succeeded")
-        return 0 if wins == n else 1
+        # A live reset frame is what makes this a scene check and not just a
+        # schema check — see data/datasets.py.
+        with NexusPickAndPlace() as env:
+            obs, _ = env.reset(seed=0)
+            reference = {OBS_WRIST: obs[OBS_WRIST], OBS_OVERHEAD: obs[OBS_OVERHEAD]}
 
-    if cmd == "viz-oracle":
-        from vla_pick_and_place.config import VIZ_DIR
-        from vla_pick_and_place.env.so101_pick import SO101PickEnv
-        from vla_pick_and_place.oracle.scripted_pick import rollout
-        from vla_pick_and_place.viz.rerun_logger import RerunLogger
+        pins = (
+            [datasets.REGISTRY[rest[0]]] if rest else [datasets.PRIMARY, datasets.ALTERNATE]
+        )
+        failed = False
+        for pin in pins:
+            result = datasets.verify(pin, reference_frames=reference)
+            _print(
+                {
+                    "repo_id": pin.repo_id,
+                    "revision": pin.revision,
+                    "role": "primary" if pin is datasets.PRIMARY else "second candidate",
+                    "schema_ok": result.schema_ok,
+                    "scene_ok": result.scene_ok,
+                    "measured": result.measured,
+                    "problems": result.problems,
+                }
+            )
+            # Only the primary is a pass bar. The second candidate is expected
+            # to fail the scene check, and reporting that is the point of
+            # keeping it registered.
+            if pin is datasets.PRIMARY and not result.ok:
+                failed = True
+        return 1 if failed else 0
 
-        env = SO101PickEnv()
-        logger = RerunLogger(app_id="vla_pick_and_place_oracle", save_path=VIZ_DIR / "oracle.rrd")
-        result = rollout(env, seed=0, logger=logger)
-        logger.close()
-        env.close()
-        print(f"oracle seed 0: success={result['success']} steps={result['n_steps']}")
-        print(f"open with: rerun {VIZ_DIR / 'oracle.rrd'}")
+    if cmd == "controllers":
+        from vla_pick_and_place.env import contract
+        from vla_pick_and_place.policy import controllers
+
+        measured = contract.capture()
+        for c in controllers.REGISTRY.values():
+            _print(
+                {
+                    "key": c.key,
+                    "label": c.label,
+                    "available": c.available,
+                    "reason": c.unavailable_reason,
+                    "repo_id": c.repo_id,
+                    "family": c.family,
+                    "required_device": c.required_device,
+                    "env_id": c.env_id,
+                    "published_eval": c.published_eval,
+                    "local_eval": c.local_eval,
+                    "schema_mismatches": controllers.check_against_env(c, measured),
+                }
+            )
+        print(
+            f"available controllers: {[c.key for c in controllers.available()]}",
+            file=sys.stderr,
+        )
+        return 0
+
+    if cmd == "expert":
+        from vla_pick_and_place.data.expert import evaluate
+
+        n = int(rest[0]) if rest else 30
+        start = int(rest[1]) if len(rest) > 1 else 0
+        result = evaluate(n_seeds=n, start=start)
+        _print(result)
         return 0
 
     if cmd == "record":
         from vla_pick_and_place.data.record import record
 
-        # No push here by design — pushing is `make push-dataset`, gated on review.
-        root = record(push=False)
-        print(f"dataset written to {root}")
-        print("NOT pushed. Review it, then `make push-dataset` when ready.")
-        return 0
+        n = int(rest[0]) if rest else 50
+        summary = record(n_episodes=n)
+        _print(summary)
+        print(
+            f"\nwrote {summary['episodes']} episodes to {summary['root']}\n"
+            "NOT pushed to the Hub. Review it first.",
+            file=sys.stderr,
+        )
+        return 0 if summary["episodes"] == n else 1
 
-    if cmd == "spot-check":
+    if cmd == "sim":
         from vla_pick_and_place.config import VIZ_DIR
-        from vla_pick_and_place.env.so101_pick import SO101PickEnv
-        from vla_pick_and_place.oracle.scripted_pick import rollout
+        from vla_pick_and_place.demo.session import SimWorker
         from vla_pick_and_place.viz.rerun_logger import RerunLogger
 
-        env = SO101PickEnv()
-        seeds = [int(s) for s in rest] or [0, 1, 2, 3, 4]
-        for s in seeds:
-            logger = RerunLogger(
-                app_id=f"vla_spotcheck_{s}", save_path=VIZ_DIR / f"episode_{s}.rrd"
-            )
-            r = rollout(env, seed=s, logger=logger)
-            logger.close()
+        seed = int(rest[0]) if rest else 0
+        steps = int(rest[1]) if len(rest) > 1 else 60
+        worker = SimWorker().start()
+        logger = RerunLogger(save_path=VIZ_DIR / f"sim_seed{seed}.rrd")
+        try:
+            frame = worker.reset(seed=seed)
+            logger.log(frame)
+            last = frame
+            for frame in worker.hold(n_steps=steps):
+                logger.log(frame)
+                last = frame
             print(
-                f"seed {s}: success={r['success']} steps={r['n_steps']} "
-                f"-> {VIZ_DIR / f'episode_{s}.rrd'}"
+                f"seed {seed}: {last.step} steps, reward {last.reward}, "
+                f"success={last.success}, target={last.info.get('target_object')}"
             )
-        env.close()
+            print(f"open with: rerun {logger.save_path}")
+        finally:
+            logger.close()
+            worker.close()
         return 0
 
-    if cmd == "push-dataset":
-        # DEFERRED, GATED: exists as code but is run only by the user, after
-        # reviewing the locally recorded dataset. Task 7 must never call this.
-        from vla_pick_and_place.config import DATASET_REPO_ID
-        from lerobot.datasets.lerobot_dataset import LeRobotDataset
+    if cmd == "play":
+        from vla_pick_and_place.config import VIZ_DIR
+        from vla_pick_and_place.data import datasets
+        from vla_pick_and_place.demo.session import dataset_frames
+        from vla_pick_and_place.viz.rerun_logger import RerunLogger
 
-        ds = LeRobotDataset(DATASET_REPO_ID)  # loads the already-recorded local copy
-        ds.push_to_hub(private=True)  # PRIVATE by default
-        print(f"pushed {DATASET_REPO_ID} to the Hub (private)")
+        episode = int(rest[0]) if rest else 0
+        player = datasets.EpisodePlayer(datasets.PRIMARY, episode=episode)
+        logger = RerunLogger(save_path=VIZ_DIR / f"episode_{episode}.rrd")
+        try:
+            n = 0
+            for frame in dataset_frames(player):
+                logger.log(frame)
+                n += 1
+            print(f"{datasets.PRIMARY.repo_id} episode {episode}: {n} recorded frames")
+            print(f"open with: rerun {logger.save_path}")
+        finally:
+            logger.close()
         return 0
-
-    if cmd == "train-smoke":
-        import subprocess
-
-        from vla_pick_and_place.config import train_smoke_cmd
-
-        return subprocess.run(train_smoke_cmd()).returncode
-
-    if cmd == "train":
-        import subprocess
-
-        from vla_pick_and_place.config import train_remote_cmd
-
-        # Default is the cheap pipe-test run; `train full` is the real 20k spend.
-        pipe_test = "full" not in rest
-        cmd_argv = train_remote_cmd(pipe_test=pipe_test)
-        kind = "PIPE-TEST" if pipe_test else "FULL 20k"
-        print(f"submitting {kind} fine-tune to HF Jobs:\n  {' '.join(cmd_argv)}")
-        return subprocess.run(cmd_argv).returncode
-
-    if cmd == "eval":
-        from vla_pick_and_place.config import DEMO_CHECKPOINT, SMOKE_EVAL_EPISODES, SUCCESS_RATE_FLOOR
-        from vla_pick_and_place.policy.evaluate import evaluate
-
-        # Defaults to DEMO_CHECKPOINT, not POLICY_REPO_ID. POLICY_REPO_ID is
-        # where we ASK HF Jobs to push (`--policy.repo_id`) and HF Jobs
-        # ignores it — no run has ever created that repo, so it was a
-        # guaranteed 404 for anyone who typed a bare `make eval`.
-        policy = rest[0] if rest else DEMO_CHECKPOINT
-        result = evaluate(policy_path=policy, n_episodes=SMOKE_EVAL_EPISODES)
-        return 0 if result["success_rate"] >= SUCCESS_RATE_FLOOR else 1
 
     print(f"unknown subcommand: {cmd}", file=sys.stderr)
+    print(__doc__.strip(), file=sys.stderr)
     return 2
 
 

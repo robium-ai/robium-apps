@@ -105,6 +105,19 @@ gradio-app .rd-bar-host > * { flex: 0 0 auto !important; margin: 0 !important; p
  * classes set `flex: 1 1 0%`, so an un-forced `flex: 0 0 360px` on the rail
  * loses its grow value and the rail eats the viewer's width.
  */
+/* Gradio's `.row`/`.column` classes both carry `flex-wrap: wrap`, and every
+ * container in this shell is one of them. Wrapping is never what a workspace
+ * wants: a child that does not fit silently starts a NEW LINE (or, in a
+ * column-direction box, a new COLUMN) beyond the viewport, so the panel
+ * renders at full size, reports visibility:visible, and is nowhere on screen.
+ * It fails silently and it fails differently per viewport, which is why it
+ * survived so long. Nothing in this layout may wrap.
+ */
+gradio-app .rd-split,
+gradio-app .rd-viewer,
+gradio-app .rd-cams,
+gradio-app .rd-cam,
+gradio-app .rd-rail { flex-wrap: nowrap !important; }
 gradio-app .rd-split {
   display: flex !important;
   min-height: 0 !important;
@@ -132,10 +145,55 @@ gradio-app .rd-viewer {
   border-radius: 0 !important;
   background: var(--rd-sunken) !important;
 }
-/* The Rerun component's own wrappers stop at their intrinsic height. */
-gradio-app .rd-viewer > *,
-gradio-app .rd-viewer canvas,
-gradio-app .rd-viewer iframe { width: 100% !important; height: 100% !important; min-height: 0 !important; flex: 1 1 auto !important; border: 0 !important; }
+gradio-app .rd-viewer { flex-direction: column !important; gap: 0 !important; overflow: hidden !important; }
+/* Camera row on top, numeric readout under it. */
+gradio-app .rd-cams {
+  display: flex !important;
+  min-height: 0 !important;
+  flex: 1 1 auto !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch !important;
+  gap: 1px !important;
+  padding: 0 !important;
+  background: var(--rd-line) !important;
+}
+gradio-app .rd-cam {
+  display: flex !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  flex: 1 1 50% !important;
+  flex-direction: column !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: var(--rd-sunken) !important;
+}
+/* Gradio's image block nests wrappers that stop at intrinsic height, and its
+   default `object-fit: contain` letterboxes into whatever box it is given —
+   which is what keeps the aspect ratio honest, so only the chain above it
+   needs forcing. */
+/* The label sits at its own height; the image block takes everything left.
+   Forcing height:100% on BOTH (they are siblings) overflows the column and
+   bottom-aligns the frame under a band of dead black. */
+gradio-app .rd-cam > * { width: 100% !important; flex: 0 0 auto !important; margin: 0 !important; padding: 0 !important; border: 0 !important; background: transparent !important; }
+gradio-app .rd-cam > *:last-child { min-height: 0 !important; height: auto !important; flex: 1 1 auto !important; }
+gradio-app .rd-cam .image-container,
+gradio-app .rd-cam .image-frame { width: 100% !important; height: 100% !important; min-height: 0 !important; border: 0 !important; background: transparent !important; }
+gradio-app .rd-cam img { width: 100% !important; height: 100% !important; object-fit: contain !important; }
+/* Gradio's hover toolbar (download/fullscreen) over a live frame is noise. */
+gradio-app .rd-cam .icon-buttons, gradio-app .rd-cam .source-selection { display: none !important; }
+gradio-app .rd-readout { flex: 0 0 auto !important; margin: 0 !important; padding: 0 !important; border-top: 1px solid var(--rd-line); background: var(--rd-panel) !important; }
+.rd-readout table { width: 100%; border-collapse: collapse; font: 11px/1.5 var(--rd-mono); }
+.rd-readout th, .rd-readout td { padding: 5px 10px; text-align: right; color: var(--rd-ink); white-space: nowrap; }
+.rd-readout th { color: #8a93a3; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; }
+.rd-readout th:first-child, .rd-readout td:first-child { text-align: left; color: var(--rd-muted); }
+.rd-readout tr + tr td { border-top: 1px solid rgba(255,255,255,.06); }
+.rd-readout .rd-src { display: flex; justify-content: space-between; gap: 14px; padding: 7px 10px; border-bottom: 1px solid var(--rd-line); color: var(--rd-muted); font: 11px/1.4 var(--rd-mono); }
+.rd-readout .rd-src b { color: var(--rd-ink); font-weight: 600; }
+.rd-readout .rd-ok { color: var(--rd-ok); }
+.rd-cam-label { padding: 6px 10px; border-bottom: 1px solid var(--rd-line); color: #8a93a3; font: 500 10px/1.4 var(--rd-mono); letter-spacing: .13em; text-transform: uppercase; }
 gradio-app .rd-rail {
   display: flex !important;
   width: var(--rd-rail) !important;
@@ -145,6 +203,14 @@ gradio-app .rd-rail {
   height: 100% !important;
   flex: 0 0 var(--rd-rail) !important;
   flex-direction: column !important;
+  /* Gradio's own `.column` class carries `flex-wrap: wrap`. In a
+     column-direction flex box that means: fill the rail's height, then start
+     a NEW COLUMN to the right — off-screen, past the viewport edge, silently.
+     Sections render at full size, report visibility:visible, and simply are
+     not where anyone can see them; `overflow-y: auto` never engages because
+     nothing overflows vertically. A rail with few enough short sections fits
+     in one column and hides the bug entirely, which is how it survived. */
+  flex-wrap: nowrap !important;
   gap: 0 !important;
   overflow-y: auto !important;
   padding: 0 !important;
@@ -213,6 +279,22 @@ gradio-app .rd-rail input[type="checkbox"] { accent-color: var(--rd-accent); bor
 gradio-app .rd-rail input[type="radio"]:checked,
 gradio-app .rd-rail input[type="checkbox"]:checked { border-color: var(--rd-accent) !important; background-color: var(--rd-accent) !important; }
 gradio-app .rd-rail button.primary:disabled { opacity: .45; cursor: wait; }
+/* Sliders. The blanket `.rd-rail .block { padding: 0 }` above strips the
+   padding Gradio's slider head relies on, which collapses the label onto the
+   number box. Restore the vertical rhythm here rather than exempting
+   `.block` — the exemption would also un-flatten every other widget. */
+gradio-app .rd-rail .block:has(input[type="range"]) { padding: 0 0 12px !important; }
+gradio-app .rd-rail input[type="range"] { accent-color: var(--rd-accent); }
+gradio-app .rd-rail label:has(+ * input[type="range"]),
+gradio-app .rd-rail .head { margin-bottom: 4px !important; }
+gradio-app .rd-rail .block:has(input[type="range"]) label span { color: var(--rd-muted) !important; font: 11px/1.4 var(--rd-mono) !important; }
+gradio-app .rd-rail .block:has(input[type="range"]) input[type="number"] {
+  border: 1px solid var(--rd-line) !important;
+  border-radius: 4px !important;
+  background: var(--rd-sunken) !important;
+  color: var(--rd-ink) !important;
+  font: 11px var(--rd-mono) !important;
+}
 
 /* --- narrow: rail under the viewer, still no page scroll ------------------ */
 @media (max-width: 900px) {

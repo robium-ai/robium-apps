@@ -1,20 +1,22 @@
-"""Demo session gateway — one process, one port (8765), per the demo spec.
+"""Demo session gateway — one process, one port (8765).
 
 FastAPI implementing robot-navigation's session contract (so robium-website's
 Controls/demoClient/orchestrator reuse unchanged) + the Gradio app mounted at
-/ui. Unlike robot-navigation's gateway there is no WebSocket tunnel: the "viewer" is
-the Gradio app itself, and "busy" means an episode is executing.
+/ui. Unlike robot-navigation's gateway there is no WebSocket tunnel: the
+"viewer" is the Gradio app itself, and "busy" means the simulator is executing
+a command.
 
 Contract (mirrors robot-navigation's scripts/demo_gateway.py):
-  POST /start?session=U    -> claim; foreign session while a run executes -> 503
-  GET  /status?session=U   -> robot-navigation's JSON shape; foreign session -> 409
+  POST /start?session=U    -> claim; a foreign claim aborts an in-flight run
+  GET  /status?session=U   -> robot-navigation's JSON shape; foreign -> 409
   POST /shutdown?session=U -> foreign -> 403; own -> exit the process
   /ui                      -> the Gradio app (iframed by the website)
 
-Runs identically native (uv, MPS) and in the demo container (CPU) — no
-container-only assumptions: shutdown exits THIS process (not PID 1 blindly),
-readiness is "checkpoint + env loaded" printed as DEMO READY (the
-orchestrator's readyLog), device comes from config.INFERENCE_DEVICE.
+Boot is the pinned environment coming up and passing its contract check — not
+a model load. There is no checkpoint to fetch and no Hub auth to hold, so
+`DEMO READY` now means "the simulator answered, and its schema is the one this
+app was built against". A schema drift fails boot loudly here rather than
+mislabelling frames later.
 """
 
 import os
@@ -22,42 +24,55 @@ import threading
 import time
 from contextlib import asynccontextmanager
 
-import gradio as gr
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from vla_pick_and_place.config import (
-    DEMO_CHECKPOINT,
     DEMO_FLEET_BUDGET,
     DEMO_PORT,
     DEMO_SESSION_SECONDS,
-    INFERENCE_DEVICE,
+    ENV_ID,
+    NEXUS_VERSION,
 )
 from vla_pick_and_place.demo import dashboard
 from vla_pick_and_place.demo.ui import build_ui
+from vla_pick_and_place.env.nexus import set_gl_backend
 
 state = {
     "session": None,
     "claimed_at": None,
     "ready": False,
-    "runner": None,
+    "worker": None,
     "start": time.time(),
-    "log": ["gateway up — loading model + env…"],
+    "log": ["gateway up — starting the simulator…"],
 }
 
 
 def _boot() -> None:
-    """Heavy load in a thread so /status answers from the first second."""
+    """Heavy work in a thread so /status answers from the first second."""
     try:
-        state["log"].append(f"loading {DEMO_CHECKPOINT} on {INFERENCE_DEVICE}…")
-        from vla_pick_and_place.demo.episode_runner import EpisodeRunner
+        gl = set_gl_backend()
+        state["log"].append(f"so101-nexus {NEXUS_VERSION} · {ENV_ID} · MUJOCO_GL={gl}")
 
-        runner = EpisodeRunner()
-        state["runner"] = runner
+        from vla_pick_and_place.demo.session import SimWorker
+        from vla_pick_and_place.env import contract
+
+        worker = SimWorker().start()
+        # The worker owns the only env, on its own thread; the contract check
+        # has to run there too or it would build a second GL context on this
+        # one. `run_on_env` is that door.
+        measured = worker.run_on_env(lambda env: contract.capture(env))
+        problems = contract.diff(measured)
+        if problems:
+            raise contract.ContractError(
+                "environment schema drift:\n  - " + "\n  - ".join(problems)
+            )
+        worker.reset(seed=0)
+        state["worker"] = worker
         state["ready"] = True
-        state["log"].append(f"ready — {runner.device} inference, checkpoint {runner.checkpoint}")
+        state["log"].append("ready — simulator up, contract verified")
         print("DEMO READY", flush=True)  # the orchestrator's readyLog line
     except Exception as e:  # surface boot failures in the page's log pane
         state["log"].append(f"BOOT FAILED: {e}")
@@ -84,20 +99,19 @@ app.add_middleware(
 
 
 def _busy() -> bool:
-    return state["runner"] is not None and state["runner"].busy
+    return state["worker"] is not None and state["worker"].busy
 
 
 @app.post("/start")
 def start(session: str | None = None):
     # Claims are ALWAYS takeable here, even mid-run: a page refresh generates
-    # a new session id while Gradio keeps executing the orphaned episode —
-    # robot-navigation can 503 and let Cloud Run route the retry to a fresh
-    # instance, but locally this is the only instance, so the refresh must
-    # win. Foreign takeover aborts the in-flight run (next control step).
-    # v1-local tradeoff, stated honestly: a second visitor can steal the
-    # instance; the cloud version needs liveness-based claims instead.
+    # a new session id while Gradio keeps executing the orphaned run, and
+    # locally this is the only instance, so the refresh must win. Foreign
+    # takeover aborts the in-flight run at its next control step. Stated
+    # honestly: a second visitor can steal the instance; a cloud version needs
+    # liveness-based claims instead.
     if _busy() and session != state["session"]:
-        state["runner"].request_abort()
+        state["worker"].request_abort()
     if session != state["session"]:
         state["claimed_at"] = time.time()
     state["session"] = session or "anonymous"
@@ -137,16 +151,21 @@ def ui_status():
     """Boot state for the demo page's own top bar. Session-free by design.
 
     /status is session-guarded and 409s a foreign session. A hosted demo
-    claims the instance for the PARENT page's session and then iframes /ui,
-    so the iframe polling /status would be exactly that foreign session and
-    the bar would sit on BOOTING forever. This exposes strictly what the bar
+    claims the instance for the PARENT page's session and then iframes /ui, so
+    the iframe polling /status would be exactly that foreign session and the
+    bar would sit on BOOTING forever. This exposes strictly what the bar
     already renders to whoever is looking at the page.
     """
     log = state["log"]
+    remaining = max(
+        0,
+        DEMO_SESSION_SECONDS
+        - int(time.time() - (state["claimed_at"] or state["start"])),
+    )
     return {
         "ready": state["ready"],
         "message": (
-            f"Ready — {max(0, DEMO_SESSION_SECONDS - int(time.time() - (state['claimed_at'] or state['start']))) // 60} min left in this session"
+            f"Ready — {remaining // 60} min left in this session"
             if state["ready"]
             else (log[-1] if log else "Starting…")
         ),
@@ -158,21 +177,21 @@ def root():
     return {"service": "robium demo gateway (vla-pick-and-place)"}
 
 
-# dashboard.mount, not gr.mount_gradio_app: Gradio 6 takes the stylesheet
-# here rather than on the Blocks constructor, and getting that wrong yields
-# an unstyled, scrolling page with no error.
+# dashboard.mount, not gr.mount_gradio_app: Gradio 6 takes the stylesheet here
+# rather than on the Blocks constructor, and getting that wrong yields an
+# unstyled, scrolling page with no error.
 app = dashboard.mount(
     app,
     build_ui(
-        lambda: state["runner"],
+        lambda: state["worker"],
         # The bar reads the status dict in-process. Polling GET /status from
-        # the browser instead would 409 the moment a hosted session claims
-        # the instance: the iframe would be a second, foreign session.
+        # the browser instead would 409 the moment a hosted session claims the
+        # instance: the iframe would be a second, foreign session.
         get_status=lambda: status(session=state["session"]),
     ),
     path="/ui",
-    # Keeps the bar honest between page load and DEMO READY; stops polling
-    # the moment the app reports ready.
+    # Keeps the bar honest between page load and DEMO READY; stops polling the
+    # moment the app reports ready.
     head=dashboard.boot_watch_js("/ui-status"),
 )
 

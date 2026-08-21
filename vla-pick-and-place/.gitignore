@@ -1,9 +1,14 @@
-# Vendored mujoco_menagerie SO-101 asset (~18MB of binary STL meshes).
-# Re-fetched by `make assets` (scripts/fetch_assets.sh); never committed.
-# scene_pick.xml is OUR file (adds the missing "scene" camera) and must
-# stay tracked even though it lives in this directory — see config.py.
-src/vla_pick_and_place/env/assets/*
-!src/vla_pick_and_place/env/assets/scene_pick.xml
+# The environment is the pinned `so101-nexus` package — this app vendors no
+# MJCF, no meshes and no scene of its own.
+#
+# `src/.../env/assets/` is a LEFTOVER: ~18 MB of menagerie STLs that the
+# removed `scripts/fetch_assets.sh` used to vendor. Nothing reads it any more
+# and it is safe to delete. It stays ignored so a `git add -A` on a machine
+# that still has it cannot sweep 18 MB of binaries into a commit.
+src/vla_pick_and_place/env/assets/
+
+# Ephemeral handoff/TODO notes (AGENTS.md: keep them out of the repository).
+docs/*-handover.md
 
 .venv/
 outputs/
