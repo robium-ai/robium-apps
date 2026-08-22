@@ -57,6 +57,10 @@ body, .gradio-container { background:var(--dp-bg) !important; color:#f4f4f5 !imp
 .dp-frame img { width:384px !important; height:384px !important; max-width:80% !important;
   max-height:90% !important; object-fit:contain !important; image-rendering:auto; background:#05070b; }
 .dp-frame, .dp-frame > div { background:#05070b !important; }
+/* Gradio crossfades output-image URL replacements by default. A rollout is a
+   frame stream, so keep this one component continuously opaque and immediate. */
+#live-policy-frame, #live-policy-frame * { transition:none !important; animation:none !important; }
+#live-policy-frame img, #live-policy-frame canvas { opacity:1 !important; }
 .dp-controls label, .dp-controls input, .dp-controls textarea { color:#f4f4f5 !important; }
 .dp-controls input { background:var(--dp-bg) !important; border-color:var(--dp-line) !important; }
 .dp-result { border:1px solid var(--dp-line); border-radius:6px; padding:12px 14px; background:var(--dp-card); }
@@ -296,6 +300,7 @@ def build_ui(runner) -> gr.Blocks:
                     label="Live policy observation · 96×96 pixels",
                     interactive=False,
                     height=520,
+                    elem_id="live-policy-frame",
                     elem_classes="dp-frame",
                 )
                 result = gr.HTML(

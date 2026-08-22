@@ -128,6 +128,11 @@ def test_out_of_distribution_shape_episode_completes(app):
 def test_episode_runner_shape_roundtrip():
     from diffusion_policy_pusht import config
     from diffusion_policy_pusht.demo.episode_runner import EpisodeRunner
+    from diffusion_policy_pusht.demo.ui import CSS
+
+    assert "#live-policy-frame, #live-policy-frame *" in CSS
+    assert "transition:none !important; animation:none !important" in CSS
+    assert "#live-policy-frame img, #live-policy-frame canvas { opacity:1 !important; }" in CSS
 
     manifest = json.loads(config.DEMO_LADDER_MANIFEST.read_text())
     assert {model["name"] for model in manifest["models"]}
