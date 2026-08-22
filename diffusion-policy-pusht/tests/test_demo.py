@@ -6,8 +6,11 @@ out-of-distribution layouts. Policy success is enforced by the benchmark
 manifest, not by picking a convenient browser seed.
 """
 
+import base64
+import io
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -72,7 +75,7 @@ def _run_episode_via_api(payload: list) -> tuple[str, str]:
     req = urllib.request.Request(f"{BASE}/gradio_api/call/run_episode/{sub['event_id']}")
     final_status = None
     final_result = None
-    frame_url = None
+    frame_html = None
     deadline = time.time() + EPISODE_TIMEOUT_S
     with urllib.request.urlopen(req, timeout=EPISODE_TIMEOUT_S) as r:
         for raw in r:
@@ -83,8 +86,8 @@ def _run_episode_via_api(payload: list) -> tuple[str, str]:
                 continue
             payload_ = json.loads(line[len("data:"):])
             if isinstance(payload_, list) and len(payload_) == 4:
-                if isinstance(payload_[0], dict):
-                    frame_url = payload_[0].get("url") or frame_url
+                if isinstance(payload_[0], str) and "data:image/png;base64," in payload_[0]:
+                    frame_html = payload_[0]
                 final_status = payload_[1]
                 final_result = payload_[3]
                 if any(state in final_status for state in ("solved", "partial progress", "stopped")):
@@ -94,11 +97,10 @@ def _run_episode_via_api(payload: list) -> tuple[str, str]:
         f"episode never finished: {final_status!r}"
     )
     assert isinstance(final_result, str), "no verdict HTML arrived"
-    assert frame_url, "no direct RGB frame arrived"
-    if frame_url.startswith("/"):
-        frame_url = BASE + frame_url
-    with urllib.request.urlopen(frame_url, timeout=30) as response:
-        image = np.asarray(Image.open(response))
+    assert frame_html, "no inline RGB frame arrived"
+    match = re.search(r'src="data:image/png;base64,([^"]+)"', frame_html)
+    assert match, "inline frame has no PNG data URL"
+    image = np.asarray(Image.open(io.BytesIO(base64.b64decode(match.group(1)))))
     assert image.shape[:2] == (96, 96)
     assert float(image.std()) > 1.0, "direct frame is black or flat"
     return final_status, final_result
@@ -130,9 +132,9 @@ def test_episode_runner_shape_roundtrip():
     from diffusion_policy_pusht.demo.episode_runner import EpisodeRunner
     from diffusion_policy_pusht.demo.ui import CSS
 
-    assert "#live-policy-frame, #live-policy-frame *" in CSS
-    assert "transition:none !important; animation:none !important" in CSS
-    assert "#live-policy-frame img, #live-policy-frame canvas { opacity:1 !important; }" in CSS
+    assert ".dp-stream-surface" in CSS
+    assert "transition:none" not in CSS
+    assert "opacity:1 !important" not in CSS
 
     manifest = json.loads(config.DEMO_LADDER_MANIFEST.read_text())
     assert {model["name"] for model in manifest["models"]}

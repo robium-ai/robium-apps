@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import base64
 import html
+import io
 import math
 import secrets
 import uuid
@@ -12,6 +14,7 @@ import pandas as pd
 import rerun as rr
 import rerun.blueprint as rrb
 from gradio_rerun import Rerun
+from PIL import Image
 
 from diffusion_policy_pusht import config
 
@@ -54,13 +57,13 @@ body, .gradio-container { background:var(--dp-bg) !important; color:#f4f4f5 !imp
 .dp-controls { min-width:270px; max-width:340px; padding:18px !important; border-right:1px solid var(--dp-line); background:var(--dp-panel); }
 .dp-main { min-width:0; padding:18px !important; }
 .dp-section { color:var(--dp-muted); font:600 11px/1.4 ui-monospace,monospace; letter-spacing:.1em; text-transform:uppercase; }
-.dp-frame img { width:384px !important; height:384px !important; max-width:80% !important;
-  max-height:90% !important; object-fit:contain !important; image-rendering:auto; background:#05070b; }
-.dp-frame, .dp-frame > div { background:#05070b !important; }
-/* Gradio crossfades output-image URL replacements by default. A rollout is a
-   frame stream, so keep this one component continuously opaque and immediate. */
-#live-policy-frame, #live-policy-frame * { transition:none !important; animation:none !important; }
-#live-policy-frame img, #live-policy-frame canvas { opacity:1 !important; }
+.dp-frame, .dp-frame > div { background:#05070b !important; padding:0 !important; }
+.dp-stream-surface { position:relative; height:520px; display:flex; align-items:center; justify-content:center;
+  overflow:hidden; border:1px solid var(--dp-line); border-radius:4px; background:#05070b; }
+.dp-stream-label { position:absolute; z-index:1; top:0; left:0; padding:6px 10px; color:var(--dp-muted);
+  border-right:1px solid var(--dp-line); border-bottom:1px solid var(--dp-line); background:var(--dp-card); }
+.dp-stream-surface img { display:block; width:384px; height:384px; max-width:80%; max-height:90%;
+  object-fit:contain; image-rendering:auto; background:#05070b; }
 .dp-controls label, .dp-controls input, .dp-controls textarea { color:#f4f4f5 !important; }
 .dp-controls input { background:var(--dp-bg) !important; border-color:var(--dp-line) !important; }
 .dp-result { border:1px solid var(--dp-line); border-radius:6px; padding:12px 14px; background:var(--dp-card); }
@@ -101,6 +104,19 @@ def _log_event(rec: rr.RecordingStream, event) -> None:
     if event.action is not None:
         rec.log("action/x", rr.Scalars([float(event.action[0])]))
         rec.log("action/y", rr.Scalars([float(event.action[1])]))
+
+
+def _frame_html(frame) -> str:
+    """Encode one complete inline frame so the browser never fetches a replacement URL."""
+    buffer = io.BytesIO()
+    Image.fromarray(frame).save(buffer, format="PNG")
+    payload = base64.b64encode(buffer.getvalue()).decode("ascii")
+    return (
+        '<div class="dp-stream-surface">'
+        '<span class="dp-stream-label">Live policy observation · 96×96 pixels</span>'
+        f'<img src="data:image/png;base64,{payload}" alt="Live PushT policy observation">'
+        "</div>"
+    )
 
 
 def _model_choices(manifest: dict) -> list[tuple[str, str]]:
@@ -177,7 +193,7 @@ def build_ui(runner) -> gr.Blocks:
 
     def preview(shape: str, seed: float):
         resolved = resolve_seed(seed)
-        return runner.preview(shape, resolved), _result_html(
+        return _frame_html(runner.preview(shape, resolved)), _result_html(
             state="Layout ready",
             text="Run this seed or change checkpoints while keeping the layout fixed.",
             seed=resolved,
@@ -200,7 +216,7 @@ def build_ui(runner) -> gr.Blocks:
         stream = rec.binary_stream()
         rec.send_blueprint(_blueprint())
         status = f"Loading {model_label} · {mode['display_name']}…"
-        yield runner.preview(shape, resolved), status, stream.read(), _result_html(
+        yield _frame_html(runner.preview(shape, resolved)), status, stream.read(), _result_html(
             state="Starting",
             text=f"{model_label} is preparing a {mode['display_name'].lower()} rollout.",
             seed=resolved,
@@ -241,7 +257,7 @@ def build_ui(runner) -> gr.Blocks:
                         shape=shape,
                     )
                     status = f"running · step {event.step}/{event.total} · max coverage {event.max_coverage:.3f}"
-                yield event.frame, status, stream.read(), result
+                yield _frame_html(event.frame), status, stream.read(), result
         except RuntimeError as exc:
             raise gr.Error(str(exc))
 
@@ -295,11 +311,8 @@ def build_ui(runner) -> gr.Blocks:
                     "Published 65.4% success applies only to the official 100-denoise evaluation."
                 )
             with gr.Column(scale=1, elem_classes="dp-main"):
-                frame = gr.Image(
-                    value=default_frame,
-                    label="Live policy observation · 96×96 pixels",
-                    interactive=False,
-                    height=520,
+                frame = gr.HTML(
+                    value=_frame_html(default_frame),
                     elem_id="live-policy-frame",
                     elem_classes="dp-frame",
                 )
