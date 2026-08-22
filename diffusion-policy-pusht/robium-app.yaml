@@ -1,0 +1,40 @@
+schema_version: "1"
+id: diffusion-policy-pusht
+name: PushT with Diffusion Policy
+summary: Run a published PushT Diffusion Policy on macOS, inspect honest evidence, and replay randomized layouts live.
+version: 3.1.0
+status: experimental
+license: MIT
+tags: [imitation-learning, lerobot, diffusion-policy, pusht, gradio, rerun, mps]
+
+runtime:
+  kind: uv
+  entrypoint: make demo
+
+verbs:
+  build: make sync
+  demo: make demo
+  smoke: make smoke
+  check: make check
+
+modes:
+  prepare-official:
+    command: make prepare-official
+    summary: fetch the pinned official checkpoint and generate LeRobot 0.6 compatibility processors
+  demo-smoke:
+    command: make demo-smoke
+    summary: boot to DEMO READY and complete T and OOD episodes through the Gradio API
+
+requirements:
+  hardware: []
+  gpu: optional
+  network: required
+
+demo:
+  default_mode: demo
+  hosted: false
+  estimated_startup_seconds: 45
+
+artifacts:
+  thumbnail: assets/thumbnail.png
+  case_study: docs/case-study.md

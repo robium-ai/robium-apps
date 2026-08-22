@@ -1,0 +1,12 @@
+.venv/
+.DS_Store
+outputs/
+data/
+wandb/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+
+# Ephemeral handoff/TODO notes (AGENTS.md rule 3: keep them out of the repo).
+docs/*-handover.md
