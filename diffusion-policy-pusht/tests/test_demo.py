@@ -113,7 +113,7 @@ def test_trained_shape_episode_completes(app):
     status, result = _run_episode_via_api(
         [manifest["selected_model"], "fast", "T", manifest["live_seed"]]
     )
-    assert "max coverage" in status or "solved" in status
+    assert "raw coverage" in status or "solved" in status
     assert "seed " in result
 
 
@@ -139,6 +139,10 @@ def test_episode_runner_shape_roundtrip():
     manifest = json.loads(config.DEMO_LADDER_MANIFEST.read_text())
     assert {model["name"] for model in manifest["models"]}
     assert manifest["selected_model"] == "official-175k"
+    assert manifest["official_eval_seed_range"] == [1000, 1499]
+    published = next(model for model in manifest["models"] if model["name"] == "official-175k")
+    assert "avg_max_normalized_reward" in published["evidence"]["metrics"]
+    assert "avg_max_raw_coverage" not in published["evidence"]["metrics"]
     seed = manifest["live_seed"] + 2
     frame = EpisodeRunner.preview("Z", seed)
     assert frame.shape == (96, 96, 3)

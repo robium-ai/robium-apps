@@ -54,6 +54,9 @@ CALIBRATION_ACTION_STEPS = (8, 16, 32)
 CALIBRATION_INFERENCE_STEPS = (10, 100)
 CALIBRATION_SEEDS = tuple(range(11_000, 11_010))
 BENCHMARK_SEEDS = tuple(range(12_000, 12_050))
+# The official published evaluation used 500 layouts seeded 1000 through 1499.
+# Keep this separate from the stopped local experiment's benchmark seed set.
+OFFICIAL_EVAL_SEEDS = tuple(range(1_000, 1_500))
 RELEASE_SUCCESS_RATE = 0.70
 
 DEMO_PORT = int(os.environ.get("PORT", "8765"))

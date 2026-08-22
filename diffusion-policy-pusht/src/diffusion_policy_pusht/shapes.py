@@ -1,7 +1,7 @@
-"""Named block geometries for the PushShape env.
+"""Named block geometries for qualitative out-of-distribution probes.
 
-T is byte-identical to gym-pusht's add_tee(scale=30, length=4) — it IS the
-training distribution; L/I/Z are out-of-distribution probes. All rects are
+The benchmark T is constructed by the untouched upstream gym-pusht environment;
+this generalized environment is used only for L/I/Z. All rects are
 convex quads in the T's local frame, non-overlapping (shapely coverage math
 assumes it), edge-sharing allowed. gym-pusht derives BOTH the coverage
 metric and the goal-zone silhouette from block.shapes, so every shape gets
@@ -57,7 +57,7 @@ def _add_block(space, position, angle, rects, color="LightSlateGray"):
 
 
 class PushShapeEnv(PushTEnv):
-    """PushT with the block geometry swapped by name. shape='T' == upstream."""
+    """PushT with generalized letter geometry for qualitative OOD runs."""
 
     def __init__(self, shape="T", **kwargs):
         if shape not in SHAPES:

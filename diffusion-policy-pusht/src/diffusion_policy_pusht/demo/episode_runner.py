@@ -24,7 +24,7 @@ class EpisodeRunner:
         self.manifest = json.loads(config.DEMO_LADDER_MANIFEST.read_text())
         if self.manifest.get("policy") != "diffusion":
             raise ValueError("demo manifest is not a Diffusion Policy manifest")
-        if self.manifest.get("schema_version") != 3:
+        if self.manifest.get("schema_version") != 4:
             raise ValueError("demo manifest is not the official-policy schema")
         self.models = {model["name"]: model for model in self.manifest["models"]}
         self.default_model = self.manifest["selected_model"]

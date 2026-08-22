@@ -2,15 +2,37 @@
 
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 
+import torch
 from huggingface_hub import snapshot_download
 from lerobot.configs.policies import PreTrainedConfig
 from lerobot.datasets.lerobot_dataset import LeRobotDatasetMetadata
 from lerobot.policies.factory import make_pre_post_processors
+from safetensors.torch import load_file
 
 from diffusion_policy_pusht import config
+
+PROCESSOR_CONVERSION_VERSION = 2
+PREPROCESSOR_STATE = "policy_preprocessor_step_3_normalizer_processor.safetensors"
+POSTPROCESSOR_STATE = "policy_postprocessor_step_0_unnormalizer_processor.safetensors"
+
+LEGACY_STAT_KEYS = {
+    "observation.image": {
+        "mean": "normalize_inputs.buffer_observation_image.mean",
+        "std": "normalize_inputs.buffer_observation_image.std",
+    },
+    "observation.state": {
+        "min": "normalize_inputs.buffer_observation_state.min",
+        "max": "normalize_inputs.buffer_observation_state.max",
+    },
+    "action": {
+        "min": "normalize_targets.buffer_action.min",
+        "max": "normalize_targets.buffer_action.max",
+    },
+}
 
 
 def _required_checkpoint_files() -> tuple[str, ...]:
@@ -37,6 +59,58 @@ def _checkpoint_is_ready(path: Path) -> bool:
     return all((path / name).is_file() for name in _required_checkpoint_files())
 
 
+def legacy_normalization_stats(path: Path) -> dict[str, dict[str, torch.Tensor]]:
+    """Read the exact normalization contract embedded in the legacy checkpoint."""
+    model_state = load_file(path / "model.safetensors")
+    return {
+        feature: {stat: model_state[key].clone() for stat, key in stat_keys.items()}
+        for feature, stat_keys in LEGACY_STAT_KEYS.items()
+    }
+
+
+def _processors_match_legacy(path: Path) -> bool:
+    preprocessor_path = path / PREPROCESSOR_STATE
+    postprocessor_path = path / POSTPROCESSOR_STATE
+    if not preprocessor_path.is_file() or not postprocessor_path.is_file():
+        return False
+    processor_state = load_file(preprocessor_path)
+    postprocessor_state = load_file(postprocessor_path)
+    expected = legacy_normalization_stats(path)
+    preprocessor_matches = all(
+        torch.equal(processor_state[f"{feature}.{stat}"], value)
+        for feature, values in expected.items()
+        for stat, value in values.items()
+    )
+    postprocessor_matches = all(
+        torch.equal(postprocessor_state[f"action.{stat}"], expected["action"][stat])
+        for stat in ("min", "max")
+    )
+    return preprocessor_matches and postprocessor_matches
+
+
+def _create_processors(path: Path) -> None:
+    print("creating LeRobot 0.6 processors from checkpoint-embedded normalization...", flush=True)
+    policy_cfg = PreTrainedConfig.from_pretrained(path)
+    if policy_cfg.type != "diffusion":
+        raise ValueError(f"official checkpoint type is {policy_cfg.type!r}, expected 'diffusion'")
+    policy_cfg.device = "cpu"
+
+    # Start with the complete current dataset schema, then transplant every stat
+    # the legacy policy actually used. In particular, its images used ImageNet
+    # mean/std rather than the current lerobot/pusht pixel distribution stats.
+    metadata = LeRobotDatasetMetadata(config.DATASET_REPO_ID)
+    dataset_stats = copy.deepcopy(metadata.stats)
+    for feature, values in legacy_normalization_stats(path).items():
+        dataset_stats[feature].update(values)
+
+    preprocessor, postprocessor = make_pre_post_processors(
+        policy_cfg=policy_cfg,
+        dataset_stats=dataset_stats,
+    )
+    preprocessor.save_pretrained(path)
+    postprocessor.save_pretrained(path)
+
+
 def ensure_official_checkpoint() -> Path:
     """Download official weights and create the processor-era compatibility files."""
     path = config.OFFICIAL_CHECKPOINT_DIR
@@ -61,19 +135,10 @@ def ensure_official_checkpoint() -> Path:
             ),
         )
 
-    if not (path / "policy_preprocessor.json").is_file():
-        print("creating LeRobot 0.6 processor files from lerobot/pusht statistics...", flush=True)
-        policy_cfg = PreTrainedConfig.from_pretrained(path)
-        if policy_cfg.type != "diffusion":
-            raise ValueError(f"official checkpoint type is {policy_cfg.type!r}, expected 'diffusion'")
-        policy_cfg.device = "cpu"
-        metadata = LeRobotDatasetMetadata(config.DATASET_REPO_ID)
-        preprocessor, postprocessor = make_pre_post_processors(
-            policy_cfg=policy_cfg,
-            dataset_stats=metadata.stats,
-        )
-        preprocessor.save_pretrained(path)
-        postprocessor.save_pretrained(path)
+    if not _processors_match_legacy(path):
+        _create_processors(path)
+    if not _processors_match_legacy(path):
+        raise ValueError("converted processor statistics do not match the legacy checkpoint")
 
     required = (*_required_published_files(), *_required_checkpoint_files())
     missing = [name for name in required if not (path / name).is_file()]
@@ -85,8 +150,9 @@ def ensure_official_checkpoint() -> Path:
         "revision": config.OFFICIAL_MODEL_REVISION,
         "training_steps": config.OFFICIAL_TRAINING_STEPS,
         "processor_conversion": {
+            "version": PROCESSOR_CONVERSION_VERSION,
             "runtime": "lerobot 0.6",
-            "dataset_stats": config.DATASET_REPO_ID,
+            "stats_source": "legacy normalization buffers embedded in model.safetensors",
             "weights_modified": False,
         },
     }
@@ -102,7 +168,7 @@ def _published_metrics(path: Path) -> dict:
         "n_episodes": len(episodes),
         "n_success": sum(bool(item["success"]) for item in episodes),
         "success_rate": float(metrics["pc_success"]) / 100.0,
-        "avg_max_overlap": float(metrics["avg_max_reward"]),
+        "avg_max_normalized_reward": float(metrics["avg_max_reward"]),
         "avg_sum_reward": float(metrics["avg_sum_reward"]),
         "avg_elapsed_s": float(metrics["eval_ep_s"]),
     }
@@ -131,7 +197,8 @@ def _local_experiment() -> dict | None:
                 "n_episodes": int(metrics["n_episodes"]),
                 "n_success": int(metrics["n_success"]),
                 "success_rate": float(metrics["success_rate"]),
-                "avg_max_overlap": float(metrics["avg_max_coverage"]),
+                "avg_max_normalized_reward": float(metrics["avg_max_reward"]),
+                "avg_max_raw_coverage": float(metrics["avg_max_coverage"]),
                 "avg_sum_reward": float(metrics["avg_sum_reward"]),
                 "avg_elapsed_s": float(metrics["avg_elapsed_s"]),
             },
@@ -164,7 +231,7 @@ def build_demo_manifest() -> Path:
         models.append(local)
 
     payload = {
-        "schema_version": 3,
+        "schema_version": 4,
         "policy": "diffusion",
         "dataset": config.DATASET_REPO_ID,
         "selected_model": "official-175k",
@@ -182,7 +249,11 @@ def build_demo_manifest() -> Path:
             },
         },
         "default_inference_mode": "fast",
-        "live_seed": config.BENCHMARK_SEEDS[0],
+        "live_seed": config.OFFICIAL_EVAL_SEEDS[0],
+        "official_eval_seed_range": [
+            config.OFFICIAL_EVAL_SEEDS[0],
+            config.OFFICIAL_EVAL_SEEDS[-1],
+        ],
         "models": models,
     }
     config.DEMO_LADDER_MANIFEST.parent.mkdir(parents=True, exist_ok=True)

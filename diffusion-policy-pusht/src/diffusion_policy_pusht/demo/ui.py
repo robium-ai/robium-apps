@@ -127,7 +127,7 @@ def _model_choices(manifest: dict) -> list[tuple[str, str]]:
         suffix = "published" if evidence["kind"] == "published" else "local · partial"
         label = (
             f"{model['display_name']} · {metrics['success_rate']:.1%} success · "
-            f"{metrics['avg_max_overlap']:.3f} overlap · {suffix}"
+            f"{suffix}"
         )
         choices.append((label, model["name"]))
     return choices
@@ -137,27 +137,35 @@ def _evidence_frame(manifest: dict) -> pd.DataFrame:
     rows = []
     for model in manifest["models"]:
         metrics = model["evidence"]["metrics"]
-        rows.extend(
-            [
-                {"model": model["display_name"], "metric": "success rate", "value": metrics["success_rate"]},
-                {"model": model["display_name"], "metric": "avg max overlap", "value": metrics["avg_max_overlap"]},
-            ]
+        source = (
+            "published" if model["evidence"]["kind"] == "published" else "local partial"
+        )
+        rows.append(
+            {
+                "model": model["display_name"],
+                "source": source,
+                "value": metrics["success_rate"],
+            }
         )
     return pd.DataFrame(rows)
 
 
 def _evidence_table(manifest: dict) -> str:
     rows = [
-        "| model evidence | source | episodes | success | avg max overlap |",
-        "| --- | --- | ---: | ---: | ---: |",
+        "| model evidence | source | episodes | success | avg max normalized reward | avg max raw coverage |",
+        "| --- | --- | ---: | ---: | ---: | ---: |",
     ]
     for model in manifest["models"]:
         evidence = model["evidence"]
         m = evidence["metrics"]
         source = "published" if evidence["kind"] == "published" else "local partial"
+        normalized = m.get("avg_max_normalized_reward")
+        coverage = m.get("avg_max_raw_coverage")
+        normalized_text = f"{normalized:.3f}" if normalized is not None else "—"
+        coverage_text = f"{coverage:.3f}" if coverage is not None else "—"
         rows.append(
             f"| {model['display_name']} | {source} | {m['n_episodes']} | "
-            f"{m['success_rate']:.1%} | {m['avg_max_overlap']:.3f} |"
+            f"{m['success_rate']:.1%} | {normalized_text} | {coverage_text} |"
         )
     rows.append("")
     rows.append(
@@ -170,10 +178,15 @@ def _evidence_table(manifest: dict) -> str:
 
 
 def _result_html(*, state: str, text: str, seed: int, shape: str) -> str:
+    seed_context = (
+        "official evaluation seed"
+        if seed in config.OFFICIAL_EVAL_SEEDS
+        else "qualitative seed outside the published evaluation set"
+    )
     return (
         '<div class="dp-result">'
         f"<strong>{html.escape(state)}</strong><br>{html.escape(text)}<br>"
-        f'<span class="dp-note">seed {seed} · shape {html.escape(shape)}</span>'
+        f'<span class="dp-note">seed {seed} · {seed_context} · shape {html.escape(shape)}</span>'
         "</div>"
     )
 
@@ -238,25 +251,43 @@ def build_ui(runner) -> gr.Blocks:
                 if event.done:
                     if event.aborted:
                         state = "Stopped"
-                        text = f"Stopped after {event.step} steps; max coverage {event.max_coverage:.3f}."
+                        text = (
+                            f"Stopped after {event.step} steps; max raw coverage "
+                            f"{event.max_coverage:.3f}, max normalized reward {event.max_reward:.3f}."
+                        )
                     elif event.success:
                         state = "Solved"
-                        text = f"Reached ≥95% coverage in {event.step} steps."
+                        text = (
+                            f"Reached >95% raw coverage in {event.step} steps; "
+                            f"max normalized reward {event.max_reward:.3f}."
+                        )
                     else:
                         state = "Partial progress"
-                        text = f"Max coverage {event.max_coverage:.3f}; success requires ≥0.95."
+                        text = (
+                            f"Max raw coverage {event.max_coverage:.3f}; max normalized reward "
+                            f"{event.max_reward:.3f}. Success requires >0.95 raw coverage."
+                        )
                     if shape != "T":
                         text += " This letter is an out-of-distribution probe, not a benchmark."
                     result = _result_html(state=state, text=text, seed=resolved, shape=shape)
-                    status = f"{state.lower()} · step {event.step} · max coverage {event.max_coverage:.3f}"
+                    status = (
+                        f"{state.lower()} · step {event.step} · raw coverage {event.max_coverage:.3f} "
+                        f"· normalized reward {event.max_reward:.3f}"
+                    )
                 else:
                     result = _result_html(
                         state="Running",
-                        text=f"Step {event.step}/{event.total}; max coverage {event.max_coverage:.3f}.",
+                        text=(
+                            f"Step {event.step}/{event.total}; max raw coverage "
+                            f"{event.max_coverage:.3f}, max normalized reward {event.max_reward:.3f}."
+                        ),
                         seed=resolved,
                         shape=shape,
                     )
-                    status = f"running · step {event.step}/{event.total} · max coverage {event.max_coverage:.3f}"
+                    status = (
+                        f"running · step {event.step}/{event.total} · raw coverage "
+                        f"{event.max_coverage:.3f} · normalized reward {event.max_reward:.3f}"
+                    )
                 yield _frame_html(event.frame), status, stream.read(), result
         except RuntimeError as exc:
             raise gr.Error(str(exc))
@@ -307,7 +338,7 @@ def build_ui(runner) -> gr.Blocks:
                 status = gr.Textbox(value="ready", label="Health", interactive=False)
                 gr.Markdown(
                     "**T is the benchmark.** L/I/Z were never in training and are shown only as "
-                    "out-of-distribution probes. PushT success means at least 95% target coverage. "
+                    "out-of-distribution probes. PushT success means more than 95% target coverage. "
                     "Published 65.4% success applies only to the official 100-denoise evaluation."
                 )
             with gr.Column(scale=1, elem_classes="dp-main"):
@@ -330,10 +361,10 @@ def build_ui(runner) -> gr.Blocks:
                             value=_evidence_frame(manifest),
                             x="model",
                             y="value",
-                            color="metric",
-                            color_map={"success rate": "#4ade80", "avg max overlap": "#60a5fa"},
+                            color="source",
+                            color_map={"published": "#4ade80", "local partial": "#60a5fa"},
                             y_lim=[0, 1],
-                            title="Published reference vs separate local experiment",
+                            title="Success rate · published reference vs separate local experiment",
                             height=330,
                         )
                         gr.Markdown(_evidence_table(manifest))

@@ -64,6 +64,15 @@ class RolloutResult:
 def make_env(shape: str = "T"):
     if shape not in shapes.SHAPES:
         raise ValueError(f"unknown shape {shape!r}; choose from {list(shapes.SHAPES)}")
+    if shape == "T":
+        # Benchmark parity requires the upstream implementation unchanged. Its
+        # historical compound-body inertia differs from our generalized letter
+        # builder even though the visible T geometry is identical.
+        return gym.make(
+            "gym_pusht/PushT-v0",
+            obs_type="pixels_agent_pos",
+            render_mode="rgb_array",
+        )
     return gym.make(
         shapes.ENV_ID,
         shape=shape,
