@@ -1,4 +1,4 @@
-.PHONY: sync info check prepare-official demo demo-gateway demo-image demo-container demo-container-smoke demo-smoke smoke clean train-smoke eval-trained \
+.PHONY: sync info check prepare-official demo demo-gateway demo-image demo-container demo-container-smoke demo-smoke app-test smoke clean train-smoke eval-trained \
 	train-to-5k calibrate resume-to train-ladder eval-ladder
 
 sync:
@@ -12,8 +12,8 @@ check:
 	command -v uv >/dev/null 2>&1 || { echo "FAIL: uv not installed (https://docs.astral.sh/uv/)"; ok=0; }; \
 	command -v ffmpeg >/dev/null 2>&1 || { echo "FAIL: ffmpeg not installed (brew install ffmpeg)"; ok=0; }; \
 	[ -f uv.lock ] || { echo "FAIL: uv.lock missing (broken checkout)"; ok=0; }; \
-	if [ -d .venv ]; then echo "ok: .venv present"; else echo "note: no .venv yet — run 'make sync'"; fi; \
-	if [ -f outputs/demo/ladder.json ] && grep -q '"selected_model": "official-175k"' outputs/demo/ladder.json; then echo "ok: official Diffusion manifest present"; else echo "note: run 'make prepare-official' before 'make demo'"; fi; \
+	if [ -d .venv ]; then echo "ok: .venv present"; else echo "note: no .venv yet — run './app build'"; fi; \
+	if [ -f outputs/demo/ladder.json ] && grep -q '"selected_model": "official-175k"' outputs/demo/ladder.json; then echo "ok: official Diffusion manifest present"; else echo "note: run './app build' before './app run'"; fi; \
 	[ $$ok -eq 1 ] && echo "CHECK PASS" || { echo "CHECK FAIL"; exit 1; }
 
 prepare-official:
@@ -39,8 +39,11 @@ demo-container-smoke:
 demo-smoke:
 	uv run pytest tests/test_demo.py -v -m slow
 
-# No training: provenance check + one full official-policy MPS rollout.
-smoke:
+app-test:
+	tests/test_app_cli.sh
+
+# No training: launcher contract, provenance check, and one full official-policy MPS rollout.
+smoke: app-test
 	uv run pytest tests/test_smoke.py -v
 
 # Optional local research commands below are not required by the demo.

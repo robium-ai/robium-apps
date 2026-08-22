@@ -2,20 +2,37 @@ schema_version: "1"
 id: diffusion-policy-pusht
 name: PushT with Diffusion Policy
 summary: Run a published PushT Diffusion Policy on macOS, inspect honest evidence, and replay randomized layouts live.
-version: 3.2.0
+version: 3.3.0
 status: experimental
 license: MIT
 tags: [imitation-learning, lerobot, diffusion-policy, pusht, gradio, rerun, mps]
 
 runtime:
   kind: uv
-  entrypoint: make demo
+  entrypoint: ./app run
 
 verbs:
-  build: make sync
-  demo: make demo
-  smoke: make smoke
-  check: make check
+  help:
+    command: ./app help
+    summary: Show commands and examples
+  doctor:
+    command: ./app doctor
+    summary: Diagnose uv, ffmpeg, checkpoint, port, and optional Docker readiness
+  build:
+    command: ./app build
+    summary: Prepare the uv environment and pinned official checkpoint
+  run:
+    command: ./app run
+    summary: Run the native policy workspace with MPS when available
+  status:
+    command: ./app status
+    summary: Show the policy process, local URL, and log path
+  logs:
+    command: ./app logs
+    summary: Follow policy workspace logs
+  stop:
+    command: ./app stop
+    summary: Stop the policy workspace
 
 modes:
   prepare-official:

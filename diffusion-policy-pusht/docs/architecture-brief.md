@@ -22,6 +22,7 @@ randomized layouts live without first training a model.
 
 ```text
 diffusion-policy-pusht/
+├── app                         # shared doctor/build/run/status/logs/stop interface
 ├── src/diffusion_policy_pusht/
 │   ├── config.py             # pinned IDs, modes, and optional research recipe
 │   ├── official.py           # fetch, compatibility conversion, evidence manifest
@@ -36,6 +37,7 @@ diffusion-policy-pusht/
 │       └── gateway.py        # session lifecycle + mounted Gradio `/ui`
 ├── docker/demo.Dockerfile    # offline-at-runtime CPU demo image
 ├── scripts/demo_container_smoke.py
+├── tests/test_app_cli.sh     # launcher contract and lifecycle
 ├── tests/test_smoke.py       # official checkpoint + full MPS rollout
 └── tests/test_demo.py        # real browser/API rollout smoke
 ```
@@ -76,15 +78,17 @@ each simulator step.
 
 ## Verification gates
 
-1. `make check` validates local prerequisites.
-2. `make prepare-official` proves the pinned artifact and processors exist.
-3. `make smoke` checks provenance and completes a full real-policy episode.
-4. `make demo-smoke` boots the app, streams direct RGB frames, completes T
+1. `./app doctor` validates local prerequisites without changing the system.
+2. `./app build` prepares the locked environment, pinned artifact, and processors.
+3. `tests/test_app_cli.sh` verifies the shared six-command launcher and its
+   run/status/stop lifecycle without loading the real model.
+4. `make smoke` checks the launcher, provenance, and a full real-policy episode.
+5. `make demo-smoke` boots the app, streams direct RGB frames, completes T
    and L rollouts, verifies deterministic Z layouts, and exercises
    cancellation/lock release.
-5. `make demo-container-smoke` verifies the baked CPU image, claim guards,
+6. `make demo-container-smoke` verifies the baked CPU image, claim guards,
    mounted UI, and a real seed-1000 rollout through the hosted API.
-6. The published 65.4% result remains attributed to the official 500-episode,
+7. The published 65.4% result remains attributed to the official 500-episode,
    100-denoise evaluation over seeds 1000–1499. Fast-mode rollouts never
    inherit that metric.
 
