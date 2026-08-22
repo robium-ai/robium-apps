@@ -54,6 +54,20 @@ The published 65.4% success belongs only to the official 500-episode,
 100-denoise evaluation. The faster 10-denoise result is presented as an
 interactive mode, not assigned the published metric.
 
+## Live and local delivery
+
+The same UI now has two entry points. `make demo` keeps native MPS inference
+for macOS. A FastAPI gateway mounts Gradio at `/ui` for the website and loads
+the policy in the background while lifecycle status stays responsive. The CPU
+image bakes the pinned checkpoint and processor conversion, then runs with Hub
+access disabled.
+
+Local verification exercised the complete website path: Start created a
+private container, BOOTING advanced to READY, the embedded observation stayed
+visible, selected radios showed filled inner dots, a live rollout solved seed
+1000 in 116 steps at 0.953 raw coverage, and Stop deleted the instance. The
+container and website were not published or deployed.
+
 ## Reusable decisions
 
 - Prefer an official checkpoint when the goal is a working reference app,
@@ -64,11 +78,12 @@ interactive mode, not assigned the published metric.
 - Make raw policy frames the reliable primary view and use rich telemetry
   additively.
 - Give interactive and reference inference modes distinct evidence claims.
-- Keep Apple inference native; macOS Docker cannot expose MPS.
+- Keep Apple inference native for speed; use a CPU-only image for reproducible
+  website sessions because macOS Docker cannot expose MPS.
 
 ## Current limits
 
 The official result is slightly below this app's aspirational 70% release
 bar, so the app remains experimental. PushT is a 2D benchmark, OOD letters
-are qualitative, and no hosted deployment or artifact publication is part of
-this change.
+are qualitative. The hosted-demo implementation is locally verified; image
+publication and production deployment remain a separate approval.

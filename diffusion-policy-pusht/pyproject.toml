@@ -12,6 +12,11 @@ dependencies = [
     # gradio_rerun 0.34.1 — the explicit rerun-sdk pin below replaces it
     # (same resolution vla-trial uses).
     "lerobot[diffusion,pusht,training]==0.6.0",
+    # Direct pins let uv select CPU wheels on Linux while retaining native
+    # PyPI/MPS wheels on macOS; otherwise LeRobot's transitive torch resolves
+    # to CUDA-enabled Linux wheels in the shared lock.
+    "torch==2.11.0",
+    "torchvision==0.26.0",
     # Browser demo. rerun-sdk and gradio_rerun are pinned to
     # each other — the viewer component and SDK must match minor versions.
     "rerun-sdk==0.34.1",
@@ -35,3 +40,14 @@ dev = [
 [tool.pytest.ini_options]
 markers = ["slow: loads real checkpoints / boots the gateway; run via make demo-smoke"]
 addopts = "-m 'not slow'"
+
+# Linux is the hosted CPU image; macOS falls back to PyPI's native MPS wheels.
+# Pin both packages because torchvision must match the selected torch build.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+torchvision = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

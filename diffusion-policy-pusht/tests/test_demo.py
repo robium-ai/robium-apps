@@ -1,7 +1,7 @@
-"""Real-checkpoint browser-demo smoke; run with ``make demo-smoke``.
+"""Real-checkpoint hosted-demo smoke; run with ``make demo-smoke``.
 
-The ship bar boots the session-blind app, streams direct RGB frames through
-the four-input Gradio API, and completes both benchmark and explicitly
+The ship bar boots the session gateway, verifies claim isolation, streams
+direct RGB frames through the mounted Gradio API, and completes benchmark and
 out-of-distribution layouts. Policy success is enforced by the benchmark
 manifest, not by picking a convenient browser seed.
 """
@@ -44,12 +44,12 @@ def _http(method: str, path: str, body: dict | None = None):
 
 
 @pytest.fixture(scope="module")
-def app(tmp_path_factory):
+def gateway(tmp_path_factory):
     log_path = tmp_path_factory.mktemp("demo") / "app.log"
     env = {**os.environ, "PORT": str(PORT)}
     with open(log_path, "w") as log:
         proc = subprocess.Popen(
-            [sys.executable, "-m", "diffusion_policy_pusht.demo.app"],
+            [sys.executable, "-m", "diffusion_policy_pusht.demo.gateway"],
             env=env,
             stdout=log,
             stderr=subprocess.STDOUT,
@@ -62,17 +62,17 @@ def app(tmp_path_factory):
         time.sleep(2)
     if "DEMO READY" not in log_path.read_text():
         proc.kill()
-        pytest.fail(f"app never reached DEMO READY in {BOOT_TIMEOUT_S}s:\n{log_path.read_text()[-3000:]}")
+        pytest.fail(f"gateway never reached DEMO READY in {BOOT_TIMEOUT_S}s:\n{log_path.read_text()[-3000:]}")
     yield proc
     if proc.poll() is None:
         proc.kill()
 
 
 def _run_episode_via_api(payload: list) -> tuple[str, str]:
-    code, sub = _http("POST", "/gradio_api/call/run_episode", {"data": payload})
+    code, sub = _http("POST", "/ui/gradio_api/call/run_episode", {"data": payload})
     assert code == 200 and "event_id" in sub, sub
 
-    req = urllib.request.Request(f"{BASE}/gradio_api/call/run_episode/{sub['event_id']}")
+    req = urllib.request.Request(f"{BASE}/ui/gradio_api/call/run_episode/{sub['event_id']}")
     final_status = None
     final_result = None
     frame_html = None
@@ -106,8 +106,19 @@ def _run_episode_via_api(payload: list) -> tuple[str, str]:
     return final_status, final_result
 
 
-def test_trained_shape_episode_completes(app):
+def test_gateway_contract_and_trained_shape_episode_completes(gateway):
     from diffusion_policy_pusht import config
+
+    code, status_body = _http("GET", "/status?session=alice")
+    assert code == 200 and status_body["ready"] is True
+    assert status_body["claimed"] is False
+    assert status_body["fleet"]["budget"] == config.DEMO_FLEET_BUDGET
+    code, body = _http("POST", "/start?session=alice")
+    assert code == 200 and body["ok"] is True
+    code, status_body = _http("GET", "/status?session=alice")
+    assert code == 200 and status_body["claimed"] is True
+    assert _http("GET", "/status?session=bob")[0] == 409
+    assert _http("POST", "/shutdown?session=bob")[0] == 403
 
     manifest = json.loads(config.DEMO_LADDER_MANIFEST.read_text())
     status, result = _run_episode_via_api(
@@ -117,7 +128,7 @@ def test_trained_shape_episode_completes(app):
     assert "seed " in result
 
 
-def test_out_of_distribution_shape_episode_completes(app):
+def test_out_of_distribution_shape_episode_completes(gateway):
     from diffusion_policy_pusht import config
 
     manifest = json.loads(config.DEMO_LADDER_MANIFEST.read_text())
@@ -133,6 +144,8 @@ def test_episode_runner_shape_roundtrip():
     from diffusion_policy_pusht.demo.ui import CSS
 
     assert ".dp-stream-surface" in CSS
+    assert 'input[type="radio"]:checked' in CSS
+    assert "box-shadow:inset 0 0 0 4px" in CSS
     assert "transition:none" not in CSS
     assert "opacity:1 !important" not in CSS
 

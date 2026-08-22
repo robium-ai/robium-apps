@@ -61,6 +61,8 @@ RELEASE_SUCCESS_RATE = 0.70
 
 DEMO_PORT = int(os.environ.get("PORT", "8765"))
 DEMO_DEFAULT_SHAPE = "T"
+DEMO_SESSION_SECONDS = int(os.environ.get("DEMO_SESSION_SECONDS", "1800"))
+DEMO_FLEET_BUDGET = int(os.environ.get("DEMO_FLEET_BUDGET", "2"))
 
 
 def demo_device() -> str:

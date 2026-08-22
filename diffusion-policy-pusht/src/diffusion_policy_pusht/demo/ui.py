@@ -19,11 +19,11 @@ from PIL import Image
 from diffusion_policy_pusht import config
 
 APP_ID = "diffusion_policy_pusht_demo"
-THEME = gr.themes.Base(primary_hue="teal", neutral_hue="zinc")
+THEME = gr.themes.Base(primary_hue="blue", neutral_hue="zinc")
 
 CSS = """
 :root { --dp-bg:#18181b; --dp-panel:#27272a; --dp-card:#27272a; --dp-line:#3f3f46;
-  --dp-muted:#a1a1aa; --dp-accent:#2aa6aa; --dp-success:#4ade80; }
+  --dp-muted:#a1a1aa; --dp-accent:#2563eb; --dp-accent-soft:#172554; --dp-success:#4ade80; }
 body, .gradio-container { background:var(--dp-bg) !important; color:#f4f4f5 !important; color-scheme:dark; }
 .gradio-container {
   --body-background-fill:var(--dp-bg); --background-fill-primary:var(--dp-bg);
@@ -35,7 +35,7 @@ body, .gradio-container { background:var(--dp-bg) !important; color:#f4f4f5 !imp
   --body-text-color-subdued:var(--dp-muted); --block-label-text-color:var(--dp-muted);
   --block-title-text-color:#f4f4f5; --input-placeholder-color:var(--dp-muted);
   --checkbox-label-background-fill:var(--dp-card); --checkbox-label-background-fill-hover:#323238;
-  --checkbox-label-background-fill-selected:#303a3a; --checkbox-label-border-color:var(--dp-line);
+  --checkbox-label-background-fill-selected:var(--dp-accent-soft); --checkbox-label-border-color:var(--dp-line);
   --checkbox-label-border-color-hover:var(--dp-accent); --checkbox-label-border-color-selected:var(--dp-accent);
   --checkbox-label-border-width:1px; --checkbox-label-text-color:#f4f4f5;
   --checkbox-label-text-color-selected:#f4f4f5; --checkbox-background-color:var(--dp-bg);
@@ -66,6 +66,18 @@ body, .gradio-container { background:var(--dp-bg) !important; color:#f4f4f5 !imp
   object-fit:contain; image-rendering:auto; background:#05070b; }
 .dp-controls label, .dp-controls input, .dp-controls textarea { color:#f4f4f5 !important; }
 .dp-controls input { background:var(--dp-bg) !important; border-color:var(--dp-line) !important; }
+.dp-controls input[type="radio"] {
+  appearance:none !important; -webkit-appearance:none !important; width:18px !important;
+  height:18px !important; min-width:18px !important; border:2px solid #71717a !important;
+  border-radius:50% !important; background:var(--dp-bg) !important;
+}
+.dp-controls input[type="radio"]:checked {
+  border-color:#60a5fa !important; background:#60a5fa !important;
+  box-shadow:inset 0 0 0 4px var(--dp-bg),0 0 0 1px rgba(96,165,250,.25) !important;
+}
+.dp-controls label:has(input[type="radio"]:checked) {
+  border-color:#3b82f6 !important; background:var(--dp-accent-soft) !important;
+}
 .dp-result { border:1px solid var(--dp-line); border-radius:6px; padding:12px 14px; background:var(--dp-card); }
 .dp-result strong { color:#fff; }
 .dp-note { color:var(--dp-muted); font-size:12px; line-height:1.55; }

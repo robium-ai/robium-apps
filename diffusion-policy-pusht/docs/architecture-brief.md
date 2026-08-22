@@ -14,8 +14,9 @@ randomized layouts live without first training a model.
 | Policy | Pinned `lerobot/diffusion_pusht` 175k checkpoint | Published task-matched weights and 500-episode evaluation. |
 | Runtime | LeRobot 0.6.0 | Current processor-aware policy interface. |
 | Simulation | gym-pusht / pymunk | Matches the checkpoint's observation, action, and success contract. |
-| Environment | uv, Python 3.12, native MPS | Reproducible lockfile and Apple GPU acceleration. |
+| Environment | uv, Python 3.12, native MPS + Linux CPU image | One lock with platform-specific PyTorch sources. |
 | Demo | Gradio 6 + direct image + Rerun | Reliable primary RGB stream with an additive ML timeline. |
+| Gateway | FastAPI + uvicorn | Website-compatible claims, readiness, expiry, and `/ui` mount. |
 
 ## Modules
 
@@ -31,7 +32,10 @@ diffusion-policy-pusht/
 │   └── demo/
 │       ├── episode_runner.py # lazy model cache, serialization, cancellation
 │       ├── ui.py             # evidence workspace and live replay
-│       └── app.py            # Gradio lifecycle / DEMO READY contract
+│       ├── app.py            # native Gradio entry point
+│       └── gateway.py        # session lifecycle + mounted Gradio `/ui`
+├── docker/demo.Dockerfile    # offline-at-runtime CPU demo image
+├── scripts/demo_container_smoke.py
 ├── tests/test_smoke.py       # official checkpoint + full MPS rollout
 └── tests/test_demo.py        # real browser/API rollout smoke
 ```
@@ -60,6 +64,11 @@ visibly labeled qualitative OOD probes. T uses the untouched upstream
 environment, including its historical compound-body inertia; the generalized
 letter builder is never used for benchmark runs.
 
+The hosted entry point answers status immediately and loads the policy on a
+background thread. `DEMO READY` is emitted only after the real checkpoint and
+environment load. The image bakes the pinned Hub snapshot and compatibility
+processors, sets `HF_HUB_OFFLINE=1`, and uses CPU-only Linux torch wheels.
+
 The official 500-episode result and the interrupted local 5k experiment are
 categorical evidence from different configurations, not a connected learning
 curve. One process handles one rollout at a time; cancellation is checked at
@@ -73,7 +82,9 @@ each simulator step.
 4. `make demo-smoke` boots the app, streams direct RGB frames, completes T
    and L rollouts, verifies deterministic Z layouts, and exercises
    cancellation/lock release.
-5. The published 65.4% result remains attributed to the official 500-episode,
+5. `make demo-container-smoke` verifies the baked CPU image, claim guards,
+   mounted UI, and a real seed-1000 rollout through the hosted API.
+6. The published 65.4% result remains attributed to the official 500-episode,
    100-denoise evaluation over seeds 1000–1499. Fast-mode rollouts never
    inherit that metric.
 
@@ -87,7 +98,9 @@ each simulator step.
   timing is not comparable to sequential MPS demo timing. MPS and CUDA
   stochastic rollouts should be compared statistically, not bit-for-bit.
 - PushT is a 2D benchmark, not a real-robot transfer claim.
-- No artifact upload or hosted deployment is authorized by this build.
+- The local CPU image solved official seed 1000 in 116 steps at 0.953 raw
+  coverage during the hosted lifecycle smoke.
+- No artifact upload or production deployment was performed by this build.
 
 Approved design and pivot:
 `docs/superpowers/specs/2026-08-21-diffusion-policy-pusht-redesign.md`.

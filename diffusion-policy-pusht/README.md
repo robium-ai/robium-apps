@@ -1,8 +1,8 @@
 # PushT with Diffusion Policy
 
 An evidence-first imitation-learning demo built around LeRobot's published
-PushT Diffusion Policy. It runs natively on Apple Silicon: no local training
-or NVIDIA server is required.
+PushT Diffusion Policy. It runs natively on Apple Silicon or in a reproducible
+CPU container: no local training or NVIDIA server is required.
 
 **Stack:** LeRobot 0.6.0 · Diffusion Policy · gym-pusht · Gradio 6 · Rerun · uv · Python 3.12
 
@@ -27,8 +27,8 @@ claim.
 
 ## Run on macOS
 
-Apple Silicon is the primary local path. Docker is intentionally not used
-because macOS containers cannot access MPS.
+Apple Silicon is the fastest local path. Docker is used for website-compatible
+CPU sessions; macOS containers cannot access MPS.
 
 ```bash
 brew install ffmpeg
@@ -92,7 +92,10 @@ MIT. See the [official model card](https://huggingface.co/lerobot/diffusion_push
 | `make prepare-official` | Fetch the pinned checkpoint, create LeRobot 0.6 processors, and generate the evidence manifest. |
 | `make smoke` | Validate provenance and complete one full fast-mode official-policy rollout. |
 | `make demo` | Prepare if needed and start the local Gradio + Rerun app with native MPS inference. |
-| `make demo-smoke` | Boot the real app and complete T and OOD rollouts through its public API. |
+| `make demo-gateway` | Run the same native UI behind the website session gateway at `/ui`. |
+| `make demo-image` | Build the CPU image with the pinned checkpoint baked in. |
+| `make demo-container-smoke` | Verify the CPU image, claim guards, `/ui`, and a real fast T rollout. |
+| `make demo-smoke` | Boot the real gateway and complete T and OOD rollouts through its public API. |
 
 The older `train-*`, `calibrate`, and `eval-ladder` targets remain only
 for reproducing the separate local research experiment. They are not part of
@@ -110,6 +113,10 @@ setup or the app pass bar.
   simulator step.
 - The primary rollout is visible without Rerun; Rerun provides deeper
   inspection.
+- Hosted status responds while the model loads in the background. Each
+  container has one claim, one serialized runner, and a 30-minute lifetime.
+- Linux resolves pinned CPU-only PyTorch wheels; macOS retains native MPS
+  wheels from PyPI.
 - ACT is better reserved for a separate, faster pick-and-place demonstration.
 
 The approved redesign and official-checkpoint pivot are recorded in

@@ -1,4 +1,4 @@
-.PHONY: sync info check prepare-official demo demo-smoke smoke clean train-smoke eval-trained \
+.PHONY: sync info check prepare-official demo demo-gateway demo-image demo-container demo-container-smoke demo-smoke smoke clean train-smoke eval-trained \
 	train-to-5k calibrate resume-to train-ladder eval-ladder
 
 sync:
@@ -22,6 +22,19 @@ prepare-official:
 # Native MPS demo. The first run downloads the pinned official checkpoint.
 demo: prepare-official
 	uv run python -m diffusion_policy_pusht.demo.app
+
+# Same UI behind the website session contract, still native on macOS.
+demo-gateway: prepare-official
+	uv run python -m diffusion_policy_pusht.demo.gateway
+
+demo-image:
+	docker build -f docker/demo.Dockerfile -t diffusion-policy-pusht:latest .
+
+demo-container:
+	docker run --rm -p 8765:8765 diffusion-policy-pusht:latest
+
+demo-container-smoke:
+	python3 scripts/demo_container_smoke.py
 
 demo-smoke:
 	uv run pytest tests/test_demo.py -v -m slow

@@ -2,7 +2,7 @@ schema_version: "1"
 id: diffusion-policy-pusht
 name: PushT with Diffusion Policy
 summary: Run a published PushT Diffusion Policy on macOS, inspect honest evidence, and replay randomized layouts live.
-version: 3.1.0
+version: 3.2.0
 status: experimental
 license: MIT
 tags: [imitation-learning, lerobot, diffusion-policy, pusht, gradio, rerun, mps]
@@ -32,8 +32,20 @@ requirements:
 
 demo:
   default_mode: demo
-  hosted: false
+  hosted: true
   estimated_startup_seconds: 45
+  orchestrator:
+    demo_id: diffusion-policy-pusht
+    title: PushT with Diffusion Policy — LeRobot + Rerun
+    image: diffusion-policy-pusht:latest
+    command: [/app/.venv/bin/python, -m, diffusion_policy_pusht.demo.gateway]
+    gateway_port: 8765
+    ready_log: DEMO READY
+    max_instances: 2
+    session_seconds: 1800
+    env:
+      POLICY_DEVICE: cpu
+      HF_HUB_OFFLINE: "1"
 
 artifacts:
   thumbnail: assets/thumbnail.png
