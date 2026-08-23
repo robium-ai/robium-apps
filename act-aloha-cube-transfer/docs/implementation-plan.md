@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-23
 **Source design:** `docs/architecture-brief.md`
-**Status:** ready for execution
+**Status:** complete — locally verified; production deployment intentionally pending
 
 ## Objective
 
@@ -350,6 +350,18 @@ make smoke
 
 Production image publication and Cloud Run/site deployment remain separate
 mutations and require explicit authorization after local verification.
+
+## Completion record
+
+- Native app smoke, real-policy smoke, browser acceptance, and the
+  production-shaped CPU container smoke passed on 2026-08-23.
+- The official checkpoint produced a repeatable successful transfer for seed
+  1001; the verified CPU container run completed at step 227.
+- The website choice page, tutorial, real workspace still, orchestrator
+  registry, private Start/READY/Stop lifecycle, and container cleanup all
+  passed locally.
+- No production image publication, Cloud Run mutation, site deployment, or
+  push was performed.
 
 ## Commit sequence
 
