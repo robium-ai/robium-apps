@@ -64,6 +64,11 @@ demo:
       POLICY_DEVICE: cpu
       MUJOCO_GL: egl
       HF_HUB_OFFLINE: "1"
+    cloud:
+      cpu: "4"
+      memory: 4Gi
+      cpu_idle: false
+      startup_cpu_boost: true
 
 artifacts:
   thumbnail: assets/stills/live-workspace.png

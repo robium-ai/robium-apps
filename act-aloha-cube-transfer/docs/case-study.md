@@ -12,8 +12,8 @@ app: act-aloha-cube-transfer
 date: 2026-08-23
 tested: 2026-08-23
 tags: [robium, lerobot, imitation-learning, act, aloha, mujoco, gradio, rerun, macos]
-hero: assets/stills/live-workspace.png
-hero_alt: A successful ACT ALOHA cube transfer with its live camera, controls, evidence, and Rerun timelines
+hero: assets/gifs/transfer-seed-1001.gif
+hero_alt: The official ACT checkpoint completing a seeded bimanual ALOHA cube transfer
 social_image: assets/stills/live-workspace.png
 featured: false
 ---
@@ -27,6 +27,12 @@ There is no training step in the setup. The application downloads one pinned
 checkpoint, migrates its legacy normalization data with LeRobot's current
 tooling, and runs it in the official MuJoCo environment. Apple Silicon uses
 MPS; the website-compatible image uses CPU-only PyTorch.
+
+![The official ACT checkpoint completes seed 1001 with a 100-action execution horizon](../assets/gifs/transfer-seed-1001.gif)
+
+*This is a real deterministic rollout from the reference app, not a staged
+animation. The capture metadata records the pinned revision, seed, horizon,
+device, step count, and terminal simulator stage.*
 
 ![A successful ACT ALOHA transfer in the Robium workspace](../assets/stills/live-workspace.png)
 

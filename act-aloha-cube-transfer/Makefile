@@ -1,4 +1,4 @@
-.PHONY: sync info check prepare-official calibrate demo demo-gateway demo-image demo-container demo-container-smoke demo-smoke app-test smoke clean
+.PHONY: sync info check prepare-official calibrate capture-article-media demo demo-gateway demo-image demo-container demo-container-smoke demo-smoke app-test smoke clean
 
 sync:
 	uv sync
@@ -14,6 +14,9 @@ prepare-official:
 
 calibrate: prepare-official
 	uv run python -m act_aloha_cube_transfer.run calibrate
+
+capture-article-media: prepare-official
+	uv run python scripts/capture_article_media.py
 
 demo: prepare-official
 	uv run python -m act_aloha_cube_transfer.demo.app

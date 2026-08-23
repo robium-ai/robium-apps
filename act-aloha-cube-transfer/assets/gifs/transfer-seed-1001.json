@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "kind": "verified_article_media",
+  "checkpoint": {
+    "repo_id": "lerobot/act_aloha_sim_transfer_cube_human",
+    "revision": "ba73b2766f1371cdc133ca4efb97eb090d744625"
+  },
+  "seed": 1001,
+  "execution_horizon": 100,
+  "device": "mps",
+  "steps": 236,
+  "policy_calls": 3,
+  "success": true,
+  "terminal_phase": "transfer complete",
+  "frames": 237,
+  "fps": 15,
+  "duration_seconds": 15.8,
+  "dimensions": [
+    640,
+    480
+  ],
+  "gif_bytes": 2547698
+}

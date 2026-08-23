@@ -7,6 +7,8 @@ reference-quality inference in one browser workspace.
 
 No training, NVIDIA server, or physical robot is required.
 
+![A seeded PushT rollout running in the Robium Diffusion Policy workspace](assets/gifs/workspace-rollout.gif)
+
 **Stack:** LeRobot 0.6.0, Diffusion Policy, gym-pusht, Gradio 6, Rerun, uv,
 Python 3.12, and an optional CPU Docker image.
 
@@ -26,6 +28,8 @@ PushT counts an episode as successful when the block covers more than 95% of
 the target. The official model card reports **65.4% success** and **0.955
 average maximum normalized reward** over 500 episodes with the 100-step
 inference schedule.
+
+![The published Diffusion Policy pushing the T-shaped block into its target](assets/gifs/official-policy-rollout.gif)
 
 ## Quick start
 

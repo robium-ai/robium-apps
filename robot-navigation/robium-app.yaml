@@ -75,6 +75,11 @@ demo:
       FASTDDS_BUILTIN_TRANSPORTS: UDPv4
       ROS_DOMAIN_ID: "42"
       TURTLEBOT3_MODEL: waffle_pi
+    cloud:
+      cpu: "8"
+      memory: 8Gi
+      cpu_idle: false
+      startup_cpu_boost: true
   estimated_startup_seconds: 45
 
 artifacts:

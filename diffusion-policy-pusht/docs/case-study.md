@@ -12,9 +12,9 @@ app: diffusion-policy-pusht
 date: 2026-08-22
 tested: 2026-08-22
 tags: [robium, lerobot, imitation-learning, diffusion-policy, act, smolvla, pusht, gradio, rerun, macos]
-hero: assets/thumbnail.png
-hero_alt: PushT Diffusion Policy evidence and live rollout workspace
-social_image: assets/thumbnail.png
+hero: assets/gifs/workspace-rollout.gif
+hero_alt: A seeded PushT rollout running in the Robium Diffusion Policy workspace
+social_image: assets/stills/solved-rerun-timeline.png
 featured: false
 ---
 
@@ -68,6 +68,12 @@ the same visual state.
 
 That makes PushT a useful policy-selection exercise. The simulator is simple;
 the interesting part is how the policy represents and generates behavior.
+
+![The published Diffusion Policy pushes a T-shaped block into its target](../assets/gifs/official-policy-rollout.gif)
+
+The blue circle is the agent, the gray T is the object, and the green region
+is the target. The policy must discover a useful sequence of contacts rather
+than move the object along a predefined path.
 
 ## ACT, Diffusion Policy, or SmolVLA?
 
@@ -190,6 +196,8 @@ Open [http://localhost:8765](http://localhost:8765).
 The control panel is organized as an experiment rather than a polished video
 player. Each control changes one part of the rollout contract.
 
+![The live policy workspace with checkpoint, denoising, shape, and seed controls](../assets/stills/live-policy-workspace.png)
+
 ### Policy evidence
 
 **Official LeRobot 175k** is the default. The
@@ -235,6 +243,8 @@ policy runs and does not depend on an external viewer.
 Rerun adds a timeline for observations, actions, and target coverage. You can
 pause and scrub through a rollout to inspect where contact changed or where a
 planned sequence stopped making progress.
+
+![A solved seeded rollout with its Rerun observation, coverage, and action timelines](../assets/stills/solved-rerun-timeline.png)
 
 > **Robium skills used:**
 > [rerun](https://github.com/robium-ai/robium/tree/main/skills/rerun)
