@@ -1,0 +1,208 @@
+#!/bin/sh
+set -eu
+
+APP_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cd "$APP_DIR"
+
+STATE_DIR=${ROBIUM_APP_STATE_DIR:-$APP_DIR/.run}
+MODEL_DIR=${ACT_ALOHA_MODEL_DIR:-$APP_DIR/outputs/model/official-transfer-cube}
+PID_FILE=$STATE_DIR/app.pid
+LOG_FILE=$STATE_DIR/app.log
+PORT=${PORT:-8765}
+
+show_help() {
+  cat <<'EOF'
+ACT ALOHA Cube Transfer
+
+Command                  Description
+./app help               Show commands and examples
+./app doctor             Diagnose prerequisites and port conflicts
+./app build              Prepare the uv environment and official checkpoint
+./app run                Build if needed, then run the native policy workspace
+./app status             Show process state and the local URL
+./app logs               Follow application logs
+./app stop               Stop the running policy workspace
+
+The native run uses Apple Silicon MPS when compatible and falls back to CPU.
+EOF
+}
+
+running_pid() {
+  if [ ! -s "$PID_FILE" ]; then
+    return 1
+  fi
+  pid=$(cat "$PID_FILE")
+  if kill -0 "$pid" 2>/dev/null; then
+    printf '%s\n' "$pid"
+    return 0
+  fi
+  rm -f "$PID_FILE"
+  return 1
+}
+
+manifest_ready() {
+  [ -f "$MODEL_DIR/manifest.json" ] &&
+    grep -q '"status"[[:space:]]*:[[:space:]]*"ready"' "$MODEL_DIR/manifest.json"
+}
+
+doctor() {
+  ok=1
+  command -v uv >/dev/null 2>&1 || {
+    echo "FAIL: uv not installed (https://docs.astral.sh/uv/)"
+    ok=0
+  }
+  [ -f uv.lock ] || {
+    echo "FAIL: uv.lock missing (broken checkout)"
+    ok=0
+  }
+
+  if [ -d .venv ]; then
+    echo "ok: uv environment present"
+  else
+    echo "note: environment not prepared — './app run' will build it"
+  fi
+
+  if manifest_ready; then
+    echo "ok: pinned official ACT checkpoint manifest present"
+  else
+    echo "note: checkpoint not prepared — './app run' will fetch and migrate it"
+  fi
+
+  app_pid=$(running_pid 2>/dev/null || true)
+  if command -v lsof >/dev/null 2>&1 && lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+    if [ -n "$app_pid" ]; then
+      echo "ok: port $PORT is owned by the running app"
+    else
+      echo "FAIL: port $PORT already in use (set PORT or stop its owner)"
+      ok=0
+    fi
+  else
+    echo "ok: port $PORT available"
+  fi
+
+  if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+    echo "ok: Docker available for the optional CPU image"
+  else
+    echo "note: Docker unavailable; native policy runs are unaffected"
+  fi
+
+  if [ "$ok" -eq 1 ]; then
+    echo "DOCTOR PASS"
+  else
+    echo "DOCTOR FAIL"
+    return 1
+  fi
+}
+
+build() {
+  uv sync
+  uv run python -m act_aloha_cube_transfer.run prepare-official
+}
+
+run() {
+  current_pid=$(running_pid 2>/dev/null || true)
+  if [ -n "$current_pid" ]; then
+    echo "ACT ALOHA Cube Transfer is already running (pid $current_pid)"
+    echo "Workspace: http://localhost:$PORT"
+    return 0
+  fi
+
+  if [ ! -d .venv ] || ! manifest_ready; then
+    echo "Policy workspace is not prepared; building it first..."
+    build
+  fi
+
+  if command -v lsof >/dev/null 2>&1 && lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+    echo "FAIL: port $PORT already in use (set PORT or stop its owner)" >&2
+    return 1
+  fi
+
+  mkdir -p "$STATE_DIR"
+  : >"$LOG_FILE"
+  uv run python -m act_aloha_cube_transfer.demo.app >"$LOG_FILE" 2>&1 &
+  app_pid=$!
+  printf '%s\n' "$app_pid" >"$PID_FILE"
+
+  echo "Workspace: http://localhost:$PORT"
+  echo "Press Ctrl-C to stop, or run './app stop' from another terminal."
+  tail -n +1 -f "$LOG_FILE" &
+  tail_pid=$!
+
+  trap 'kill "$app_pid" 2>/dev/null || true; kill "$tail_pid" 2>/dev/null || true' HUP INT TERM
+  set +e
+  wait "$app_pid"
+  result=$?
+  set -e
+  kill "$tail_pid" 2>/dev/null || true
+  wait "$tail_pid" 2>/dev/null || true
+  rm -f "$PID_FILE"
+  trap - HUP INT TERM
+
+  case "$result" in
+    0|130|143) return 0 ;;
+    *) return "$result" ;;
+  esac
+}
+
+status() {
+  app_pid=$(running_pid 2>/dev/null || true)
+  if [ -z "$app_pid" ]; then
+    echo "ACT ALOHA Cube Transfer: STOPPED"
+    echo "Run: ./app run"
+    return
+  fi
+
+  echo "ACT ALOHA Cube Transfer: RUNNING"
+  echo "PID: $app_pid"
+  echo "Workspace: http://localhost:$PORT"
+  echo "Logs: $LOG_FILE"
+}
+
+logs() {
+  if [ ! -f "$LOG_FILE" ]; then
+    echo "No application logs yet. Run: ./app run"
+    return
+  fi
+  exec tail -n 100 -f "$LOG_FILE"
+}
+
+stop() {
+  app_pid=$(running_pid 2>/dev/null || true)
+  if [ -z "$app_pid" ]; then
+    echo "ACT ALOHA Cube Transfer is already stopped"
+    return
+  fi
+
+  kill "$app_pid"
+  n=0
+  while kill -0 "$app_pid" 2>/dev/null; do
+    n=$((n + 1))
+    if [ "$n" -ge 50 ]; then
+      echo "FAIL: policy process $app_pid did not stop" >&2
+      return 1
+    fi
+    sleep 0.1
+  done
+  rm -f "$PID_FILE"
+  echo "ACT ALOHA Cube Transfer: STOPPED"
+}
+
+command=${1:-help}
+if [ "$#" -gt 0 ]; then
+  shift
+fi
+
+case "$command" in
+  help|-h|--help) show_help ;;
+  doctor) doctor ;;
+  build) build ;;
+  run) run ;;
+  status) status ;;
+  logs) logs ;;
+  stop) stop ;;
+  *)
+    echo "Unknown command: $command" >&2
+    echo "Run './app help' to see available commands." >&2
+    exit 2
+    ;;
+esac

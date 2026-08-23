@@ -1,7 +1,7 @@
 # Architecture Brief: ACT ALOHA Cube Transfer
 
 **Date:** 2026-08-23
-**Status:** draft
+**Status:** active — locally verified
 **Author:** main agent refinement, approved in conversation
 
 ## 1. Requirements
@@ -158,50 +158,38 @@ their source revision recorded.
 | Fixtures and acceptance tests | `testing`, `test-assets` |
 | Public interactive demo | `live-demo`, then `cloud-run` after smoke passes |
 
-## 8. Open risks
+## 8. Risk results
 
-1. **Legacy checkpoint migration fidelity.** The official model repository has
-   no `policy_preprocessor.json` or `policy_postprocessor.json`. Current
-   LeRobot detects this format and provides
-   `migrate_policy_normalization.py`, but this exact ACT checkpoint has not yet
-   been migrated and evaluated in this project. This blocks all behavior
-   claims. Resolve it with an artifact-level migration test followed by real
-   rollouts against the pinned revision.
+1. **Legacy checkpoint migration fidelity — resolved locally.** The official
+   model has no standalone processor files. The app ran LeRobot's migration,
+   verified all remaining model weights, hashed both bundles, and completed
+   real rollouts against the pinned revision.
 
-2. **Current gym-aloha compatibility on macOS arm64.** The environment is
-   MuJoCo-based and expected to be portable, but the exact LeRobot 0.6.1,
-   gym-aloha, MuJoCo, and Python 3.12 combination has not yet run here. Resolve
-   it with a reset/render/step spike before scaffolding the full UI.
+2. **gym-aloha on macOS arm64 — resolved.** The pinned LeRobot 0.6.1 stack
+   resets, renders, steps, and completes transfers on Python 3.12. Spawned
+   simulator workers keep GLFW on a process main thread.
 
-3. **MPS operator compatibility and speed.** LeRobot evaluation is generally
-   workable on MPS, but this 480-by-640 ACT model must be measured directly.
-   Resolve with CPU/MPS equality checks on identical observations plus chunk
-   latency measurements.
+3. **MPS compatibility and speed — resolved for the app path.** Real 100-by-14
+   predictions and complete episodes ran on MPS. The default browser seed
+   completed at step 236.
 
-4. **Cloud Run CPU responsiveness.** Hosting is allowed only if a production-
-   shaped CPU container keeps each replan pause near or below two seconds and
-   completes a visible episode in under one minute. If it fails, optimize CPU
-   execution first; a GPU host is a separate architecture decision, not a
-   silent substitution.
+4. **Linux CPU responsiveness — resolved for the reference image.** The
+   production-shaped CPU container reported ready only after a real inference,
+   completed seed 1001 through the Gradio API, and measured its final policy
+   call at 900 ms on Docker Desktop. A GPU host is unnecessary for this app.
 
-5. **Success semantics.** The model card reports 83% but notes that success may
-   register when the receiving gripper makes antipodal contact, not only after
-   an extended stable handoff. The UI must describe gym-aloha's actual reward
-   contract and must not embellish it. Confirm termination/reward behavior
-   from source and recorded rollouts.
+5. **Success semantics — explicitly represented.** The UI names gym-aloha's
+   five reward stages and reports transfer complete only when the environment
+   reaches its terminal reward. It does not claim extended stable handoff.
 
-6. **Repeatable successful seeds are not yet calibrated.** The published
-   aggregate does not identify the best demonstration seed for this runtime.
-   Run a bounded calibration evaluation, preserve every attempted seed, and
-   select reference seeds only from passing results.
+6. **Repeatable successful seeds — calibrated.** A bounded MPS run preserved
+   seeds 1000 through 1004. Seeds 1001 and 1002 succeeded; seed 1001 then
+   succeeded again and became the default live example.
 
-7. **Upstream evidence inconsistency outside the selected task.** The official
-   ALOHA Insertion model card reports 20.6%, while its current
-   `eval_info.json` appears to duplicate Transfer Cube's 83% aggregate. This is
-   one reason Insertion is excluded from v1 and must not be presented as
-   comparative evidence.
+7. **Upstream insertion evidence inconsistency — isolated.** ALOHA Insertion
+   remains outside v1 and is not presented as comparative evidence.
 
-8. **Live-frame and Rerun embedding regressions.** The sibling PushT app proved
-   that ordinary Gradio image replacement can fade or go black and that Rerun
-   must remain additive. Reuse the inline-frame pattern and include browser
-   load-state checks rather than relying on DOM presence alone.
+8. **Live-frame and Rerun embedding regressions — resolved locally.** The app
+   uses complete inline JPEG payloads, pins the verified Gradio/Rerun trio,
+   and passed an actual browser rollout with the direct frame and populated
+   telemetry panels visible.

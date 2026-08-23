@@ -1,0 +1,43 @@
+[project]
+name = "act-aloha-cube-transfer"
+version = "0.1.0"
+description = "Run and inspect the official ACT ALOHA Transfer Cube policy"
+readme = "README.md"
+authors = [
+    { name = "robium", email = "admin@robium.ai" }
+]
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "lerobot[aloha]==0.6.1",
+    "torch==2.11.0",
+    "torchvision==0.26.0",
+    "rerun-sdk==0.34.1",
+    "gradio==6.20.0",
+    "gradio-rerun==0.34.1",
+    "fastapi>=0.115",
+    "huggingface-hub>=0.34",
+    "pillow>=11.0",
+    "uvicorn>=0.30",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.8,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+markers = ["slow: loads the official checkpoint or boots the live gateway"]
+addopts = "-m 'not slow'"
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+torchvision = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

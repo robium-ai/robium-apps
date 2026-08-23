@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "published": {
+    "kind": "published",
+    "source": "https://huggingface.co/lerobot/act_aloha_sim_transfer_cube_human",
+    "revision": "ba73b2766f1371cdc133ca4efb97eb090d744625",
+    "episodes": 500,
+    "success_rate": 0.83,
+    "label": "Official LeRobot evaluation"
+  },
+  "local": {
+    "kind": "local_calibration",
+    "complete": true,
+    "device": "mps",
+    "execution_horizon": 100,
+    "episodes": [
+      {"seed": 1000, "success": false, "steps": 300, "max_reward": 2.0, "device": "mps"},
+      {"seed": 1001, "success": true, "steps": 236, "max_reward": 4.0, "device": "mps"},
+      {"seed": 1002, "success": true, "steps": 266, "max_reward": 4.0, "device": "mps"},
+      {"seed": 1003, "success": false, "steps": 300, "max_reward": 2.0, "device": "mps"},
+      {"seed": 1004, "success": false, "steps": 300, "max_reward": 2.0, "device": "mps"}
+    ],
+    "selected_seed": 1001,
+    "selected_seed_replay": {
+      "seed": 1001,
+      "success": true,
+      "steps": 236,
+      "max_reward": 4.0,
+      "device": "mps"
+    }
+  }
+}

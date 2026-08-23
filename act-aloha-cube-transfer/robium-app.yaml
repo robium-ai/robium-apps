@@ -1,0 +1,66 @@
+schema_version: "1"
+id: act-aloha-cube-transfer
+name: ACT ALOHA Cube Transfer
+summary: Run the official ACT bimanual cube-transfer policy on macOS and inspect its action chunks live.
+version: 1.0.0
+status: experimental
+license: MIT
+tags: [imitation-learning, lerobot, act, aloha, mujoco, gradio, rerun, mps]
+
+runtime:
+  kind: uv
+  entrypoint: ./app run
+
+verbs:
+  help:
+    command: ./app help
+    summary: Show commands and examples
+  doctor:
+    command: ./app doctor
+    summary: Diagnose uv, checkpoint, port, and optional Docker readiness
+  build:
+    command: ./app build
+    summary: Prepare the uv environment and pinned official checkpoint
+  run:
+    command: ./app run
+    summary: Run the native ACT policy workspace
+  status:
+    command: ./app status
+    summary: Show the policy process, local URL, and log path
+  logs:
+    command: ./app logs
+    summary: Follow policy workspace logs
+  stop:
+    command: ./app stop
+    summary: Stop the policy workspace
+
+modes:
+  prepare-official:
+    command: make prepare-official
+    summary: Fetch, migrate, and verify the pinned official ACT checkpoint
+  demo-smoke:
+    command: make demo-smoke
+    summary: Verify inline live frames and strict separation of published and local evidence
+
+requirements:
+  hardware: []
+  gpu: optional
+  network: required
+
+demo:
+  default_mode: demo
+  hosted: true
+  estimated_startup_seconds: 45
+  orchestrator:
+    demo_id: act-aloha-cube-transfer
+    title: ACT ALOHA Cube Transfer — LeRobot + Rerun
+    image: act-aloha-cube-transfer:latest
+    command: [/app/.venv/bin/python, -m, act_aloha_cube_transfer.demo.gateway]
+    gateway_port: 8765
+    ready_log: DEMO READY
+    max_instances: 2
+    session_seconds: 1800
+    env:
+      POLICY_DEVICE: cpu
+      MUJOCO_GL: egl
+      HF_HUB_OFFLINE: "1"
