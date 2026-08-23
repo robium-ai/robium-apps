@@ -137,7 +137,8 @@ child processes. This also gives Stop a clean cooperative cancellation
 boundary and prevents concurrent episodes from sharing simulator state.
 
 See [the architecture brief](docs/architecture-brief.md) for the complete
-design and measured risks.
+design and measured risks, and [the tutorial](docs/case-study.md) for the
+policy-selection and implementation walkthrough.
 
 ## Testing
 
