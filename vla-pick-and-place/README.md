@@ -13,11 +13,14 @@ result comes only from LIBERO's sparse success signal.
 
 The public 20-episode evaluation is not claimed. A corrected RTX PRO 4500 retry
 on 2026-08-24 passed CUDA 12.8/Blackwell compatibility and populated the exact
-7.473 GB checkpoint on the private volume, but it did not produce a measured
-episode before the bounded Pod was deleted. The post-bootstrap failure cause is
-unverified because provider logs were unavailable. All later paid and
-deployment gates remain blocked. Production live sessions remain disabled
-pending separate operator approval.
+7.473 GB checkpoint on the private volume. A diagnostics-enabled retry then
+identified the post-bootstrap failure exactly: pinned LIBERO prompted for a
+dataset path during its first import, and closed container stdin raised
+`EOFError` at `model_loading`. The GPU image now bakes a deterministic LIBERO
+config, and a local Linux/amd64 GPU-image import passes with closed stdin. A
+fresh paid image publication and one bounded RunPod revalidation still require
+separate approval. All later paid and deployment gates remain blocked.
+Production live sessions remain disabled pending separate operator approval.
 
 ## What is pinned
 
@@ -29,7 +32,9 @@ pending separate operator approval.
 
 The runtime uses Python 3.10, `n_action_steps=10`, batch size 1, at most 300
 steps, and `MUJOCO_GL=egl` in the Linux CUDA image. The checkpoint is loaded
-offline from a private network volume and is not baked into the image.
+offline from a private network volume and is not baked into the image. The
+image sets `LIBERO_CONFIG_PATH=/app/libero-config` and bakes paths for the exact
+LIBERO checkout under `/opt/libero`, so startup never prompts for local input.
 
 ## Free local workflow
 

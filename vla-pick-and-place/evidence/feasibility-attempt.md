@@ -182,3 +182,43 @@ evaluation, proxy, website, and deployment gate remains blocked. No further Pod
 is authorized by this attempt.
 
 - [Final same-Pod image build](https://console.cloud.google.com/cloud-build/builds/6b7bee99-33da-4fc7-96f2-eced08115344?project=902570464351)
+
+## Diagnostics-enabled feasibility retry
+
+After the persistent phase/failure markers passed all free gates, the operator
+approved one Cloud Build and one bounded RunPod retry. Cloud Build
+`14d84508-a86f-4e0f-8e44-5ea6c5a06b51` published source commit `185fb39` as
+the exact private digest:
+
+`us-central1-docker.pkg.dev/robium-prod/robium/vla-pick-and-place@sha256:a9bf3722d5aad660a6b8af518f6372a40e53336eea22541a5f72c18608188f81`
+
+The final preflight verified a `$21.7844034019` balance, the `$80` spend limit,
+zero Pods, exact `Low` GPU stock in `US-KS-2`, registry credential
+`cmt6r3i1c004cq5uqoj4666yr`, volume `68s0bxbv7p`, and the complete exact
+checkpoint snapshot including its 7,473,096,344-byte model and revision marker.
+
+| Field | Evidence |
+| --- | --- |
+| Pod | `opc5yz6isvxmfr`, `robium-vla-feasibility-diag-20260824-184056` |
+| Allocation | Secure Cloud, `US-KS-2`, exact `NVIDIA RTX PRO 4500 Blackwell Server Edition`, one 32 GB GPU, `$0.72/hour` |
+| Lifetime | Created `2026-08-24T18:40:56Z`; provider termination `2026-08-24T19:00:56Z`; explicitly deleted immediately after diagnosis and authoritative absence confirmed |
+| CUDA | **PASS**: driver `580.178.04`, PyTorch `2.10.0+cu128`, CUDA `12.8`, compute capability `12.0`, `sm_120` present, 33,687,797,760 device bytes, tensor result `6.0` |
+| Phase | `model_loading`, `running`, persisted at `2026-08-24T18:45:18.361241Z` |
+| Failure | **EXACT**: `EOFError`, `EOF when reading a line`, stage `model_loading`, persisted at `2026-08-24T18:45:22.751144Z` |
+| Measured episode | **FAILED/ABSENT**: no feasibility result or video; model load, peak VRAM, latency, simulator result, proxy, and cancellation remain unclaimed |
+| Cost bound | About five minutes at `$0.72/hour`, below `$0.06`; the current-day posted Pod billing before allocation was `$0.25523381726816297`, and the exact new charge had not posted at deletion |
+
+The pinned LIBERO source at revision
+`8f1084e3132a39270c3a13ebe37270a43ece2a01` creates its config on first import
+and calls `input()` to ask whether to customize the dataset path. The headless
+container has closed stdin, which explains the exact persisted exception. This
+is not evidence of CUDA incompatibility or model OOM.
+
+Free remediation now bakes a deterministic LIBERO config into the GPU image,
+sets `LIBERO_CONFIG_PATH=/app/libero-config`, and pins every path to the exact
+`/opt/libero` checkout. The full 27-test/fake-smoke gate and a closed-stdin
+LIBERO import inside the locally rebuilt Linux/amd64 GPU image pass. No fixed
+image has been published and no further Pod is authorized. A separate approval
+is required for another Cloud Build and bounded RunPod revalidation.
+
+- [Diagnostics image build](https://console.cloud.google.com/cloud-build/builds/14d84508-a86f-4e0f-8e44-5ea6c5a06b51?project=902570464351)

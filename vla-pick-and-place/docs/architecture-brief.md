@@ -140,6 +140,11 @@ project venv inside the image; no dependency is installed into system Python.
 - **Dependency source:** committed `pyproject.toml` and `uv.lock`, with LeRobot
   and LIBERO exact Git commits.
 - **Rendering:** `MUJOCO_GL=egl` on Linux; no X11/Wayland dependency.
+- **LIBERO configuration:** the immutable image bakes
+  `/app/libero-config/config.yaml`, sets
+  `LIBERO_CONFIG_PATH=/app/libero-config`, and resolves assets, BDDL files,
+  initial states, and the benchmark root from the exact `/opt/libero` checkout.
+  Headless startup never creates a home-directory config or reads stdin.
 - **GPU:** RunPod host supplies NVIDIA driver/container runtime; the baked image
   verifies the exact device, driver, CUDA runtime, supported compute
   architecture, and a minimal CUDA tensor operation before any checkpoint

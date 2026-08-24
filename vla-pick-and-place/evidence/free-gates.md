@@ -81,3 +81,22 @@ exception was otherwise unavailable.
 
 No Cloud Build, registry publication, RunPod allocation, checkpoint load, or
 other paid compute was used for this diagnostics gate.
+
+## Noninteractive LIBERO configuration — 2026-08-24
+
+The diagnostics-enabled paid retry persisted `EOFError: EOF when reading a
+line` at `model_loading`. Source inspection at the pinned LIBERO revision
+confirmed that first import prompts for a dataset path when its config file is
+absent. The remediation bakes the config rather than relying on a writable home
+directory or container stdin.
+
+| Gate | Result |
+| --- | --- |
+| Red/green container contract | PASS: the test first failed because the GPU runtime did not copy a LIBERO config, then passed after the image contract was added |
+| Full local regression | PASS: doctor, 27 tests, deterministic five-frame fake smoke |
+| Linux/amd64 GPU image | PASS: locally built image ID `sha256:4eae0bd35d85aec4e33b39cb304baf51ca351b26e4bd3a2b688a276cbc75c677` |
+| Closed-stdin LIBERO import | PASS: the exact GPU image printed `LIBERO NONINTERACTIVE CONFIG PASS` without a prompt |
+| Pinned paths | PASS: assets, BDDL files, benchmark root, and initial states exist in `/opt/libero`; the dataset path is fixed at `/opt/libero/libero/datasets` |
+
+No image was published and no Cloud Build or RunPod allocation was used for
+this remediation. Paid revalidation remains a separate approval gate.

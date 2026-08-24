@@ -61,10 +61,12 @@ COPY --from=gpu-builder /app/.venv /app/.venv
 COPY --from=gpu-builder /app/src /app/src
 COPY --from=gpu-builder /app/test-assets /app/test-assets
 COPY --from=gpu-builder /opt/libero /opt/libero
+COPY docker/libero-config.yaml /app/libero-config/config.yaml
 ENV VLA_RUNTIME_MODE=real \
     VLA_CHECKPOINT_PATH=/models/pi05-libero-v044 \
     VLA_GATEWAY_PORT=8765 \
     MUJOCO_GL=egl \
+    LIBERO_CONFIG_PATH=/app/libero-config \
     HOME=/tmp \
     USER=robium \
     LOGNAME=robium \
