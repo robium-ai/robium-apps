@@ -49,5 +49,24 @@ failed `US-KS-2` location. The resume requires a new colocated 20 GB network
 volume and a complete fresh preflight before Pod creation. It does not authorize
 a different GPU, repeated create attempts, or production live sessions.
 
+## US-MD-1 infrastructure result
+
+Preflight and provisioning were attempted 2026-08-24 at 07:04 PDT.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Balance and current spend | PASS | Official RunPod CLI reported balance $22.0474149943, current spend $0.002/hour, and spend limit $80. |
+| Active Pods | PASS | Official REST list returned zero Pods before provisioning and again after the failure. |
+| Exact GPU | AVAILABLE/LOW | Official CLI reported one Secure Cloud `NVIDIA A100-SXM4-80GB` in `US-MD-1` at $1.59/hour with `Low` stock. |
+| Checkpoint access | PASS | Official `hf download --dry-run` authenticated and resolved nine files totaling 7.5 GB at revision `8e174154ef5f6c60a8da12ae99c303d8963138c1`. |
+| Immutable image/template | PASS | Template `e56b2xl1y1` retained the private registry auth and exact image digest `sha256:49c2a30a8fd7c88c3db0c21a18d4df785bf692affde06f2d9527b4e25ae28595`; Artifact Registry resolved the same digest. |
+| US-MD-1 volume | **BLOCKED** | `POST /v1/networkvolumes` for a 20 GB `US-MD-1` volume returned HTTP 500 and no volume ID. The authoritative volume list afterward contained only the existing `US-KS-2` volume. |
+
+No Pod create request was made, no GPU compute was allocated, and no new
+volume exists to delete. The existing `US-KS-2` volume remains unchanged.
+Task 5 is still blocked before paid compute because a network volume cannot be
+attached across datacenters and the approved `US-MD-1` prerequisite could not
+be provisioned. No automatic volume retry, Pod retry, or fallback was made.
+
 - [RunPod Pod create API](https://docs.runpod.io/api-reference/pods/POST/pods)
 - [RunPod Pod list API](https://docs.runpod.io/api-reference/pods/GET/pods)
