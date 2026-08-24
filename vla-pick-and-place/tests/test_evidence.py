@@ -34,7 +34,7 @@ def build(episodes):
         dataset_revision="b" * 40,
         application_commit="c" * 40,
         image_digest="sha256:" + "a" * 64,
-        gpu="NVIDIA A40",
+        gpu="NVIDIA A100-SXM4-80GB",
         cost_usd=1.25,
     )
 

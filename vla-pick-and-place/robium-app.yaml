@@ -27,7 +27,7 @@ modes:
     summary: One paid 48 GB CUDA rollout; run only after the issue's paid preflight gate.
 
 requirements:
-  hardware: [NVIDIA A40 48GB or NVIDIA RTX A6000 48GB]
+  hardware: [NVIDIA A100 SXM 80GB]
   gpu: remote
   network: required
 
@@ -38,7 +38,7 @@ demo:
     provider: runpod
     demo_id: vla-pick-and-place
     title: Pi0.5 · LIBERO-Goal task 8
-    image: pending-private-immutable-image
+    image: us-central1-docker.pkg.dev/robium-prod/robium/vla-pick-and-place@sha256:d0c53a7fb0ccc420fc8320dfd90653b60fc6eb3a75351dc297c85cb87528e927
     command: [python, -m, vla_pick_and_place.gateway]
     gateway_port: 8765
     ready_log: DEMO READY
@@ -46,7 +46,7 @@ demo:
     boot_timeout_seconds: 480
     ready_seconds: 600
     absolute_lifetime_seconds: 1200
-    gpu_allowlist: [NVIDIA A40, NVIDIA RTX A6000]
+    gpu_allowlist: [NVIDIA A100-SXM4-80GB]
     network_volume_mount: /models
   estimated_startup_seconds: 480
 

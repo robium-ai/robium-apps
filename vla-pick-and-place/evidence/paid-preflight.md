@@ -68,3 +68,35 @@ Additional authoritative references:
 - [RunPod S3-compatible network-volume API](https://docs.runpod.io/storage/s3-api)
 - [RunPod network volumes](https://docs.runpod.io/storage/network-volumes)
 - [Successful immutable GPU-image build](https://console.cloud.google.com/cloud-build/builds/9ab9ef04-c3db-44d2-8525-f7d5a4c1422a?project=902570464351)
+
+## Alternative-resource recheck (2026-08-23 22:15 PDT)
+
+The operator explicitly broadened the original A40/A6000 restriction. Live
+inventory and live volume-provisioning checks selected `NVIDIA
+A100-SXM4-80GB` in `US-KS-2`: Secure Cloud stock was `Low`, the current rate
+was $1.59/hour, and the datacenter accepted a network-volume create request.
+The narrower L40S candidate in `US-MO-1` was rejected because RunPod's live API
+reported that datacenter does not currently support network volumes, despite
+its appearance in the published S3 endpoint table.
+
+Provisioned prerequisites:
+
+- private registry auth `robium-vla-artifact-registry` for the immutable image;
+- 20 GB network volume `68s0bxbv7p` (`robium-vla-pi05-v044`) in `US-KS-2`;
+- verified RunPod S3 credentials; and
+- six small checkpoint/config/processor files plus the exact `REVISION` marker
+  under `pi05-libero-v044/`.
+
+The required 7,473,096,344-byte `model.safetensors` remains blocked. The
+official AWS CLI path failed on HTTP 524 during multipart upload. RunPod's
+official large-file helper also timed out with 50 MB and 10 MB parts; 5 MB
+parts succeeded but measured only about 0.24 MB/s, projecting many hours for
+the file. Every failed multipart upload was explicitly aborted and the API
+confirmed no open multipart sessions. The remote volume contains no partial
+model object.
+
+No Pod was created. The paid compute gate therefore remains closed. The
+practical next step requires an explicit amendment to let the same single A100
+feasibility Pod populate the attached volume from the immutable Hub revision,
+then restart the application with Hub networking disabled and perform the
+measured offline load and rollout.

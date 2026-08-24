@@ -59,7 +59,7 @@
       "additionalProperties": false,
       "required": ["gpu", "runpod_cost_usd"],
       "properties": {
-        "gpu": {"enum": ["NVIDIA A40", "NVIDIA RTX A6000", "NVIDIA A100 80GB PCIe", "NVIDIA A100-SXM4-80GB"]},
+        "gpu": {"const": "NVIDIA A100-SXM4-80GB"},
         "runpod_cost_usd": {"type": "number", "minimum": 0}
       }
     },
