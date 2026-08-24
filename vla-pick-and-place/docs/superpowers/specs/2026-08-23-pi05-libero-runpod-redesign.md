@@ -100,19 +100,31 @@ image. The image pins the base-image digests above, LeRobot and LIBERO commits,
 Python 3.10, dependency resolution, and the application source. `MUJOCO_GL=egl`
 is mandatory for real headless simulation.
 
-The GPU image does not bake checkpoint weights. By explicit user approvals on
+The GPU image does not bake checkpoint weights. It does hydrate the locked
+`hf-libero` wheel's incomplete asset tree from the pinned LIBERO checkout while
+retaining the wheel's Gymnasium-compatible code. By explicit user approvals on
 2026-08-23 and 2026-08-24, the one successfully allocated feasibility Pod may
 populate its attached `US-KS-2` private RunPod network volume from the exact
 checkpoint revision. The
-feasibility-only bootstrap removes any stale revision marker, downloads config,
-weights, preprocessor JSON/safetensors, and postprocessor JSON/safetensors,
+feasibility-only bootstrap removes stale revision markers, downloads config,
+weights, preprocessor JSON/safetensors, postprocessor JSON/safetensors, and the
+five tokenizer artifacts from `google/paligemma-3b-pt-224` revision
+`35e4f46485b4d07967e7e9935bc3786aad50687c`,
 verifies the 7,473,096,344-byte model SHA-256
 `877b3ec1130548b69af7f8aeef3ec9d3fc7738040f0b9beb490857ec970997ae`,
-validates every required file, and writes the exact revision marker atomically
-as the final step. It then removes `HF_TOKEN` from child-process environment,
-enables Hub and Transformers offline settings, and runs feasibility. Later
-visitor starts are offline-only and fail before readiness on any mismatch,
-drift, or missing weights or processor files.
+validates every required file, and writes both exact revision markers atomically
+as the final step. It then copies the verified snapshot sequentially from the
+network volume to transient container disk before LeRobot memory-maps the model,
+removes `HF_TOKEN` from child-process environment, enables Hub and Transformers
+offline settings, and runs feasibility. Later visitor starts are offline-only
+and fail before readiness on any mismatch, drift, or missing weights, processor,
+or tokenizer files.
+
+The pinned LeRobot loader rejects its own tied PaliGemma embedding alias under
+`strict=True` even though the checkpoint contains the corresponding language
+model head tensor. The adapter therefore loads with `strict=False` and verifies
+that the language embedding and head remain tied before serving inference; it
+must fail closed if that invariant is false.
 
 Local macOS never loads Pi0.5. It runs the same rollout coordinator, gateway,
 Gradio app, evidence schema, and fixed-state mapping with the fake policy and

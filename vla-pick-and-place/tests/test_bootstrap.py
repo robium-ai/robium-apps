@@ -8,15 +8,25 @@ from vla_pick_and_place.config import (
     CHECKPOINT_MODEL_BYTES,
     CHECKPOINT_MODEL_SHA256,
     CHECKPOINT_REVISION,
+    TOKENIZER_FILES,
+    TOKENIZER_ID,
+    TOKENIZER_REVISION,
 )
 from vla_pick_and_place.diagnostics import read_phase
 from vla_pick_and_place.real import REQUIRED_CHECKPOINT_FILES
-from vla_pick_and_place.startup import launch_feasibility, launch_gateway
+from vla_pick_and_place.startup import (
+    launch_feasibility,
+    launch_gateway,
+    stage_checkpoint,
+)
 
 
 def _snapshot(path: Path, *, model: bytes) -> None:
     for name in REQUIRED_CHECKPOINT_FILES:
-        (path / name).write_bytes(model if name == "model.safetensors" else b"x")
+        target = path / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(model if name == "model.safetensors" else b"x")
+    (path / "tokenizer" / "REVISION").write_text(f"{TOKENIZER_REVISION}\n")
 
 
 def test_bootstrap_downloads_exact_snapshot_and_writes_revision_last(
@@ -36,7 +46,19 @@ def test_bootstrap_downloads_exact_snapshot_and_writes_revision_last(
     def download(**kwargs):
         calls.append(kwargs)
         assert not (tmp_path / "REVISION").exists()
-        _snapshot(tmp_path, model=model)
+        if kwargs["repo_id"] == CHECKPOINT_ID:
+            for name in REQUIRED_CHECKPOINT_FILES:
+                if name.startswith("tokenizer/"):
+                    continue
+                target = tmp_path / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(model if name == "model.safetensors" else b"x")
+        else:
+            for name in TOKENIZER_FILES:
+                (tmp_path / "tokenizer" / name).parent.mkdir(
+                    parents=True, exist_ok=True
+                )
+                (tmp_path / "tokenizer" / name).write_bytes(b"tokenizer")
 
     bootstrap_checkpoint(tmp_path, token="secret-token", download=download)
 
@@ -45,11 +67,25 @@ def test_bootstrap_downloads_exact_snapshot_and_writes_revision_last(
             "repo_id": CHECKPOINT_ID,
             "revision": CHECKPOINT_REVISION,
             "local_dir": tmp_path,
-            "allow_patterns": list(REQUIRED_CHECKPOINT_FILES),
+            "allow_patterns": [
+                name
+                for name in REQUIRED_CHECKPOINT_FILES
+                if not name.startswith("tokenizer/")
+            ],
             "token": "secret-token",
-        }
+        },
+        {
+            "repo_id": TOKENIZER_ID,
+            "revision": TOKENIZER_REVISION,
+            "local_dir": tmp_path / "tokenizer",
+            "allow_patterns": list(TOKENIZER_FILES),
+            "token": "secret-token",
+        },
     ]
     assert (tmp_path / "REVISION").read_text() == f"{CHECKPOINT_REVISION}\n"
+    assert (
+        tmp_path / "tokenizer" / "REVISION"
+    ).read_text() == f"{TOKENIZER_REVISION}\n"
 
 
 def test_bootstrap_hash_failure_leaves_snapshot_unmarked(
@@ -69,6 +105,25 @@ def test_bootstrap_hash_failure_leaves_snapshot_unmarked(
     assert not (tmp_path / "REVISION").exists()
 
 
+def test_bootstrap_tokenizer_access_failure_leaves_snapshot_unmarked(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "REVISION").write_text("stale\n")
+    tokenizer_revision = tmp_path / "tokenizer" / "REVISION"
+    tokenizer_revision.parent.mkdir()
+    tokenizer_revision.write_text("stale\n")
+
+    def download(**kwargs):
+        if kwargs["repo_id"] == TOKENIZER_ID:
+            raise PermissionError("gated tokenizer denied")
+
+    with pytest.raises(PermissionError, match="gated tokenizer denied"):
+        bootstrap_checkpoint(tmp_path, token="secret-token", download=download)
+
+    assert not (tmp_path / "REVISION").exists()
+    assert not tokenizer_revision.exists()
+
+
 def test_offline_environment_removes_hub_token() -> None:
     result = offline_environment(
         {"HF_TOKEN": "secret", "KEEP": "value", "HF_HUB_OFFLINE": "0"}
@@ -84,6 +139,58 @@ def test_offline_environment_removes_hub_token() -> None:
     )
 
 
+def test_stage_checkpoint_replaces_target_then_validates(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "persistent"
+    target = tmp_path / "staged"
+    source.mkdir()
+    target.mkdir()
+    (source / "model.safetensors").write_bytes(b"new")
+    (target / "stale").write_bytes(b"old")
+    validated = []
+    monkeypatch.setattr(
+        "vla_pick_and_place.startup.validate_checkpoint_snapshot",
+        lambda path: validated.append(path),
+    )
+
+    result = stage_checkpoint(source, target)
+
+    assert result == target
+    assert (target / "model.safetensors").read_bytes() == b"new"
+    assert not (target / "stale").exists()
+    assert validated == [target]
+
+
+def test_startup_passes_staged_checkpoint_to_offline_gateway(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    persistent = tmp_path / "persistent"
+    staged = tmp_path / "staged"
+    persistent.mkdir()
+    calls = []
+    monkeypatch.setattr(
+        "vla_pick_and_place.startup.cuda_preflight", lambda _output: None
+    )
+    monkeypatch.setattr(
+        "vla_pick_and_place.startup.validate_checkpoint_snapshot", lambda _path: None
+    )
+    monkeypatch.setattr(
+        "vla_pick_and_place.startup.stage_checkpoint",
+        lambda source, target: calls.append((source, target)) or target,
+    )
+
+    launch_gateway(
+        checkpoint_path=persistent,
+        environment={"VLA_STAGED_CHECKPOINT_PATH": str(staged)},
+        execute=lambda _executable, _command, environment: calls.append(environment),
+    )
+
+    assert calls[0] == (persistent, staged)
+    assert calls[1]["VLA_CHECKPOINT_PATH"] == str(staged)
+    assert calls[1]["HF_HUB_OFFLINE"] == "1"
+
+
 def test_startup_uses_complete_checkpoint_without_hub_token(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -92,7 +199,8 @@ def test_startup_uses_complete_checkpoint_without_hub_token(
         "vla_pick_and_place.startup.validate_checkpoint_snapshot", lambda _path: None
     )
     monkeypatch.setattr(
-        "vla_pick_and_place.startup.cuda_preflight", lambda _output: calls.append("cuda")
+        "vla_pick_and_place.startup.cuda_preflight",
+        lambda _output: calls.append("cuda"),
     )
     monkeypatch.setattr(
         "vla_pick_and_place.startup.bootstrap_checkpoint",
@@ -129,7 +237,8 @@ def test_startup_bootstraps_incomplete_checkpoint_before_offline_gateway(
         "vla_pick_and_place.startup.validate_checkpoint_snapshot", incomplete
     )
     monkeypatch.setattr(
-        "vla_pick_and_place.startup.cuda_preflight", lambda _output: calls.append("cuda")
+        "vla_pick_and_place.startup.cuda_preflight",
+        lambda _output: calls.append("cuda"),
     )
     monkeypatch.setattr(
         "vla_pick_and_place.startup.bootstrap_checkpoint",

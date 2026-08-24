@@ -15,16 +15,23 @@ from vla_pick_and_place.config import (
     TASK_ID,
     TASK_NAME,
     TASK_SUITE,
+    TOKENIZER_FILES,
+    TOKENIZER_REVISION,
 )
 from vla_pick_and_place.rollout import EnvironmentStep, Observation, RolloutRunner
 
-REQUIRED_CHECKPOINT_FILES = (
+CHECKPOINT_ARTIFACT_FILES = (
     "config.json",
     "model.safetensors",
     "policy_preprocessor.json",
     "policy_preprocessor_step_2_normalizer_processor.safetensors",
     "policy_postprocessor.json",
     "policy_postprocessor_step_0_unnormalizer_processor.safetensors",
+)
+REQUIRED_CHECKPOINT_FILES = (
+    *CHECKPOINT_ARTIFACT_FILES,
+    *(f"tokenizer/{name}" for name in TOKENIZER_FILES),
+    "tokenizer/REVISION",
 )
 
 
@@ -35,11 +42,26 @@ def validate_checkpoint_snapshot(path: Path) -> None:
         or revision_file.read_text().strip() != CHECKPOINT_REVISION
     ):
         raise RuntimeError(f"checkpoint REVISION must be {CHECKPOINT_REVISION}")
+    tokenizer_revision = path / "tokenizer" / "REVISION"
+    if (
+        not tokenizer_revision.is_file()
+        or tokenizer_revision.read_text().strip() != TOKENIZER_REVISION
+    ):
+        raise RuntimeError(f"tokenizer REVISION must be {TOKENIZER_REVISION}")
     missing = [
         name for name in REQUIRED_CHECKPOINT_FILES if not (path / name).is_file()
     ]
     if missing:
         raise RuntimeError(f"checkpoint snapshot is incomplete: {', '.join(missing)}")
+
+
+def validate_tied_embedding(policy: Any) -> None:
+    """Fail closed unless the PaliGemma input embedding shares head storage."""
+    paligemma = policy.model.paligemma_with_expert.paligemma
+    embedding = paligemma.model.language_model.embed_tokens.weight
+    head = paligemma.lm_head.weight
+    if embedding.data_ptr() != head.data_ptr():
+        raise RuntimeError("PaliGemma embedding and language head are not tied")
 
 
 class LiberoTaskEnvironment:
@@ -112,11 +134,18 @@ class Pi05PolicyAdapter:
             checkpoint_path,
             config=config,
             local_files_only=True,
+            strict=False,
         )
+        validate_tied_embedding(self.policy)
         self.preprocessor, self.postprocessor = make_pre_post_processors(
             policy_cfg=config,
             pretrained_path=str(checkpoint_path),
-            preprocessor_overrides={"device_processor": {"device": "cuda"}},
+            preprocessor_overrides={
+                "device_processor": {"device": "cuda"},
+                "tokenizer_processor": {
+                    "tokenizer_name": str(checkpoint_path / "tokenizer")
+                },
+            },
         )
         env_config = LiberoEnvConfig(
             task=TASK_SUITE,

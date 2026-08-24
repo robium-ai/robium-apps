@@ -11,6 +11,15 @@ CHECKPOINT_MODEL_BYTES = 7_473_096_344
 CHECKPOINT_MODEL_SHA256 = (
     "877b3ec1130548b69af7f8aeef3ec9d3fc7738040f0b9beb490857ec970997ae"
 )
+TOKENIZER_ID = "google/paligemma-3b-pt-224"
+TOKENIZER_REVISION = "35e4f46485b4d07967e7e9935bc3786aad50687c"
+TOKENIZER_FILES = (
+    "added_tokens.json",
+    "special_tokens_map.json",
+    "tokenizer.json",
+    "tokenizer.model",
+    "tokenizer_config.json",
+)
 LEROBOT_REVISION = "8fff0fde7c79f23a93d845d1a50e985de01f8b8a"
 LIBERO_REVISION = "8f1084e3132a39270c3a13ebe37270a43ece2a01"
 

@@ -14,9 +14,12 @@ from vla_pick_and_place.config import (
     CHECKPOINT_MODEL_BYTES,
     CHECKPOINT_MODEL_SHA256,
     CHECKPOINT_REVISION,
+    TOKENIZER_FILES,
+    TOKENIZER_ID,
+    TOKENIZER_REVISION,
 )
 from vla_pick_and_place.real import (
-    REQUIRED_CHECKPOINT_FILES,
+    CHECKPOINT_ARTIFACT_FILES,
     validate_checkpoint_snapshot,
 )
 
@@ -42,6 +45,11 @@ def bootstrap_checkpoint(
     pending_revision = path / ".REVISION.pending"
     revision_file.unlink(missing_ok=True)
     pending_revision.unlink(missing_ok=True)
+    tokenizer_path = path / "tokenizer"
+    tokenizer_revision = tokenizer_path / "REVISION"
+    pending_tokenizer_revision = tokenizer_path / ".REVISION.pending"
+    tokenizer_revision.unlink(missing_ok=True)
+    pending_tokenizer_revision.unlink(missing_ok=True)
 
     if download is None:
         os.environ["HF_HUB_OFFLINE"] = "0"
@@ -54,11 +62,22 @@ def bootstrap_checkpoint(
         repo_id=CHECKPOINT_ID,
         revision=CHECKPOINT_REVISION,
         local_dir=path,
-        allow_patterns=list(REQUIRED_CHECKPOINT_FILES),
+        allow_patterns=list(CHECKPOINT_ARTIFACT_FILES),
+        token=token,
+    )
+    download(
+        repo_id=TOKENIZER_ID,
+        revision=TOKENIZER_REVISION,
+        local_dir=tokenizer_path,
+        allow_patterns=list(TOKENIZER_FILES),
         token=token,
     )
 
-    missing = [name for name in REQUIRED_CHECKPOINT_FILES if not (path / name).is_file()]
+    downloaded_files = (
+        *CHECKPOINT_ARTIFACT_FILES,
+        *(f"tokenizer/{name}" for name in TOKENIZER_FILES),
+    )
+    missing = [name for name in downloaded_files if not (path / name).is_file()]
     if missing:
         raise RuntimeError(f"checkpoint snapshot is incomplete: {', '.join(missing)}")
     model = path / "model.safetensors"
@@ -74,6 +93,9 @@ def bootstrap_checkpoint(
             f"found {actual_hash}"
         )
 
+    pending_tokenizer_revision.parent.mkdir(parents=True, exist_ok=True)
+    pending_tokenizer_revision.write_text(f"{TOKENIZER_REVISION}\n")
+    pending_tokenizer_revision.replace(tokenizer_revision)
     pending_revision.write_text(f"{CHECKPOINT_REVISION}\n")
     pending_revision.replace(revision_file)
     validate_checkpoint_snapshot(path)

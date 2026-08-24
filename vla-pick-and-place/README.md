@@ -22,23 +22,28 @@ paid revalidation confirmed that fix, then exposed a second exact packaging
 defect: Python imported dependency-installed `hf-libero` from `site-packages`,
 whose wheel lacks the required scene assets, instead of the pinned checkout at
 `/opt/libero`. The Pod was deleted before an episode. Making the pinned
-checkout the authoritative import source and repeating the paid gate remain
-pending. All later paid and deployment gates remain blocked. Production live
-sessions remain disabled pending separate operator approval.
+wheel asset hydration, offline tokenizer staging, and local checkpoint staging
+are implemented and pass free tests. The manually gated tokenizer download and
+all later paid/deployment gates remain blocked. Production live sessions remain
+disabled pending separate operator approval.
 
 ## What is pinned
 
 | Component | Immutable revision |
 | --- | --- |
 | Pi0.5 checkpoint | `8e174154ef5f6c60a8da12ae99c303d8963138c1` |
+| PaliGemma tokenizer | `35e4f46485b4d07967e7e9935bc3786aad50687c` |
 | LeRobot v0.4.4 | `8fff0fde7c79f23a93d845d1a50e985de01f8b8a` |
 | LIBERO | `8f1084e3132a39270c3a13ebe37270a43ece2a01` |
 
 The runtime uses Python 3.10, `n_action_steps=10`, batch size 1, at most 300
-steps, and `MUJOCO_GL=egl` in the Linux CUDA image. The checkpoint is loaded
-offline from a private network volume and is not baked into the image. The
-image sets `LIBERO_CONFIG_PATH=/app/libero-config` and bakes paths for the exact
-LIBERO checkout under `/opt/libero`, so startup never prompts for local input.
+steps, and `MUJOCO_GL=egl` in the Linux CUDA image. The checkpoint and tokenizer
+are verified on a private network volume, staged to transient container disk,
+and loaded offline; neither is baked into the image. The image sets
+`LIBERO_CONFIG_PATH=/app/libero-config`, bakes paths for the exact LIBERO
+checkout under `/opt/libero`, and hydrates the locked wheel's assets, so startup
+never prompts for local input or resolves module-relative files from an
+incomplete wheel.
 
 ## Free local workflow
 

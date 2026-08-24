@@ -47,6 +47,9 @@ RUN git init /opt/libero \
     && git -C /opt/libero fetch --depth 1 origin "${LIBERO_REVISION}" \
     && git -C /opt/libero checkout --detach FETCH_HEAD \
     && test "$(git -C /opt/libero rev-parse HEAD)" = "${LIBERO_REVISION}"
+RUN mkdir -p /app/.venv/lib/python3.10/site-packages/libero/libero/assets \
+    && cp -a /opt/libero/libero/libero/assets/. \
+        /app/.venv/lib/python3.10/site-packages/libero/libero/assets/
 
 FROM ${CUDA_RUNTIME} AS gpu
 ENV DEBIAN_FRONTEND=noninteractive
@@ -64,6 +67,7 @@ COPY --from=gpu-builder /opt/libero /opt/libero
 COPY docker/libero-config.yaml /app/libero-config/config.yaml
 ENV VLA_RUNTIME_MODE=real \
     VLA_CHECKPOINT_PATH=/models/pi05-libero-v044 \
+    VLA_STAGED_CHECKPOINT_PATH=/tmp/pi05-libero-v044 \
     VLA_GATEWAY_PORT=8765 \
     MUJOCO_GL=egl \
     LIBERO_CONFIG_PATH=/app/libero-config \
@@ -72,7 +76,6 @@ ENV VLA_RUNTIME_MODE=real \
     LOGNAME=robium \
     HF_HUB_OFFLINE=1 \
     TRANSFORMERS_OFFLINE=1 \
-    PYTHONPATH=/opt/libero \
     PYTHONUNBUFFERED=1
 EXPOSE 8765
 USER 65532:65532

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Mapping, Sequence
@@ -16,6 +17,21 @@ from vla_pick_and_place.real import validate_checkpoint_snapshot
 
 Execute = Callable[[str, Sequence[str], Mapping[str, str]], object]
 Run = Callable[..., object]
+
+
+def stage_checkpoint(source: Path, target: Path) -> Path:
+    """Copy a verified snapshot to local container disk before mmap loading."""
+    if source.resolve() == target.resolve():
+        validate_checkpoint_snapshot(source)
+        return source
+    target.parent.mkdir(parents=True, exist_ok=True)
+    pending = target.with_name(f".{target.name}.pending")
+    shutil.rmtree(pending, ignore_errors=True)
+    shutil.copytree(source, pending)
+    shutil.rmtree(target, ignore_errors=True)
+    pending.replace(target)
+    validate_checkpoint_snapshot(target)
+    return target
 
 
 def _failure_snapshot(output: Path) -> bytes | None:
@@ -36,7 +52,9 @@ def cuda_preflight(output: Path | None) -> dict[str, Any]:
     properties = torch.cuda.get_device_properties(device)
     tensor_result = (torch.tensor([1.0, 2.0], device=device) * 2).sum().item()
     if tensor_result != 6.0:
-        raise RuntimeError(f"CUDA preflight tensor result was {tensor_result}, expected 6")
+        raise RuntimeError(
+            f"CUDA preflight tensor result was {tensor_result}, expected 6"
+        )
     nvidia_smi = subprocess.run(
         [
             "nvidia-smi",
@@ -71,7 +89,7 @@ def _prepare_checkpoint(
     environment: Mapping[str, str],
     preflight_output: Path | None,
     diagnostics_output: Path | None,
-) -> None:
+) -> Path:
     if diagnostics_output is not None:
         write_phase(diagnostics_output, "cuda_preflight")
     cuda_preflight(preflight_output)
@@ -83,8 +101,15 @@ def _prepare_checkpoint(
         if diagnostics_output is not None:
             write_phase(diagnostics_output, "checkpoint_bootstrap")
         bootstrap_checkpoint(checkpoint_path, token=environment.get("HF_TOKEN", ""))
+    prepared_path = checkpoint_path
+    staged_value = environment.get("VLA_STAGED_CHECKPOINT_PATH")
+    if staged_value:
+        if diagnostics_output is not None:
+            write_phase(diagnostics_output, "checkpoint_staging")
+        prepared_path = stage_checkpoint(checkpoint_path, Path(staged_value))
     if diagnostics_output is not None:
         write_phase(diagnostics_output, "checkpoint_ready", status="completed")
+    return prepared_path
 
 
 def launch_gateway(
@@ -96,7 +121,7 @@ def launch_gateway(
 ) -> None:
     """Prepare the exact checkpoint when needed, then exec the gateway offline."""
     try:
-        _prepare_checkpoint(
+        prepared_path = _prepare_checkpoint(
             checkpoint_path,
             environment=environment,
             preflight_output=None,
@@ -105,8 +130,10 @@ def launch_gateway(
         if output is not None:
             write_phase(output, "gateway_starting")
         command = [sys.executable, "-m", "vla_pick_and_place.gateway"]
+        offline = offline_environment(environment)
+        offline["VLA_CHECKPOINT_PATH"] = str(prepared_path)
         print("CHECKPOINT READY; STARTING OFFLINE GATEWAY", flush=True)
-        execute(command[0], command, offline_environment(environment))
+        execute(command[0], command, offline)
     except Exception as error:
         if output is not None:
             write_failure(
@@ -129,7 +156,7 @@ def launch_feasibility(
     """Run one measured rollout, persist evidence, then serve the gateway."""
     failure_before = _failure_snapshot(output)
     try:
-        _prepare_checkpoint(
+        prepared_path = _prepare_checkpoint(
             checkpoint_path,
             environment=environment,
             preflight_output=output / "cuda-preflight.json",
@@ -145,6 +172,7 @@ def launch_feasibility(
             str(output),
         ]
         offline = offline_environment(environment)
+        offline["VLA_CHECKPOINT_PATH"] = str(prepared_path)
         run(command, check=True, env=offline)
         write_phase(output, "gateway_starting")
         print("FEASIBILITY COMPLETE; STARTING OFFLINE GATEWAY", flush=True)
@@ -178,9 +206,7 @@ def main() -> None:
         return
     if mode == "feasibility":
         output = Path(
-            os.environ.get(
-                "VLA_EVIDENCE_OUTPUT", "/models/issue-69-feasibility-retry"
-            )
+            os.environ.get("VLA_EVIDENCE_OUTPUT", "/models/issue-69-feasibility-retry")
         )
         launch_feasibility(
             checkpoint_path=checkpoint_path,

@@ -69,7 +69,8 @@ billing preflight and before any Pod creation.
 Perform read-only checks for:
 
 - RunPod API authentication and positive credit balance;
-- accepted checkpoint/Gemma licensing and snapshot access;
+- accepted checkpoint/Gemma licensing and direct file access to both the Pi0.5
+  snapshot and the manually gated PaliGemma tokenizer snapshot;
 - private registry authentication and immutable GPU image digest;
 - dedicated RunPod template/cost center;
 - existing `US-KS-2` network volume `68s0bxbv7p` with enough capacity for the

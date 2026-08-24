@@ -57,7 +57,7 @@ intentional rather than an unresolved local-parity defect.
 | UI | Gradio behind a FastAPI gateway | lockfile-pinned | It can stream real frames and progress while the gateway owns capability isolation, lifecycle status, and shutdown. Pause, step, and manual control are excluded. |
 | Local test policy | Deterministic fake policy plus recorded RGB fixtures | application-owned | Free, deterministic coverage of orchestration, streaming, UI, evidence, and lifecycle before paid compute. It is visibly marked fake and never used for measured claims. |
 | Runtime environment | Multi-stage Linux/amd64 CUDA Docker image with uv-managed venv | CUDA 12.4.1 cuDNN Ubuntu 22.04 images pinned by digest; Python 3.10 | Native dependencies, EGL, CUDA, and RunPod require Docker. A local MPS/CPU Pi0.5 path is explicitly rejected. |
-| Checkpoint storage | Existing private RunPod network volume `68s0bxbv7p` in `US-KS-2`, mounted read-only by convention at `/models` after bootstrap | immutable checkpoint revision above | The explicitly approved successfully allocated feasibility Pod bootstraps the exact snapshot once because direct S3 transfer was operationally unusable. It verifies the model hash, writes `REVISION` last, removes the Hub token from child processes, and switches to offline mode before inference. Later visitor startup remains offline. Baking weights or exposing a browser token is rejected. |
+| Checkpoint storage | Existing private RunPod network volume `68s0bxbv7p` in `US-KS-2`, mounted read-only by convention at `/models` after bootstrap; transient container-disk staging before load | checkpoint `8e174154ef5f6c60a8da12ae99c303d8963138c1`; PaliGemma tokenizer `35e4f46485b4d07967e7e9935bc3786aad50687c` | The bootstrap verifies the model hash plus the separately gated tokenizer snapshot, writes revision markers last, removes the Hub token from child processes, and switches to offline mode. Startup copies the verified 7.47 GB snapshot sequentially to container disk before LeRobot memory-maps it; random tensor reads directly from the RunPod network volume stalled after state-dict discovery. Baking weights or exposing a browser token is rejected. |
 | Evidence storage | Public Hugging Face dataset plus compact Git summary | immutable dataset revision recorded after publication | The Hub holds 20 videos and per-episode data; Git holds schema, manifest, summary, previews, and immutable revision, avoiding duplicate evidence. |
 | Feasibility compute | RunPod Secure Cloud Pod | exact `NVIDIA RTX PRO 4500 Blackwell Server Edition`, 32 GB | It is the current US candidate colocated with the proven `US-KS-2` volume. The pinned model is 7.47 GB of BF16/F32 weights at batch size 1, while the locked PyTorch 2.10 CUDA 12.8 environment supports Blackwell. The Pod must prove host-driver/device compatibility and measured peak VRAM; no fallback or model/config optimization is allowed. |
 | Production live compute | RunPod Secure Cloud Pod | disabled; issue-authorized A40/RTX A6000 48 GB target | The feasibility amendment does not authorize production sessions or silently redefine production hardware. `VLA_LIVE_ENABLED=false` remains mandatory until a separate approval. |
@@ -77,6 +77,7 @@ and `sha256:2fcc4280646484290cc50dce5e65f388dd04352b07cbe89a635703bd1f9aedb6`.
 | `config` | Immutable revisions, task/state mapping, prompt and runtime limits | environment overrides limited to paths/mode/port/capability | validated typed configuration |
 | `libero_task` | Resolve task 8, fixed states, hard resets, observations, actions, success | pinned LIBERO install; state ID | observation stream and simulator result |
 | `policy` | Shared policy protocol, real Pi0.5 adapter, deterministic fake policy | observation and prompt | seven-dimensional actions and latency samples |
+| `startup` | Verify the persistent snapshot and tokenizer, stage them to transient container disk, and switch child processes offline | private network volume; optional bootstrap token | local staged checkpoint path and sanitized phase evidence |
 | `rollout` | Single-episode lock, cancellation, frame/progress streaming, hard reset | task, policy, prompt, state | complete/cancelled result and metrics |
 | `evidence` | Per-episode records, aggregation, schema validation, SHA-256, publication config | completed real episodes | manifest, summaries, videos, hashes |
 | `diagnostics` | Atomically persist the current startup stage and a sanitized bounded failure summary | startup stage, exception, process environment used only for redaction | `phase.json`, `failure.json` on the attached volume |
@@ -126,7 +127,8 @@ valid volume evidence while those fields stayed empty.
 All Pod gateway routes live under `/c/{capability}/...`. Missing or foreign
 capabilities and unrelated paths return 404. RunPod and Hugging Face credentials
 never cross into browser payloads. The live Pod does not need a Hugging Face
-token because the accepted snapshot is already on the attached volume.
+token after the accepted checkpoint and tokenizer snapshots are on the attached
+volume.
 
 ## 5. Environment strategy
 

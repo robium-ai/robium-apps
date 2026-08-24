@@ -266,3 +266,38 @@ No second image build or Pod is authorized by this attempt. Production remains
 disabled.
 
 - [Corrected config image build](https://console.cloud.google.com/cloud-build/builds/647c9b11-4a51-4476-a7fd-804f4f780e6b?project=902570464351)
+
+## Interactive single-Pod diagnosis
+
+The operator explicitly approved replacing repeated image cycles with one
+interactive RTX PRO 4500 Pod, capped at 60 minutes and `$0.72`. Pod
+`kvt2gz619xym9s` used the same immutable image digest, registry credential,
+`US-KS-2` volume, exact GPU, and `$0.72/hour` rate. A separate debug template
+`7ql9yteiyj` and a volume-backed command mailbox were used because RunPod's SSH
+API continued returning `pod not ready` despite successful container execution.
+
+| Gate | Result |
+| --- | --- |
+| Pinned LIBERO source as import root | **REJECTED**: `/opt/libero` is a namespace-package checkout, so the regular `hf-libero` package in `site-packages` wins import resolution. Installing the older checkout would also introduce an undeclared legacy `gym` dependency while the locked wheel correctly uses Gymnasium. |
+| Asset-hydrated locked wheel | **PASS**: copying the pinned checkout's assets into a disposable copy of `hf-libero==0.1.4` resolved `libero_tabletop_base_style.xml` while retaining the locked code. CUDA remained available on `NVIDIA RTX PRO 4500 Blackwell Server Edition`. |
+| Exact task environment | **PASS**: task 8 resolved to `put_the_bowl_on_the_plate`; EGL reset returned a 256×256 frame and policy keys `pixels` and `robot_state`. |
+| Direct network-volume model load | **FAILED/STALLED**: LeRobot found and memory-mapped the 7,473,096,344-byte state dict but did not complete non-sequential remapping reads from the network volume. |
+| Transient container-disk model load | **PROGRESSED**: a sequential copy to `/tmp` completed and model loading advanced immediately. The pinned LeRobot loader then reported its strict tied-embedding alias mismatch; application loading must use `strict=False` and verify shared embedding/head storage explicitly. |
+| Offline processor load | **BLOCKED**: the checkpoint preprocessor requires `google/paligemma-3b-pt-224`, but the persistent snapshot contains no tokenizer artifacts. With offline mode enabled, `AutoTokenizer` failed exactly because the files were not cached. |
+| Gated tokenizer access | **BLOCKED**: authenticated model metadata resolved immutable revision `35e4f46485b4d07967e7e9935bc3786aad50687c`, but direct download of the tokenizer returned HTTP 403. The configured account therefore lacks the manually gated PaliGemma access grant required by the paid-gate preflight. |
+| Episode, proxy, cancellation | **NOT RUN**: licensing failed before these gates. No success, latency, VRAM, proxy, or cancellation claim is made. |
+| Cleanup | **PASS**: the Pod was explicitly deleted, the debug template was deleted, and authoritative APIs returned zero Pods and no matching template. The checkpoint volume was preserved. |
+| Cost | Balance moved from `$21.7016906538` before allocation to `$21.2831552835` after cleanup, a conservative observed-window delta of `$0.4185353703`, below the approved `$0.72` cap. The Pod-specific billing row had not posted at the immediate recheck. |
+
+Free remediation hydrates the locked wheel's assets at image build time, pins
+and validates the five tokenizer artifacts as a second snapshot, overrides the
+offline tokenizer path, stages the verified checkpoint to transient container
+disk before model mmap, and validates tied embedding storage after non-strict
+loading. The asset-hydration Linux/amd64 GPU packaging revision built locally as manifest
+`sha256:5c305881e352bcbf48ecea256e425f5c2fe42bbb1b104fdbdb8726de467b7104`;
+with closed stdin it imported the locked wheel from `site-packages`, found the
+hydrated scene XML, reset exact task 8 under EGL, and returned a 256×256 frame.
+The subsequent same-source/target staging guard is covered by the 33-test free
+suite; a redundant local CUDA-builder re-download was cancelled before export.
+No new immutable image has been published, because direct tokenizer access must
+pass before the next paid gate. Production remains disabled.

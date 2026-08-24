@@ -100,3 +100,21 @@ directory or container stdin.
 
 No image was published and no Cloud Build or RunPod allocation was used for
 this remediation. Paid revalidation remains a separate approval gate.
+
+## Interactive-runtime remediation — 2026-08-24
+
+| Gate | Result |
+| --- | --- |
+| Full local regression | PASS: doctor, 33 tests, deterministic five-frame fake smoke |
+| Static quality | PASS: Ruff check, Ruff format check, and `git diff --check` |
+| Linux/amd64 GPU packaging | PASS: local manifest `sha256:5c305881e352bcbf48ecea256e425f5c2fe42bbb1b104fdbdb8726de467b7104` validates asset hydration and exact task reset; the later same-path staging guard is unit-tested and was not re-exported |
+| Locked wheel identity | PASS with closed stdin: `libero.libero` resolved under `/app/.venv/lib/python3.10/site-packages` rather than the older source checkout |
+| Hydrated module-relative asset | PASS: `libero_tabletop_base_style.xml` exists beside the imported wheel module |
+| Exact environment reset | PASS under EGL: task 8 resolved to `put_the_bowl_on_the_plate` and returned a 256×256 frame |
+| Two-snapshot bootstrap | PASS in free tests: exact checkpoint and tokenizer revisions/files are required, revision markers are written last, and Hub credentials are removed from offline children |
+| Local checkpoint staging | PASS in free tests: stale staging content is replaced, the staged snapshot is validated, and the offline child receives the staged path |
+| Tied-weight guard | PASS in free tests: shared storage is accepted and untied embedding/head storage fails closed |
+
+The gated tokenizer file download is not a free PASS: the configured Hugging
+Face account returned HTTP 403. No image was published and no further cloud
+compute was used after that licensing gate failed.
