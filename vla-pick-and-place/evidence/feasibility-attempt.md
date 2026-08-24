@@ -322,3 +322,32 @@ the Hugging Face licensing preflight only; it does not claim model loading or
 episode success. No Cloud Build or RunPod Pod was started, and production
 remains disabled. The next gates are a separately approved paid immutable-image
 publish followed by one bounded RunPod revalidation.
+
+## Tokenizer-enabled immutable-image revalidation
+
+The operator approved one Cloud Build and one bounded RTX PRO 4500 SE Pod.
+Free preflight passed doctor, 33 tests, fake smoke, Ruff lint/format, both exact
+Hub revision range requests, positive balance, zero Pods, exact GPU stock, the
+existing volume, registry credential, and template configuration.
+
+- [Cloud Build `ce81dcc0-6ec9-4121-bfa8-82b9f552c46a`](https://console.cloud.google.com/cloud-build/builds/ce81dcc0-6ec9-4121-bfa8-82b9f552c46a?project=902570464351)
+- immutable image digest:
+  `sha256:910848b3917685643062a405629228271e531c0ce087b9e96cc091449686e560`
+- Pod `17h7vt1fjf9fzr`, Secure Cloud `US-KS-2`, exact NVIDIA RTX PRO
+  4500 Blackwell Server Edition, `$0.72/hour`, provider termination set 20
+  minutes after creation
+
+| Gate | Result |
+| --- | --- |
+| CUDA | **PASS**: driver `580.178.04`, PyTorch `2.10.0+cu128`, CUDA `12.8`, compute capability `12.0`, `sm_120`, 33,687,797,760 device bytes, tensor result `6.0` |
+| Tokenizer/bootstrap/staging | **PASS**: startup advanced through the exact-revision tokenizer bootstrap and local checkpoint staging to `model_loading` |
+| Real model load | **PASS TO FIRST ROLLOUT**: startup advanced from `model_loading` to the measured `rollout` stage without a model-load failure |
+| Measured episode | **FAILED** before the first action: `ValueError: _quat2axisangle expected shape (B, 4), got (4,)` |
+| Proxy/cancellation | **NOT RUN**: the mandatory measured episode gate failed first |
+| Cleanup | **PASS**: explicit delete returned `deleted: true`; authoritative Pod listing returned zero immediately |
+| Cost | balance moved from `$21.2812108391` to `$21.2300175576`, an observed-window delta of `$0.0511932815`; only the existing `$0.002/hour` volume spend remained |
+
+Pinned-source inspection identifies a vectorization seam: the application uses
+one direct `LiberoEnv`, whose nested quaternion is unbatched `(4,)`, while the
+pinned LeRobot `LiberoProcessorStep` accepts only vector-environment shape
+`(B, 4)`. No second build or Pod is authorized. Production remains disabled.
