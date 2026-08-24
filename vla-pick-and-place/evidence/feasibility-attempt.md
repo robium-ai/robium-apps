@@ -374,5 +374,23 @@ final immutable image.
 | Cleanup | **PASS**: evidence downloaded, Pod deleted, authoritative listing returned zero Pods, temporary debug template deleted, and exact temporary S3 prefix removed; persistent model volume preserved |
 
 The free post-fix gate passes 35 tests, doctor, fake smoke, Ruff lint/format,
-and diff checks. The final compiler-bearing immutable image must still be built
-and revalidated before deployment. Production remains disabled.
+and diff checks.
+
+## Compiler-bearing immutable image
+
+Global Cloud Build `3829dc62-c144-4956-a8a0-0d2eb14c02c3` built committed app
+source `c29e7ba8023bc20bb92ab9285b351e8abd8a236c` and pushed:
+
+`us-central1-docker.pkg.dev/robium-prod/robium/vla-pick-and-place@sha256:0bc3bae587da9c175f8bce667009bfb3103251e75b11898ae8666c58ec61f083`
+
+Artifact Registry independently resolved the tag to the same digest. Private
+RunPod template `e56b2xl1y1` was updated to that exact digest and re-read with
+`VLA_LIVE_ENABLED=false`, `VLA_RUNTIME_MODE=real`, and
+`VLA_STARTUP_MODE=feasibility`. The authoritative Pod list remained empty; no
+production or validation Pod was started during deployment.
+
+- [Compiler-bearing Cloud Build](https://console.cloud.google.com/cloud-build/builds/3829dc62-c144-4956-a8a0-0d2eb14c02c3?project=902570464351)
+
+The remaining paid gate is one bounded exact-image RunPod revalidation with the
+default compile path (no `TORCHDYNAMO_DISABLE`). Production remains disabled
+and requires separate explicit approval even after that gate passes.

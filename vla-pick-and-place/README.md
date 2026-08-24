@@ -19,9 +19,10 @@ cooperative cancellation. The measured episode succeeded in 75 steps, used
 also identified two final image corrections: nested direct-LIBERO robot state
 must be batched at the adapter boundary, and the runtime needs the compiler and
 Python headers expected by pinned LeRobot's `torch.compile` path. All 35 free
-tests pass. The corrected immutable image still requires build and exact-image
-revalidation before deployment. Production live sessions remain disabled
-pending separate operator approval.
+tests pass. The corrected immutable image was built and the private RunPod
+template was updated to its exact digest with `VLA_LIVE_ENABLED=false`; one
+bounded exact-image revalidation remains before production approval. Production
+live sessions remain disabled pending separate operator approval.
 
 ## What is pinned
 
