@@ -73,7 +73,8 @@ Perform read-only checks for:
 - private registry authentication and immutable GPU image digest;
 - dedicated RunPod template/cost center;
 - preloaded network volume with exact checkpoint revision and processor files;
-- A40 or RTX A6000 48 GB Secure Cloud availability;
+- NVIDIA L40S 48 GB Secure Cloud availability in the checkpoint volume's
+  S3-enabled datacenter;
 - RunPod billing endpoint access; and
 - a deletion-verification path.
 
@@ -85,8 +86,8 @@ available.
 
 ## Task 5: Run one paid feasibility Pod
 
-1. Create exactly one temporary A40 or RTX A6000 48 GB Pod from the immutable
-   private image with the accepted network volume.
+1. Create exactly one temporary NVIDIA L40S 48 GB Pod from the immutable private
+   image with the accepted network volume.
 2. Record Pod/image/model startup timing and proxy behavior.
 3. Load the checkpoint and processors offline from the volume.
 4. Run one complete canonical task-8 episode to a simulator-derived result.
@@ -166,4 +167,3 @@ results, deployment URL, deletion confirmations, and any remaining blockers.
 Do not set `VLA_LIVE_ENABLED=true`. The awaiting step, after separate explicit
 approval, is to enable the one-Pod fleet, run one production lifecycle through
 confirmed deletion, and monitor first-session and budget behavior.
-

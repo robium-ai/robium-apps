@@ -115,8 +115,11 @@ mode, so it can pass before any paid GPU is allocated.
 ### Feasibility gate
 
 Paid work begins only after all local tests and the CPU/fake-policy container
-gateway smoke pass. The first paid Pod must use exactly one A40 or RTX A6000
-with 48 GB VRAM. It performs:
+gateway smoke pass. By explicit user amendment on 2026-08-23, the first paid
+Pod must use exactly one Secure Cloud NVIDIA L40S with 48 GB VRAM in a
+datacenter that supports the S3-compatible network-volume API. This replaces
+the original A40/A6000 model-name restriction without changing the 48 GB
+minimum, single-Pod limit, budget, or validation gates. It performs:
 
 1. offline checkpoint and processor load from the attached network volume;
 2. one hard-reset task-8 rollout at batch size 1;
@@ -222,8 +225,8 @@ Every VLA Pod:
 - uses the dedicated immutable private image and RunPod template;
 - has a `robium-vla-{session}` name plus the dedicated template/cost-center
   association;
-- requests exactly one GPU from the ordered allowlist `NVIDIA A40`,
-  `NVIDIA RTX A6000`, never a smaller fallback;
+- requests exactly one GPU from the allowlist `NVIDIA L40S`, never a smaller
+  fallback;
 - attaches the configured preloaded network volume at `/models`;
 - exposes only the configured HTTP gateway port;
 - receives capability, expiry, checkpoint path, and non-secret runtime config;
@@ -296,8 +299,8 @@ Gates are executed in this exact order:
 3. **Application smoke:** fake-policy lifecycle and replay through the real UI.
 4. **Container gateway:** build the pinned image's CPU/fake target; verify start,
    capability acceptance/rejection, UI, stream, shutdown, and process exit.
-5. **Paid feasibility:** one real 48 GB Pod; optional one A100 rerun only for
-   insufficient VRAM; record all required measurements and deletion.
+5. **Paid feasibility:** one real L40S 48 GB Pod; optional one A100 rerun only
+   for insufficient VRAM; record all required measurements and deletion.
 6. **Paid evaluation:** 20 sequential hard-reset episodes; validate and publish
    the immutable evidence dataset.
 7. **Website/orchestrator:** mocked RunPod create/get/delete/reconcile, one-Pod
