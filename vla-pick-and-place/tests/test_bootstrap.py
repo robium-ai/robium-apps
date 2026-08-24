@@ -10,6 +10,7 @@ from vla_pick_and_place.config import (
     CHECKPOINT_REVISION,
 )
 from vla_pick_and_place.real import REQUIRED_CHECKPOINT_FILES
+from vla_pick_and_place.startup import launch_gateway
 
 
 def _snapshot(path: Path, *, model: bytes) -> None:
@@ -80,3 +81,62 @@ def test_offline_environment_removes_hub_token() -> None:
     assert CHECKPOINT_MODEL_SHA256 == (
         "877b3ec1130548b69af7f8aeef3ec9d3fc7738040f0b9beb490857ec970997ae"
     )
+
+
+def test_startup_uses_complete_checkpoint_without_hub_token(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls = []
+    monkeypatch.setattr(
+        "vla_pick_and_place.startup.validate_checkpoint_snapshot", lambda _path: None
+    )
+    monkeypatch.setattr(
+        "vla_pick_and_place.startup.bootstrap_checkpoint",
+        lambda *_args, **_kwargs: pytest.fail("complete checkpoint was downloaded"),
+    )
+
+    launch_gateway(
+        checkpoint_path=tmp_path,
+        environment={"HF_TOKEN": "secret", "KEEP": "value"},
+        execute=lambda executable, command, environment: calls.append(
+            (executable, command, environment)
+        ),
+    )
+
+    assert len(calls) == 1
+    executable, command, environment = calls[0]
+    assert executable == command[0]
+    assert command[-2:] == ["-m", "vla_pick_and_place.gateway"]
+    assert "HF_TOKEN" not in environment
+    assert environment["KEEP"] == "value"
+    assert environment["HF_HUB_OFFLINE"] == "1"
+
+
+def test_startup_bootstraps_incomplete_checkpoint_before_offline_gateway(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls = []
+
+    def incomplete(_path: Path) -> None:
+        raise RuntimeError("checkpoint incomplete")
+
+    monkeypatch.setattr(
+        "vla_pick_and_place.startup.validate_checkpoint_snapshot", incomplete
+    )
+    monkeypatch.setattr(
+        "vla_pick_and_place.startup.bootstrap_checkpoint",
+        lambda path, *, token: calls.append(("bootstrap", path, token)),
+    )
+
+    launch_gateway(
+        checkpoint_path=tmp_path,
+        environment={"HF_TOKEN": "secret"},
+        execute=lambda executable, command, environment: calls.append(
+            ("execute", executable, command, environment)
+        ),
+    )
+
+    assert calls[0] == ("bootstrap", tmp_path, "secret")
+    assert calls[1][0] == "execute"
+    assert "HF_TOKEN" not in calls[1][3]
+    assert calls[1][3]["TRANSFORMERS_OFFLINE"] == "1"

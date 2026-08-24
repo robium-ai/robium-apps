@@ -74,4 +74,4 @@ ENV VLA_RUNTIME_MODE=real \
     PYTHONUNBUFFERED=1
 EXPOSE 8765
 USER 65532:65532
-ENTRYPOINT ["/app/.venv/bin/python", "-m", "vla_pick_and_place.gateway"]
+ENTRYPOINT ["/app/.venv/bin/python", "-m", "vla_pick_and_place.startup"]
