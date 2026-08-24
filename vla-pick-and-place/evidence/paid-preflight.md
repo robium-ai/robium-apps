@@ -127,3 +127,29 @@ temporary A100 feasibility Pod is authorized next. Production live sessions
 remain disabled and unauthorized.
 
 - [Successful bootstrap image build](https://console.cloud.google.com/cloud-build/builds/9ae3b301-28ed-422f-99a7-b9298f216f09?project=902570464351)
+
+## RTX PRO 4500 Blackwell Server Edition amendment — 2026-08-24
+
+After the A100 allocation, `US-MD-1` volume, and H100 NVL paths all stopped
+before compute, the operator approved exactly one Secure Cloud `NVIDIA RTX PRO
+4500 Blackwell Server Edition` feasibility attempt in `US-KS-2`. This amendment
+does not authorize a fallback GPU, a repeated create request, the 20-episode
+evaluation, or production live sessions.
+
+| Check | Result |
+| --- | --- |
+| RunPod account | PASS: authenticated balance `$22.0474149943`, current spend `$0.002/hour` from the existing volume, spend limit `$80`. |
+| Existing Pods and daily Pod usage | PASS: zero active Pods; authenticated Pod billing contains no 2026-08-24 compute charge. |
+| Exact GPU and location | PASS at check time: exact ID `NVIDIA RTX PRO 4500 Blackwell Server Edition`, 32 GB, Secure Cloud, `US-KS-2` stock `Low`, `$0.72/hour`. |
+| Conservative reservation | PASS: 20 minutes reserves `$0.24`, below the issue's `$5` UTC-day allowance and available account balance. |
+| Network volume | PASS: `68s0bxbv7p`, 20 GB, `US-KS-2`; enough for the 7,473,096,344-byte model and evidence. |
+| Staged checkpoint metadata | PASS: exact `REVISION` plus all five required config/processor objects; no model weight is present before same-Pod bootstrap. |
+| Hub identity and snapshot access | PASS: authenticated as the project account; exact revision resolves; all six required files are present; a ranged authenticated model request returned HTTP 206. The model card reports the `gemma` license and is not gated. |
+| Immutable GPU image | PASS: Artifact Registry resolves `us-central1-docker.pkg.dev/robium-prod/robium/vla-pick-and-place@sha256:49c2a30a8fd7c88c3db0c21a18d4df785bf692affde06f2d9527b4e25ae28595`. |
+| Template and registry | PASS: user template `e56b2xl1y1` points at the immutable image, `/models`, port `8765/http`, and the exact bootstrap command; registry credential `cmt6r3i1c004cq5uqoj4666yr` exists and will be supplied explicitly at create. |
+| CUDA compatibility control | PASS before allocation: the locked image contains PyTorch 2.10 CUDA 12.8 libraries. Create will require minimum CUDA 12.8; the container will verify device, driver, runtime, compute support, and a CUDA tensor operation before checkpoint download. |
+| Access and deletion path | PASS: a matching local private SSH key is loaded and registered; official `runpodctl` get/logs/SSH/delete commands are available. Create will set a provider-enforced absolute termination timestamp 20 minutes ahead and deletion will also run in `finally`. |
+
+No Pod or other resource was created during this preflight. Exact stock, balance,
+zero-Pod state, and the termination timestamp must be refreshed immediately
+before the single create request.
