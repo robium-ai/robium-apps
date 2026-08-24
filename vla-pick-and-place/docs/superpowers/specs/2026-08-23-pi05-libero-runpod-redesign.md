@@ -100,10 +100,18 @@ image. The image pins the base-image digests above, LeRobot and LIBERO commits,
 Python 3.10, dependency resolution, and the application source. `MUJOCO_GL=egl`
 is mandatory for real headless simulation.
 
-The GPU image does not bake checkpoint weights. A private RunPod network volume
-contains the accepted snapshot at its immutable Hugging Face revision. Startup
-uses offline mode and fails if the mounted snapshot is absent, revision-mismatched,
-or missing weights or processor files.
+The GPU image does not bake checkpoint weights. By explicit user approval on
+2026-08-23, the same first and only feasibility Pod may populate its attached
+private RunPod network volume from the exact checkpoint revision. The
+feasibility-only bootstrap removes any stale revision marker, downloads config,
+weights, preprocessor JSON/safetensors, and postprocessor JSON/safetensors,
+verifies the 7,473,096,344-byte model SHA-256
+`877b3ec1130548b69af7f8aeef3ec9d3fc7738040f0b9beb490857ec970997ae`,
+validates every required file, and writes the exact revision marker atomically
+as the final step. It then removes `HF_TOKEN` from child-process environment,
+enables Hub and Transformers offline settings, and runs feasibility. Later
+visitor starts are offline-only and fail before readiness on any mismatch,
+drift, or missing weights or processor files.
 
 Local macOS never loads Pi0.5. It runs the same rollout coordinator, gateway,
 Gradio app, evidence schema, and fixed-state mapping with the fake policy and
@@ -118,11 +126,13 @@ Paid work begins only after all local tests and the CPU/fake-policy container
 gateway smoke pass. By explicit user amendment on 2026-08-23, the paid
 feasibility run must use exactly one Secure Cloud NVIDIA A100 SXM with 80 GB
 VRAM in a datacenter verified by the live provisioning API to support network
-volumes and by the S3 API to support Pod-free preload. This replaces the
+volumes and by the S3 API to support direct access. This replaces the
 original A40/A6000 model-name restriction without changing the single-Pod
 limit, budget, or validation gates. It performs:
 
-1. offline checkpoint and processor load from the attached network volume;
+1. one-time exact-revision checkpoint bootstrap onto the attached volume,
+   followed by token-free offline checkpoint and processor load on the same
+   Pod;
 2. one hard-reset task-8 rollout at batch size 1;
 3. measurement of image pull, process/model startup, peak VRAM, per-action
    latency, Pod proxy behavior, and cancellation;
@@ -130,8 +140,8 @@ limit, budget, or validation gates. It performs:
 5. Pod deletion followed by an API check that the Pod is absent.
 
 There is no second feasibility Pod, quantization, model surgery, or launch-time
-memory optimization. The 20-episode evaluation is blocked until feasibility
-passes.
+memory optimization. Bootstrap, validation, or offline-load failure deletes the
+Pod and blocks the 20-episode evaluation.
 
 ### Twenty-episode protocol
 
@@ -228,7 +238,7 @@ Every VLA Pod:
   association;
 - requests exactly one GPU from the allowlist `NVIDIA A100-SXM4-80GB`, never a
   smaller or different fallback;
-- attaches the configured preloaded network volume at `/models`;
+- attaches the configured validated checkpoint volume at `/models`;
 - exposes only the configured HTTP gateway port;
 - receives capability, expiry, checkpoint path, and non-secret runtime config;
 - receives no Hugging Face token during normal visitor startup; and

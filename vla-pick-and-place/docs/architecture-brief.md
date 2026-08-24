@@ -30,7 +30,7 @@ is the living architecture contract for implementation.
   amendment on 2026-08-23; the single-Pod limit and all other paid gates remain
   unchanged.
 - **Hosting:** one isolated RunPod Pod per visitor, maximum one active Pod,
-  preloaded network volume, private immutable image, existing website
+  validated persistent network volume, private immutable image, existing website
   orchestrator, capability-scoped direct browser handoff.
 - **Production:** deploy with `VLA_LIVE_ENABLED=false`; live production remains
   blocked pending separate explicit approval.
@@ -56,7 +56,7 @@ intentional rather than an unresolved local-parity defect.
 | UI | Gradio behind a FastAPI gateway | lockfile-pinned | It can stream real frames and progress while the gateway owns capability isolation, lifecycle status, and shutdown. Pause, step, and manual control are excluded. |
 | Local test policy | Deterministic fake policy plus recorded RGB fixtures | application-owned | Free, deterministic coverage of orchestration, streaming, UI, evidence, and lifecycle before paid compute. It is visibly marked fake and never used for measured claims. |
 | Runtime environment | Multi-stage Linux/amd64 CUDA Docker image with uv-managed venv | CUDA 12.4.1 cuDNN Ubuntu 22.04 images pinned by digest; Python 3.10 | Native dependencies, EGL, CUDA, and RunPod require Docker. A local MPS/CPU Pi0.5 path is explicitly rejected. |
-| Checkpoint storage | Private RunPod network volume mounted read-only by convention at `/models` | immutable checkpoint revision above | Avoids visitor-time Hub download and keeps weights out of the private image. Baking weights or exposing a browser token is rejected. |
+| Checkpoint storage | Private RunPod network volume mounted read-only by convention at `/models` after bootstrap | immutable checkpoint revision above | The explicitly approved first feasibility Pod bootstraps the exact snapshot once because direct S3 transfer was operationally unusable. It verifies the model hash, writes `REVISION` last, removes the Hub token from child processes, and switches to offline mode before inference. Later visitor startup remains offline. Baking weights or exposing a browser token is rejected. |
 | Evidence storage | Public Hugging Face dataset plus compact Git summary | immutable dataset revision recorded after publication | The Hub holds 20 videos and per-episode data; Git holds schema, manifest, summary, previews, and immutable revision, avoiding duplicate evidence. |
 | Live compute | RunPod Secure Cloud Pod | exact A100 SXM 80 GB allowlist | Required NVIDIA CUDA capacity with per-visitor isolation and verified S3 volume locality. Smaller silent fallbacks and Cloud Run CPU inference are rejected. |
 | Control plane | Existing TypeScript/Fastify demo orchestrator with provider router | repository lockfile | Preserves existing Cloud Run and local Docker behavior and avoids a second lifecycle service. |
@@ -129,8 +129,14 @@ project venv inside the image; no dependency is installed into system Python.
 - **Rendering:** `MUJOCO_GL=egl` on Linux; no X11/Wayland dependency.
 - **GPU:** RunPod host supplies NVIDIA driver/container runtime; the app verifies
   CUDA availability and permitted GPU type before real mode.
-- **Checkpoint:** `/models/lerobot/pi05_libero_finetuned_v044/8e174154ef5f6c60a8da12ae99c303d8963138c1` in
-  offline mode; startup validates revision and required files.
+- **Checkpoint:** `/models/pi05-libero-v044`. On the first and only
+  feasibility Pod, a feasibility-only bootstrap downloads revision
+  `8e174154ef5f6c60a8da12ae99c303d8963138c1`, verifies required files and
+  model SHA-256
+  `877b3ec1130548b69af7f8aeef3ec9d3fc7738040f0b9beb490857ec970997ae`,
+  writes `REVISION` atomically as the final step, removes `HF_TOKEN` from the
+  feasibility and gateway child environments, and forces Hub/Transformers
+  offline. All later starts only validate and load this path offline.
 - **Local:** the same package and gateway run in fake mode with fixtures. Real
   inference commands fail clearly on macOS or without CUDA.
 
@@ -182,6 +188,7 @@ not duplicate hand-entered success numbers.
 | --- | --- | --- |
 | Exact-runtime memory use is unmeasured | Feasibility and all later paid work | Measure the one A100 SXM 80 GB run; do not create a second fallback Pod or optimize the model. |
 | Exact policy/environment seam may expose pinned-v0.4.4 defects | Real rollout | First paid smoke must load processor files and reach simulator-derived completion before evaluation. |
+| Same-Pod checkpoint bootstrap may fail | Feasibility only | Never write the revision marker before full hash/file validation; delete the one Pod in `finally`, preserve the volume for diagnosis, and block all later paid work. |
 | Required RunPod credentials, credit, private registry, template, accepted Gemma licensing, and network volume may be absent | First paid gate | Preflight without creating resources; stop and report if any requirement is unavailable. |
 | A100 SXM Secure Cloud capacity may be unavailable | Feasibility/live flow | Fail visibly; do not choose a smaller or different GPU. Retry the allocation later without creating duplicate Pods. |
 | RunPod proxy behavior may differ from local gateway behavior | Live handoff | Measure proxy and direct capability routes during feasibility; do not proceed to evaluation/live integration if genuine streaming is unreliable. |

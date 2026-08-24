@@ -72,7 +72,8 @@ Perform read-only checks for:
 - accepted checkpoint/Gemma licensing and snapshot access;
 - private registry authentication and immutable GPU image digest;
 - dedicated RunPod template/cost center;
-- preloaded network volume with exact checkpoint revision and processor files;
+- attached network volume with the exact processor/config files already staged
+  and enough capacity for the approved same-Pod model bootstrap;
 - NVIDIA A100 SXM 80 GB Secure Cloud availability in the checkpoint volume's
   S3-enabled and live-API-confirmed volume-capable datacenter;
 - RunPod billing endpoint access; and
@@ -89,7 +90,9 @@ available.
 1. Create exactly one temporary NVIDIA A100 SXM 80 GB Pod from the immutable
    private image with the accepted network volume.
 2. Record Pod/image/model startup timing and proxy behavior.
-3. Load the checkpoint and processors offline from the volume.
+3. Bootstrap the exact pinned checkpoint onto the attached volume, verify the
+   model hash and required files, write the revision marker last, remove the Hub
+   token from child processes, then load checkpoint and processors offline.
 4. Run one complete canonical task-8 episode to a simulator-derived result.
 5. Record peak VRAM and action-latency statistics.
 6. Exercise cooperative cancellation in a separate non-measured rollout only if
