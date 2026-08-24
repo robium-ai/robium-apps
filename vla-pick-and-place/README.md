@@ -11,21 +11,17 @@ run is a complete autonomous rollout: there is no pause, manual stepping,
 scene editing, or multi-task selector. Frames come from the simulator and the
 result comes only from LIBERO's sparse success signal.
 
-The public 20-episode evaluation is not claimed. A corrected RTX PRO 4500 retry
-on 2026-08-24 passed CUDA 12.8/Blackwell compatibility and populated the exact
-7.473 GB checkpoint on the private volume. A diagnostics-enabled retry then
-identified the post-bootstrap failure exactly: pinned LIBERO prompted for a
-dataset path during its first import, and closed container stdin raised
-`EOFError` at `model_loading`. The GPU image now bakes a deterministic LIBERO
-config, and a local Linux/amd64 GPU-image import passes with closed stdin. A
-paid revalidation confirmed that fix, then exposed a second exact packaging
-defect: Python imported dependency-installed `hf-libero` from `site-packages`,
-whose wheel lacks the required scene assets, instead of the pinned checkout at
-`/opt/libero`. The Pod was deleted before an episode. Making the pinned
-wheel asset hydration, offline tokenizer staging, and local checkpoint staging
-are implemented and pass free tests. The manually gated tokenizer download and
-all later paid/deployment gates remain blocked. Production live sessions remain
-disabled pending separate operator approval.
+The public 20-episode evaluation is not claimed. Interactive revalidation on an
+RTX PRO 4500 on 2026-08-24 passed the exact offline checkpoint/tokenizer load,
+one canonical LIBERO episode, RunPod's HTTPS proxy, capability isolation, and
+cooperative cancellation. The measured episode succeeded in 75 steps, used
+7,647,661,056 peak allocated VRAM bytes, and produced 76 frames. That session
+also identified two final image corrections: nested direct-LIBERO robot state
+must be batched at the adapter boundary, and the runtime needs the compiler and
+Python headers expected by pinned LeRobot's `torch.compile` path. All 35 free
+tests pass. The corrected immutable image still requires build and exact-image
+revalidation before deployment. Production live sessions remain disabled
+pending separate operator approval.
 
 ## What is pinned
 

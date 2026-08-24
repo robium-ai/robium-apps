@@ -14,6 +14,8 @@ def test_gpu_image_bakes_noninteractive_libero_config() -> None:
     assert "/app/.venv/lib/python3.10/site-packages/libero/libero/assets/" in dockerfile
     assert "PYTHONPATH=/opt/libero" not in dockerfile
     assert "VLA_STAGED_CHECKPOINT_PATH=/tmp/pi05-libero-v044" in dockerfile
+    assert "gcc libegl1" in dockerfile
+    assert "libosmesa6 python3.10 python3.10-dev python3.10-venv" in dockerfile
 
     config = json.loads(config_path.read_text())
     assert config == {

@@ -1,8 +1,11 @@
 import json
 from pathlib import Path
 
+import numpy as np
 import pytest
+from PIL import Image
 
+from vla_pick_and_place import cli
 from vla_pick_and_place.cli import feasibility
 from vla_pick_and_place.diagnostics import read_phase, write_failure, write_phase
 
@@ -83,3 +86,30 @@ def test_feasibility_records_exact_model_loading_failure(tmp_path: Path) -> None
     marker = json.loads((tmp_path / "failure.json").read_text())
     assert marker["stage"] == "model_loading"
     assert marker["exception_type"] == "ValueError"
+
+
+def test_feasibility_video_converts_pillow_frames_to_arrays(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    appended = []
+
+    class Writer:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args) -> None:
+            return None
+
+        def append_data(self, frame) -> None:
+            appended.append(frame)
+
+    monkeypatch.setattr(cli.imageio, "get_writer", lambda *_args, **_kwargs: Writer())
+
+    cli._write_video(
+        tmp_path / "episode.mp4",
+        [Image.new("RGB", (4, 3), color=(1, 2, 3))],
+    )
+
+    assert len(appended) == 1
+    assert isinstance(appended[0], np.ndarray)
+    assert appended[0].shape == (3, 4, 3)

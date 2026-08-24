@@ -54,7 +54,7 @@ RUN mkdir -p /app/.venv/lib/python3.10/site-packages/libero/libero/assets \
 FROM ${CUDA_RUNTIME} AS gpu
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg libegl1 libgl1 libglib2.0-0 libosmesa6 python3.10 python3.10-venv \
+    ffmpeg gcc libegl1 libgl1 libglib2.0-0 libosmesa6 python3.10 python3.10-dev python3.10-venv \
     && groupadd --gid 65532 robium \
     && useradd --uid 65532 --gid 65532 --no-create-home --home-dir /tmp \
         --shell /usr/sbin/nologin robium \

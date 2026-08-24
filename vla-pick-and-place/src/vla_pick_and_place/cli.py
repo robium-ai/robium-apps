@@ -13,6 +13,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 import imageio.v2 as imageio
+import numpy as np
 
 from vla_pick_and_place.config import CANONICAL_PROMPT, PUBLICATION_EPISODES
 from vla_pick_and_place.diagnostics import write_failure, write_phase
@@ -90,7 +91,7 @@ def _write_video(path: Path, frames) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with imageio.get_writer(path, fps=20, codec="libx264", quality=7) as writer:
         for frame in frames:
-            writer.append_data(frame)
+            writer.append_data(np.asarray(frame))
 
 
 def feasibility(output: Path, *, torch_module=None, runner_factory=None) -> int:

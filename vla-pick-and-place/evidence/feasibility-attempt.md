@@ -351,3 +351,28 @@ Pinned-source inspection identifies a vectorization seam: the application uses
 one direct `LiberoEnv`, whose nested quaternion is unbatched `(4,)`, while the
 pinned LeRobot `LiberoProcessorStep` accepts only vector-environment shape
 `(B, 4)`. No second build or Pod is authorized. Production remains disabled.
+
+## Interactive same-Pod fix validation
+
+The operator approved one 60-minute interactive allocation so the remaining
+application/image seams could be diagnosed without repeated immutable builds.
+Pod `ania2yd8fdkasy` used the same exact image digest, Secure Cloud `US-KS-2`,
+private volume, and exact RTX PRO 4500 Blackwell Server Edition at `$0.72/hour`.
+All source corrections were made and tested locally, then overlaid into this
+single disposable Pod for validation; the overlay is not presented as the
+final immutable image.
+
+| Gate | Result |
+| --- | --- |
+| Direct-LIBERO batch seam | **PASS**: raw quaternion `(4,)` became `(1, 4)` at the adapter boundary and pinned processing produced state `(1, 8)` on CUDA |
+| Real offline episode | **PASS**: state `0`, seed `1000`, simulator success `true`, 75 steps, 76 frames, 3.6926 s rollout, 41.0438 s model startup, 7,647,661,056 peak allocated VRAM bytes |
+| Latency | mean 25.3068 ms, p95 155.6385 ms, max 361.1389 ms |
+| Video evidence | **PASS** after converting Pillow frames to arrays: 113,024-byte MP4, SHA-256 `19058130c508ab6828ef98a1d5bc7e868c176ede39780b1613ed3730f5c6d03f` |
+| Proxy isolation | **PASS** through `*.proxy.runpod.net`: root 404, foreign capability 404, scoped UI 200, claim/status 200 |
+| Cancellation | **PASS** in a separate non-measured rollout: status reached `running`, cancel returned `cancelling: true`, result returned `cancelled: true`, `steps: 0`, and final phase `ready` |
+| Compile-path diagnosis | The pinned policy's default `torch.compile` path failed because the runtime lacked a C compiler. A diagnostic `TORCHDYNAMO_DISABLE=1` proved the remaining model/simulator path; the final Dockerfile adds `gcc` and `python3.10-dev` instead of shipping the diagnostic bypass. |
+| Cleanup | **PASS**: evidence downloaded, Pod deleted, authoritative listing returned zero Pods, temporary debug template deleted, and exact temporary S3 prefix removed; persistent model volume preserved |
+
+The free post-fix gate passes 35 tests, doctor, fake smoke, Ruff lint/format,
+and diff checks. The final compiler-bearing immutable image must still be built
+and revalidated before deployment. Production remains disabled.
