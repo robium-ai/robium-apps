@@ -38,7 +38,7 @@ demo:
     provider: runpod
     demo_id: vla-pick-and-place
     title: Pi0.5 · LIBERO-Goal task 8
-    image: us-central1-docker.pkg.dev/robium-prod/robium/vla-pick-and-place@sha256:d0c53a7fb0ccc420fc8320dfd90653b60fc6eb3a75351dc297c85cb87528e927
+    image: us-central1-docker.pkg.dev/robium-prod/robium/vla-pick-and-place@sha256:49c2a30a8fd7c88c3db0c21a18d4df785bf692affde06f2d9527b4e25ae28595
     command: [python, -m, vla_pick_and_place.gateway]
     gateway_port: 8765
     ready_log: DEMO READY

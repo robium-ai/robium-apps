@@ -100,3 +100,30 @@ practical next step requires an explicit amendment to let the same single A100
 feasibility Pod populate the attached volume from the immutable Hub revision,
 then restart the application with Hub networking disabled and perform the
 measured offline load and rollout.
+
+## Approved same-Pod bootstrap preflight (2026-08-23 22:37 PDT)
+
+The operator explicitly approved the narrow amendment above. The application
+implements and tests revision-marker-last bootstrap, exact model byte/hash
+validation, and token-free offline child processes in commit `8556dac`.
+Cloud Build `9ae3b301-28ed-422f-99a7-b9298f216f09` published the resulting
+image:
+
+`us-central1-docker.pkg.dev/robium-prod/robium/vla-pick-and-place@sha256:49c2a30a8fd7c88c3db0c21a18d4df785bf692affde06f2d9527b4e25ae28595`
+
+| Prerequisite | Result | Evidence |
+| --- | --- | --- |
+| Balance and current spend | PASS | Official `runpodctl user` reported balance $22.0649149939, current spend $0.002/hour, and spend limit $80. |
+| Active Pods | PASS | Official REST list returned zero Pods. |
+| Checkpoint/license access | PASS | Official `hf` CLI authenticated as the Robium account and dry-ran the exact 7.5 GB model at revision `8e174154...138c1`. |
+| Immutable private image | PASS | Private template `e56b2xl1y1` references digest `sha256:49c2a30a...28595` and registry auth `cmt6r3i1c004cq5uqoj4666yr`. |
+| Checkpoint volume | PASS under approved amendment | Volume `68s0bxbv7p` is 20 GB in `US-KS-2`; six exact processor/config files are staged. The same one feasibility Pod will download and hash the model, write `REVISION` last, remove the Hub token from child processes, and load offline. |
+| Secure Cloud capacity | PASS at check time | `NVIDIA A100-SXM4-80GB` in `US-KS-2` reported stock `Low` at $1.59/hour. |
+| Billing and deletion paths | PASS | Billing returned six historical records; REST exposes Pod delete and absence polling. |
+| Free gates | PASS | `make check`: doctor, 17 tests, and deterministic fake smoke passed. |
+
+Task 4 passes under the explicit same-Pod bootstrap amendment. Exactly one
+temporary A100 feasibility Pod is authorized next. Production live sessions
+remain disabled and unauthorized.
+
+- [Successful bootstrap image build](https://console.cloud.google.com/cloud-build/builds/9ae3b301-28ed-422f-99a7-b9298f216f09?project=902570464351)
