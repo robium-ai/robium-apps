@@ -27,7 +27,7 @@ ARG UV_VERSION
 ARG LIBERO_REVISION
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git python3.10 python3.10-dev python3.10-venv python3-pip \
+    cmake git python3.10 python3.10-dev python3.10-venv python3-pip \
     && rm -rf /var/lib/apt/lists/*
 RUN python3.10 -m pip install --no-cache-dir "uv==${UV_VERSION}"
 WORKDIR /app

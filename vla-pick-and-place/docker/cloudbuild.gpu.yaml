@@ -1,0 +1,15 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --file=docker/Dockerfile
+      - --target=gpu
+      - --tag=${_IMAGE}
+      - .
+images:
+  - ${_IMAGE}
+options:
+  logging: GCS_ONLY
+  machineType: E2_HIGHCPU_32
+logsBucket: gs://robium-prod_cloudbuild/vla-logs
+timeout: 3600s
