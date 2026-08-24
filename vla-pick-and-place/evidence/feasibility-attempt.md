@@ -222,3 +222,47 @@ image has been published and no further Pod is authorized. A separate approval
 is required for another Cloud Build and bounded RunPod revalidation.
 
 - [Diagnostics image build](https://console.cloud.google.com/cloud-build/builds/14d84508-a86f-4e0f-8e44-5ea6c5a06b51?project=902570464351)
+
+## Noninteractive-config revalidation
+
+The operator authorized publishing commit `22baf65` and one bounded RunPod
+revalidation. A first Cloud Build submission explicitly targeted the
+`us-central1` regional pool and failed before build creation because project
+quota did not permit `E2_HIGHCPU_32` there. The same committed source was then
+submitted to the global pool used by the prior successful builds.
+
+Cloud Build `647c9b11-4a51-4476-a7fd-804f4f780e6b` succeeded and Artifact
+Registry independently resolved the same immutable digest:
+
+`us-central1-docker.pkg.dev/robium-prod/robium/vla-pick-and-place@sha256:4399bf1000f245bed455757e6ed7f054f982b0b22a81d6e7c7045a10feba3be0`
+
+The final atomic preflight passed with balance `$21.7272749575`, `$80` spend
+limit, zero Pods, `$0.25523381726816297` posted current-day Pod billing, exact
+`Low` GPU stock, the existing volume/checkpoint, registry credential, new
+template digest, and a fresh evidence prefix.
+
+| Field | Evidence |
+| --- | --- |
+| Pod | `8r15u991q4duzm`, `robium-vla-feasibility-libero-20260824-194015` |
+| Allocation | Secure Cloud, `US-KS-2`, exact `NVIDIA RTX PRO 4500 Blackwell Server Edition`, one 32 GB GPU, `$0.72/hour` |
+| Image | Exact corrected digest `sha256:4399bf1000f245bed455757e6ed7f054f982b0b22a81d6e7c7045a10feba3be0` |
+| CUDA | **PASS** at `19:41:46Z`: driver `580.178.04`, PyTorch `2.10.0+cu128`, CUDA `12.8`, compute capability `12.0`, `sm_120`, 33,687,797,760 device bytes, tensor result `6.0` |
+| Noninteractive config | **PASS**: startup passed the previous first-import `input()` boundary and reached environment construction without `EOFError` |
+| Failure | **EXACT** at `19:42:09Z`: `FileNotFoundError` for `/app/.venv/lib/python3.10/site-packages/libero/libero/assets/scenes/libero_tabletop_base_style.xml`, stage `model_loading` |
+| Measured episode | **FAILED/ABSENT**: no feasibility result/video; policy inference, peak model VRAM, latency, simulator result, proxy, and cancellation remain unclaimed |
+| Cleanup | Explicit delete returned `deleted: true`; authoritative Pod list confirmed zero Pods; protected capability and temporary template files were removed |
+| Cost | Balance fell by `$0.0111393037`; the Pod-specific billing record had not posted at the immediate recheck |
+
+Local image inspection confirmed the configuration itself returns `/opt/libero`
+paths, but Python imports `libero.libero` from the dependency-installed
+`site-packages` distribution. `BDDLBaseDomain` derives its `custom_asset_dir`
+from that module's `__file__`, so config paths cannot repair the missing wheel
+assets. The pinned checkout already contains the scene XML under
+`/opt/libero/libero/libero/assets`; it must become the authoritative import
+source, with an image-level assertion for both module origin and asset
+existence before another paid run.
+
+No second image build or Pod is authorized by this attempt. Production remains
+disabled.
+
+- [Corrected config image build](https://console.cloud.google.com/cloud-build/builds/647c9b11-4a51-4476-a7fd-804f4f780e6b?project=902570464351)

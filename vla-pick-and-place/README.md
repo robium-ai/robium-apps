@@ -18,9 +18,13 @@ identified the post-bootstrap failure exactly: pinned LIBERO prompted for a
 dataset path during its first import, and closed container stdin raised
 `EOFError` at `model_loading`. The GPU image now bakes a deterministic LIBERO
 config, and a local Linux/amd64 GPU-image import passes with closed stdin. A
-fresh paid image publication and one bounded RunPod revalidation still require
-separate approval. All later paid and deployment gates remain blocked.
-Production live sessions remain disabled pending separate operator approval.
+paid revalidation confirmed that fix, then exposed a second exact packaging
+defect: Python imported dependency-installed `hf-libero` from `site-packages`,
+whose wheel lacks the required scene assets, instead of the pinned checkout at
+`/opt/libero`. The Pod was deleted before an episode. Making the pinned
+checkout the authoritative import source and repeating the paid gate remain
+pending. All later paid and deployment gates remain blocked. Production live
+sessions remain disabled pending separate operator approval.
 
 ## What is pinned
 
