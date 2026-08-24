@@ -372,6 +372,7 @@ final immutable image.
 | Cancellation | **PASS** in a separate non-measured rollout: status reached `running`, cancel returned `cancelling: true`, result returned `cancelled: true`, `steps: 0`, and final phase `ready` |
 | Compile-path diagnosis | The pinned policy's default `torch.compile` path failed because the runtime lacked a C compiler. A diagnostic `TORCHDYNAMO_DISABLE=1` proved the remaining model/simulator path; the final Dockerfile adds `gcc` and `python3.10-dev` instead of shipping the diagnostic bypass. |
 | Cleanup | **PASS**: evidence downloaded, Pod deleted, authoritative listing returned zero Pods, temporary debug template deleted, and exact temporary S3 prefix removed; persistent model volume preserved |
+| Cost | Balance moved from `$21.2300175576` before the interactive allocation to `$20.8771312613` after cleanup, an observed-window delta of `$0.3528862963`; only the existing `$0.002/hour` volume spend remained |
 
 The free post-fix gate passes 35 tests, doctor, fake smoke, Ruff lint/format,
 and diff checks.
