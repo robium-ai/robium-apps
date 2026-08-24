@@ -150,7 +150,7 @@ def test_startup_bootstraps_incomplete_checkpoint_before_offline_gateway(
     assert calls[2][3]["TRANSFORMERS_OFFLINE"] == "1"
 
 
-def test_feasibility_startup_preflights_then_runs_once_and_holds(
+def test_feasibility_startup_preflights_then_runs_once_and_starts_gateway(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     checkpoint = tmp_path / "checkpoint"
@@ -170,7 +170,9 @@ def test_feasibility_startup_preflights_then_runs_once_and_holds(
         output=output,
         environment={"HF_TOKEN": "secret", "KEEP": "value"},
         run=lambda command, **kwargs: calls.append(("run", command, kwargs)),
-        hold=lambda: calls.append(("hold",)),
+        execute=lambda executable, command, environment: calls.append(
+            ("execute", executable, command, environment)
+        ),
     )
 
     assert calls[0] == ("cuda", output / "cuda-preflight.json")
@@ -179,4 +181,6 @@ def test_feasibility_startup_preflights_then_runs_once_and_holds(
     assert calls[1][2]["check"] is True
     assert "HF_TOKEN" not in calls[1][2]["env"]
     assert calls[1][2]["env"]["KEEP"] == "value"
-    assert calls[2] == ("hold",)
+    assert calls[2][0] == "execute"
+    assert calls[2][2][-2:] == ["-m", "vla_pick_and_place.gateway"]
+    assert "HF_TOKEN" not in calls[2][3]

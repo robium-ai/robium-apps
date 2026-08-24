@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import os
 import json
-import signal
+import os
 import subprocess
 import sys
 from collections.abc import Callable, Mapping, Sequence
@@ -16,7 +15,6 @@ from vla_pick_and_place.real import validate_checkpoint_snapshot
 
 Execute = Callable[[str, Sequence[str], Mapping[str, str]], object]
 Run = Callable[..., object]
-Hold = Callable[[], object]
 
 
 def cuda_preflight(output: Path | None) -> dict[str, Any]:
@@ -88,20 +86,15 @@ def launch_gateway(
     execute(command[0], command, offline_environment(environment))
 
 
-def _hold() -> None:
-    while True:
-        signal.pause()
-
-
 def launch_feasibility(
     *,
     checkpoint_path: Path,
     output: Path,
     environment: Mapping[str, str],
     run: Run = subprocess.run,
-    hold: Hold = _hold,
+    execute: Execute = os.execvpe,
 ) -> None:
-    """Run one measured rollout, persist evidence, then idle for deletion."""
+    """Run one measured rollout, persist evidence, then serve the gateway."""
     _prepare_checkpoint(
         checkpoint_path,
         environment=environment,
@@ -115,9 +108,11 @@ def launch_feasibility(
         "--output",
         str(output),
     ]
-    run(command, check=True, env=offline_environment(environment))
-    print("FEASIBILITY COMPLETE; WAITING FOR DELETION", flush=True)
-    hold()
+    offline = offline_environment(environment)
+    run(command, check=True, env=offline)
+    print("FEASIBILITY COMPLETE; STARTING OFFLINE GATEWAY", flush=True)
+    gateway = [sys.executable, "-m", "vla_pick_and_place.gateway"]
+    execute(gateway[0], gateway, offline)
 
 
 def main() -> None:
