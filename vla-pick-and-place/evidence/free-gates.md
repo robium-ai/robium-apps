@@ -32,3 +32,21 @@ before its paid preflight.
 | Protected container routes | root 404; missing capability 404; foreign capability 404 |
 | Container claim/UI/rollout | claim 200; UI 200; 5 nonblank frames; success true |
 | Container shutdown | response received; process stopped; cleanup left no test container |
+
+## Numeric-runtime-user remediation — 2026-08-24
+
+The allocated GPU container exposed that `USER 65532:65532` had no passwd
+entry, causing PyTorch Inductor's `getpass.getuser()` call to fail before CUDA.
+
+| Gate | Result |
+| --- | --- |
+| Reproduction against old CPU image | PASS: `getent passwd 65532` exited 2 |
+| Rebuilt CPU image identity | PASS: UID/GID 65532 resolves to `robium`, home `/tmp`, nologin shell |
+| Python identity | PASS: `os.getuid() == 65532`, `getpass.getuser() == "robium"`, `HOME == "/tmp"` |
+| Pinned CUDA runtime base | PASS: the same group/user creation and lookup succeed on the exact CUDA runtime digest |
+| Local regression | PASS: doctor, 17 tests, fake smoke with 5 nonblank frames |
+| Protected container regression | PASS: genuine fake rollout result, 5 frames, shutdown response, process stopped |
+
+The corrected local CPU image digest is
+`sha256:ab149bf81d6c4dc938283677f8b50f4cb5fa1e188a2ee5d8639fed95631485e2`.
+No corrected GPU image was published as part of this free remediation.

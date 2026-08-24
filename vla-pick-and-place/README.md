@@ -11,9 +11,12 @@ run is a complete autonomous rollout: there is no pause, manual stepping,
 scene editing, or multi-task selector. Frames come from the simulator and the
 result comes only from LIBERO's sparse success signal.
 
-The public 20-episode evaluation and paid GPU feasibility run are not claimed
-until their gates have run. Production live sessions are disabled pending
-separate operator approval.
+The public 20-episode evaluation is not claimed. One RTX PRO 4500 feasibility
+Pod allocated successfully on 2026-08-24 but failed before CUDA because the
+immutable image's numeric runtime UID had no passwd entry; deletion was
+confirmed and the free image fix now passes locally. A corrected GPU image and
+any second paid attempt require a new gate. Production live sessions remain
+disabled pending separate operator approval.
 
 ## What is pinned
 

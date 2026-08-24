@@ -8,6 +8,9 @@ ARG LIBERO_REVISION=8f1084e3132a39270c3a13ebe37270a43ece2a01
 
 FROM ${PYTHON_IMAGE} AS fake
 ARG UV_VERSION
+RUN groupadd --gid 65532 robium \
+    && useradd --uid 65532 --gid 65532 --no-create-home --home-dir /tmp \
+        --shell /usr/sbin/nologin robium
 WORKDIR /app
 RUN python -m pip install --no-cache-dir "uv==${UV_VERSION}"
 COPY pyproject.toml uv.lock README.md ./
@@ -17,6 +20,9 @@ COPY test-assets ./test-assets
 RUN uv sync --frozen --no-dev
 ENV VLA_RUNTIME_MODE=fake \
     VLA_GATEWAY_PORT=8765 \
+    HOME=/tmp \
+    USER=robium \
+    LOGNAME=robium \
     PYTHONUNBUFFERED=1
 EXPOSE 8765
 USER 65532:65532
@@ -46,6 +52,9 @@ FROM ${CUDA_RUNTIME} AS gpu
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg libegl1 libgl1 libglib2.0-0 libosmesa6 python3.10 python3.10-venv \
+    && groupadd --gid 65532 robium \
+    && useradd --uid 65532 --gid 65532 --no-create-home --home-dir /tmp \
+        --shell /usr/sbin/nologin robium \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=gpu-builder /app/.venv /app/.venv
@@ -56,6 +65,9 @@ ENV VLA_RUNTIME_MODE=real \
     VLA_CHECKPOINT_PATH=/models/pi05-libero-v044 \
     VLA_GATEWAY_PORT=8765 \
     MUJOCO_GL=egl \
+    HOME=/tmp \
+    USER=robium \
+    LOGNAME=robium \
     HF_HUB_OFFLINE=1 \
     TRANSFORMERS_OFFLINE=1 \
     PYTHONPATH=/opt/libero \

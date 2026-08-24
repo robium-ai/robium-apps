@@ -2,7 +2,7 @@ schema_version: "1"
 id: vla-pick-and-place
 name: Pi0.5 VLA pick and place
 summary: Run the official Pi0.5 checkpoint on Franka Panda in LIBERO-Goal task 8.
-version: 0.2.0
+version: 0.2.1
 status: experimental
 license: MIT
 tags: [vla, pi05, lerobot, libero, franka, language]
@@ -24,10 +24,10 @@ modes:
     summary: Free deterministic fixture rollout through the protected Gradio gateway.
   feasibility:
     command: python -m vla_pick_and_place.cli feasibility --output /evidence
-    summary: One paid 48 GB CUDA rollout; run only after the issue's paid preflight gate.
+    summary: One paid 32 GB RTX PRO 4500 rollout; run only after the issue's paid preflight gate.
 
 requirements:
-  hardware: [NVIDIA A100 SXM 80GB]
+  hardware: [NVIDIA RTX PRO 4500 Blackwell Server Edition 32GB]
   gpu: remote
   network: required
 
@@ -46,7 +46,7 @@ demo:
     boot_timeout_seconds: 480
     ready_seconds: 600
     absolute_lifetime_seconds: 1200
-    gpu_allowlist: [NVIDIA A100-SXM4-80GB]
+    gpu_allowlist: [NVIDIA A40, NVIDIA RTX A6000]
     network_volume_mount: /models
   estimated_startup_seconds: 480
 

@@ -97,3 +97,45 @@ Task 5 and every later paid/deployment task remain blocked.
 
 - [RunPod Pod create API](https://docs.runpod.io/api-reference/pods/POST/pods)
 - [RunPod Pod list API](https://docs.runpod.io/api-reference/pods/GET/pods)
+
+## RTX PRO 4500 Blackwell Server Edition attempt
+
+The operator approved exactly one 32 GB `NVIDIA RTX PRO 4500 Blackwell Server
+Edition` request in `US-KS-2` after inference-specific checkpoint sizing and a
+US-only inventory review. The final preflight passed and the one create request
+succeeded; no retry or fallback request was sent.
+
+| Field | Evidence |
+| --- | --- |
+| Pod | `1m8xyqandczzdb`, `robium-vla-feasibility-4500-20260824` |
+| Allocation | Secure Cloud, `US-KS-2`, exact GPU ID above, one GPU, `$0.72/hour` |
+| Image | Exact private digest `sha256:49c2a30a8fd7c88c3db0c21a18d4df785bf692affde06f2d9527b4e25ae28595` |
+| Volume | `68s0bxbv7p`, 20 GB, colocated and attached in `US-KS-2` |
+| Lifetime controls | Created `2026-08-24T14:28:51Z`; provider termination set to `2026-08-24T14:48:49Z`; explicit deletion began `2026-08-24T14:30:47Z` |
+| Image startup | First application trace at `2026-08-24T14:30:12Z`, approximately 81 seconds after allocation |
+| Result | **FAILED BEFORE CUDA**: `KeyError: 'getpwuid(): uid not found: 65532'` while PyTorch initialized its Inductor cache through `getpass.getuser()` |
+| Checkpoint | Bootstrap did not run; post-deletion S3 listing still contained only the six staged metadata/processor objects and no `model.safetensors` |
+| Cleanup | Official delete returned `{"deleted": true}`; authoritative Pod list then contained zero matching Pods |
+| Cost | Runtime was under two minutes, an upper bound below `$0.024`; account balance was unchanged immediately after deletion, and a later authenticated billing recheck still contained no 2026-08-24 Pod record |
+
+The immutable image declared `USER 65532:65532` without creating that user in
+`/etc/passwd`. Importing `torchvision` reached PyTorch Dynamo/Inductor, which
+calls `getpass.getuser()` and failed before `torch.cuda` availability, device,
+memory, checkpoint load, rollout, proxy, or cancellation could be measured. The
+requested create-time command override also did not appear in the returned Pod
+details; the image's gateway entrypoint ran instead of the intended
+compatibility-first command. A future attempt must not rely on that override.
+
+Free remediation added a real `robium` user/group at UID/GID 65532 and a
+writable `/tmp` home to both runtime targets. The old CPU image reproduced the
+missing-passwd failure (`getent passwd 65532` exit 2); the rebuilt CPU image
+returned `robium:x:65532:65532::/tmp:/usr/sbin/nologin`, Python resolved
+`getpass.getuser()` to `robium`, all 17 tests and fake smoke passed, and the
+protected container rollout/shutdown lifecycle passed. The same user-creation
+command was verified directly against the pinned CUDA runtime base.
+
+No fixed GPU image was published and no second Pod is authorized. The paid gate
+remains blocked until the corrected immutable image is built and reviewed, the
+Hub credential used for this Pod is rotated because an authenticated Pod-detail
+diagnostic exposed injected environment values, and the operator explicitly
+approves a new one-shot feasibility request.
