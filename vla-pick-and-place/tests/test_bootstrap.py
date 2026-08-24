@@ -10,7 +10,7 @@ from vla_pick_and_place.config import (
     CHECKPOINT_REVISION,
 )
 from vla_pick_and_place.real import REQUIRED_CHECKPOINT_FILES
-from vla_pick_and_place.startup import launch_gateway
+from vla_pick_and_place.startup import launch_feasibility, launch_gateway
 
 
 def _snapshot(path: Path, *, model: bytes) -> None:
@@ -91,6 +91,9 @@ def test_startup_uses_complete_checkpoint_without_hub_token(
         "vla_pick_and_place.startup.validate_checkpoint_snapshot", lambda _path: None
     )
     monkeypatch.setattr(
+        "vla_pick_and_place.startup.cuda_preflight", lambda _output: calls.append("cuda")
+    )
+    monkeypatch.setattr(
         "vla_pick_and_place.startup.bootstrap_checkpoint",
         lambda *_args, **_kwargs: pytest.fail("complete checkpoint was downloaded"),
     )
@@ -103,8 +106,9 @@ def test_startup_uses_complete_checkpoint_without_hub_token(
         ),
     )
 
-    assert len(calls) == 1
-    executable, command, environment = calls[0]
+    assert calls[0] == "cuda"
+    assert len(calls) == 2
+    executable, command, environment = calls[1]
     assert executable == command[0]
     assert command[-2:] == ["-m", "vla_pick_and_place.gateway"]
     assert "HF_TOKEN" not in environment
@@ -124,6 +128,9 @@ def test_startup_bootstraps_incomplete_checkpoint_before_offline_gateway(
         "vla_pick_and_place.startup.validate_checkpoint_snapshot", incomplete
     )
     monkeypatch.setattr(
+        "vla_pick_and_place.startup.cuda_preflight", lambda _output: calls.append("cuda")
+    )
+    monkeypatch.setattr(
         "vla_pick_and_place.startup.bootstrap_checkpoint",
         lambda path, *, token: calls.append(("bootstrap", path, token)),
     )
@@ -136,7 +143,40 @@ def test_startup_bootstraps_incomplete_checkpoint_before_offline_gateway(
         ),
     )
 
-    assert calls[0] == ("bootstrap", tmp_path, "secret")
-    assert calls[1][0] == "execute"
-    assert "HF_TOKEN" not in calls[1][3]
-    assert calls[1][3]["TRANSFORMERS_OFFLINE"] == "1"
+    assert calls[0] == "cuda"
+    assert calls[1] == ("bootstrap", tmp_path, "secret")
+    assert calls[2][0] == "execute"
+    assert "HF_TOKEN" not in calls[2][3]
+    assert calls[2][3]["TRANSFORMERS_OFFLINE"] == "1"
+
+
+def test_feasibility_startup_preflights_then_runs_once_and_holds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    checkpoint = tmp_path / "checkpoint"
+    output = tmp_path / "evidence"
+    calls = []
+    monkeypatch.setattr(
+        "vla_pick_and_place.startup.cuda_preflight",
+        lambda target: calls.append(("cuda", target)),
+    )
+    monkeypatch.setattr(
+        "vla_pick_and_place.startup.validate_checkpoint_snapshot",
+        lambda _path: None,
+    )
+
+    launch_feasibility(
+        checkpoint_path=checkpoint,
+        output=output,
+        environment={"HF_TOKEN": "secret", "KEEP": "value"},
+        run=lambda command, **kwargs: calls.append(("run", command, kwargs)),
+        hold=lambda: calls.append(("hold",)),
+    )
+
+    assert calls[0] == ("cuda", output / "cuda-preflight.json")
+    assert calls[1][0] == "run"
+    assert calls[1][1][-3:] == ["feasibility", "--output", str(output)]
+    assert calls[1][2]["check"] is True
+    assert "HF_TOKEN" not in calls[1][2]["env"]
+    assert calls[1][2]["env"]["KEEP"] == "value"
+    assert calls[2] == ("hold",)
