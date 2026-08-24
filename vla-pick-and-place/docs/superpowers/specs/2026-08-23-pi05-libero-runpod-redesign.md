@@ -102,7 +102,7 @@ is mandatory for real headless simulation.
 
 The GPU image does not bake checkpoint weights. By explicit user approvals on
 2026-08-23 and 2026-08-24, the one successfully allocated feasibility Pod may
-populate its attached `US-MD-1` private RunPod network volume from the exact
+populate its attached `US-KS-2` private RunPod network volume from the exact
 checkpoint revision. The
 feasibility-only bootstrap removes any stale revision marker, downloads config,
 weights, preprocessor JSON/safetensors, and postprocessor JSON/safetensors,
@@ -125,9 +125,9 @@ mode, so it can pass before any paid GPU is allocated.
 
 Paid work begins only after all local tests and the CPU/fake-policy container
 gateway smoke pass. By explicit user amendment on 2026-08-23, the paid
-feasibility run must use exactly one Secure Cloud NVIDIA A100 SXM with 80 GB
-VRAM in `US-MD-1`, verified again by the live provisioning API to support
-network volumes and by the S3 API to support direct access. This replaces the
+feasibility run must use exactly one Secure Cloud NVIDIA H100 NVL with 94 GB
+VRAM in `US-KS-2`, verified again by authenticated live inventory. It attaches
+the already-provisioned and S3-verified network volume `68s0bxbv7p`. This replaces the
 original A40/A6000 model-name restriction without changing the single-Pod
 limit, budget, or validation gates. It performs:
 
@@ -143,10 +143,11 @@ limit, budget, or validation gates. It performs:
 There is no fallback feasibility Pod, quantization, model surgery, or
 launch-time memory optimization. The 2026-08-23 `US-KS-2` create request
 returned no Pod ID and allocated no compute. On 2026-08-24 the operator
-explicitly amended the design to authorize one fresh `US-MD-1` allocation
-attempt with a new colocated volume; this is not permission for repeated
-allocation retries. Bootstrap, validation, or offline-load failure deletes the
-Pod and blocks the 20-episode evaluation.
+explicitly amended the design to authorize `US-MD-1`, whose volume create then
+failed before compute. The operator subsequently authorized one H100 NVL
+allocation request in `US-KS-2`; this is not permission for repeated allocation
+retries. Bootstrap, validation, or offline-load failure deletes the Pod and
+blocks the 20-episode evaluation.
 
 ### Twenty-episode protocol
 
@@ -241,9 +242,9 @@ Every VLA Pod:
 - uses the dedicated immutable private image and RunPod template;
 - has a `robium-vla-{session}` name plus the dedicated template/cost-center
   association;
-- requests exactly one GPU from the allowlist `NVIDIA A100-SXM4-80GB`, never a
+- requests exactly one GPU from the allowlist `NVIDIA H100 NVL`, never a
   smaller or different fallback;
-- runs in `US-MD-1` and attaches the configured colocated checkpoint volume at
+- runs in `US-KS-2` and attaches the configured colocated checkpoint volume at
   `/models`;
 - exposes only the configured HTTP gateway port;
 - receives capability, expiry, checkpoint path, and non-secret runtime config;
@@ -316,7 +317,7 @@ Gates are executed in this exact order:
 3. **Application smoke:** fake-policy lifecycle and replay through the real UI.
 4. **Container gateway:** build the pinned image's CPU/fake target; verify start,
    capability acceptance/rejection, UI, stream, shutdown, and process exit.
-5. **Paid feasibility:** one real A100 SXM 80 GB Pod; no fallback Pod; record
+5. **Paid feasibility:** one real H100 NVL 94 GB Pod; no fallback Pod; record
    all required measurements and deletion.
 6. **Paid evaluation:** 20 sequential hard-reset episodes; validate and publish
    the immutable evidence dataset.

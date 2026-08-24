@@ -68,5 +68,14 @@ Task 5 is still blocked before paid compute because a network volume cannot be
 attached across datacenters and the approved `US-MD-1` prerequisite could not
 be provisioned. No automatic volume retry, Pod retry, or fallback was made.
 
+## Approved H100 NVL recovery
+
+On 2026-08-24 the operator explicitly approved exactly one Secure Cloud
+`NVIDIA H100 NVL` 94 GB allocation request in `US-KS-2`. This path reuses
+existing volume `68s0bxbv7p`, the immutable image and template, and the exact
+checkpoint bootstrap. It replaces the blocked A100/`US-MD-1` path without
+authorizing a fallback GPU, repeated create request, longer lifetime, larger
+budget, or production live sessions.
+
 - [RunPod Pod create API](https://docs.runpod.io/api-reference/pods/POST/pods)
 - [RunPod Pod list API](https://docs.runpod.io/api-reference/pods/GET/pods)
