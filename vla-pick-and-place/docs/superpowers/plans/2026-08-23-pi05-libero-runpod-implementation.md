@@ -74,7 +74,8 @@ Perform read-only checks for:
 - dedicated RunPod template/cost center;
 - existing `US-KS-2` network volume `68s0bxbv7p` with enough capacity for the
   approved same-Pod exact-revision checkpoint bootstrap;
-- NVIDIA H100 NVL 94 GB Secure Cloud availability in `US-KS-2`;
+- NVIDIA RTX PRO 4500 Blackwell Server Edition 32 GB Secure Cloud availability
+  in `US-KS-2`;
 - RunPod billing endpoint access; and
 - a deletion-verification path.
 
@@ -86,20 +87,25 @@ available.
 
 ## Task 5: Run one paid feasibility Pod
 
-1. Create exactly one temporary NVIDIA H100 NVL 94 GB Pod in `US-KS-2` from
-   the immutable private image with existing volume `68s0bxbv7p`. The prior
-   A100 request and `US-MD-1` volume path both failed before compute; the
-   operator authorized this one H100 allocation request on 2026-08-24.
-2. Record Pod/image/model startup timing and proxy behavior.
-3. Bootstrap the exact pinned checkpoint onto the attached volume, verify the
+1. Create exactly one temporary NVIDIA RTX PRO 4500 Blackwell Server Edition
+   32 GB Pod in `US-KS-2` from the immutable private image with existing volume
+   `68s0bxbv7p`. The prior A100 request and `US-MD-1` volume path failed before
+   compute, and H100 NVL final preflight found no stock. The operator authorized
+   this one RTX PRO 4500 allocation request on 2026-08-24 after an exact
+   inference-memory and US inventory review.
+2. Before checkpoint download, record `nvidia-smi`, exact device name, host
+   driver, PyTorch/CUDA versions, compute capability/support, and a minimal CUDA
+   tensor operation. Any incompatibility fails the gate and deletes the Pod.
+3. Record Pod/image/model startup timing and proxy behavior.
+4. Bootstrap the exact pinned checkpoint onto the attached volume, verify the
    model hash and required files, write the revision marker last, remove the Hub
    token from child processes, then load checkpoint and processors offline.
-4. Run one complete canonical task-8 episode to a simulator-derived result.
-5. Record peak VRAM and action-latency statistics.
-6. Exercise cooperative cancellation in a separate non-measured rollout only if
+5. Run one complete canonical task-8 episode to a simulator-derived result.
+6. Record peak VRAM and action-latency statistics.
+7. Exercise cooperative cancellation in a separate non-measured rollout only if
    it does not require creating a second Pod.
-7. Delete the Pod in a `finally` path and poll until the API confirms absence.
-8. Record measured cost and feasibility evidence.
+8. Delete the Pod in a `finally` path and poll until the API confirms absence.
+9. Record measured cost and feasibility evidence.
 
 Do not create a fallback Pod and do not optimize the model. Any feasibility
 failure blocks later paid work.

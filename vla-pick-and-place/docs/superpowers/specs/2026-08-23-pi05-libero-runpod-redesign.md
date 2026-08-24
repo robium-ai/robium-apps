@@ -124,12 +124,25 @@ mode, so it can pass before any paid GPU is allocated.
 ### Feasibility gate
 
 Paid work begins only after all local tests and the CPU/fake-policy container
-gateway smoke pass. By explicit user amendment on 2026-08-23, the paid
-feasibility run must use exactly one Secure Cloud NVIDIA H100 NVL with 94 GB
-VRAM in `US-KS-2`, verified again by authenticated live inventory. It attaches
-the already-provisioned and S3-verified network volume `68s0bxbv7p`. This replaces the
-original A40/A6000 model-name restriction without changing the single-Pod
-limit, budget, or validation gates. It performs:
+gateway smoke pass. By explicit user amendment on 2026-08-24, the paid
+feasibility run must use exactly one Secure Cloud NVIDIA RTX PRO 4500 Blackwell
+Server Edition with 32 GB VRAM in `US-KS-2`, verified again by authenticated
+live inventory. It attaches the already-provisioned and S3-verified network
+volume `68s0bxbv7p`. This replaces the earlier A40/A6000, A100, and H100
+feasibility choices without changing the single-Pod limit, 20-minute absolute
+lifetime, budget, or validation gates.
+
+This is an inference-specific measurement, not a training-size assumption. The
+pinned Hub metadata reports 3,497,036,912 BF16 and 119,720,608 F32 parameters,
+which exactly account for the 7,473,096,344-byte model file, and the application
+runs batch size 1. The locked environment supplies PyTorch 2.10 with CUDA 12.8
+libraries; PyTorch's official release matrix lists that build, and the PyTorch
+CUDA maintainers state that Blackwell support starts with PyTorch 2.7 CUDA 12.8
+([release matrix](https://github.com/pytorch/pytorch/blob/main/RELEASE.md),
+[maintainer confirmation](https://github.com/pytorch/pytorch/issues/159207)). The
+allocated Pod must still prove the exact host driver, CUDA runtime, device name,
+compute capability, and a minimal CUDA tensor operation before checkpoint
+bootstrap. Any mismatch deletes the Pod and fails the gate. It performs:
 
 1. one-time exact-revision checkpoint bootstrap onto the attached volume,
    followed by token-free offline checkpoint and processor load on the same
@@ -140,14 +153,17 @@ limit, budget, or validation gates. It performs:
 4. simulator-derived result capture; and
 5. Pod deletion followed by an API check that the Pod is absent.
 
-There is no fallback feasibility Pod, quantization, model surgery, or
-launch-time memory optimization. The 2026-08-23 `US-KS-2` create request
-returned no Pod ID and allocated no compute. On 2026-08-24 the operator
+There is no fallback feasibility Pod, quantization, model surgery, compile-mode
+change, or launch-time memory optimization. The 2026-08-23 `US-KS-2` create
+request returned no Pod ID and allocated no compute. On 2026-08-24 the operator
 explicitly amended the design to authorize `US-MD-1`, whose volume create then
 failed before compute. The operator subsequently authorized one H100 NVL
-allocation request in `US-KS-2`; this is not permission for repeated allocation
-retries. Bootstrap, validation, or offline-load failure deletes the Pod and
-blocks the 20-episode evaluation.
+allocation request in `US-KS-2`, but final preflight found no stock. After a
+US-only inventory and exact checkpoint-memory review, the operator authorized
+one RTX PRO 4500 Blackwell Server Edition allocation request in `US-KS-2`.
+This is not permission for repeated allocation retries or a different GPU.
+Bootstrap, validation, or offline-load failure deletes the Pod and blocks the
+20-episode evaluation.
 
 ### Twenty-episode protocol
 
@@ -237,13 +253,14 @@ mapped without changing current Cloud Run or local Docker contracts.
 
 ### Pod ownership and provisioning
 
-Every VLA Pod:
+Every future production VLA Pod:
 
 - uses the dedicated immutable private image and RunPod template;
 - has a `robium-vla-{session}` name plus the dedicated template/cost-center
   association;
-- requests exactly one GPU from the allowlist `NVIDIA H100 NVL`, never a
-  smaller or different fallback;
+- remains unallocatable while `VLA_LIVE_ENABLED=false`; its issue-authorized
+  production target remains the A40/RTX A6000 48 GB allowlist and is not
+  changed by this feasibility-only amendment;
 - runs in `US-KS-2` and attaches the configured colocated checkpoint volume at
   `/models`;
 - exposes only the configured HTTP gateway port;
@@ -317,8 +334,9 @@ Gates are executed in this exact order:
 3. **Application smoke:** fake-policy lifecycle and replay through the real UI.
 4. **Container gateway:** build the pinned image's CPU/fake target; verify start,
    capability acceptance/rejection, UI, stream, shutdown, and process exit.
-5. **Paid feasibility:** one real H100 NVL 94 GB Pod; no fallback Pod; record
-   all required measurements and deletion.
+5. **Paid feasibility:** one real RTX PRO 4500 Blackwell Server Edition 32 GB
+   Pod in `US-KS-2`; no fallback Pod; record host/CUDA compatibility, all
+   required measurements, and deletion.
 6. **Paid evaluation:** 20 sequential hard-reset episodes; validate and publish
    the immutable evidence dataset.
 7. **Website/orchestrator:** mocked RunPod create/get/delete/reconcile, one-Pod

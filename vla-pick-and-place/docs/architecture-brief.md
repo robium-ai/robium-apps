@@ -24,12 +24,12 @@ is the living architecture contract for implementation.
 - **Local development:** macOS Apple Silicon is a thin development client for
   fixtures, fake policy, replay, UI, evidence validation, and tests. It does not
   run Pi0.5 inference.
-- **Real compute:** Linux/amd64, NVIDIA CUDA, one Secure Cloud H100 NVL 94 GB in
-  `US-KS-2`, subject to a fresh live capacity preflight.
-  This
-  replaces the original A40/A6000 model-name restriction by explicit user
-  amendment on 2026-08-23; the single-Pod limit and all other paid gates remain
-  unchanged.
+- **Real compute:** Linux/amd64, NVIDIA CUDA, one Secure Cloud RTX PRO 4500
+  Blackwell Server Edition 32 GB in `US-KS-2`, subject to a fresh live capacity
+  preflight. This inference-only choice was explicitly approved on 2026-08-24
+  after exact checkpoint sizing showed 7,473,096,344 weight bytes at batch size
+  1 and larger A100/H100 paths repeatedly failed before compute. The one-Pod
+  limit and all other paid gates remain unchanged.
 - **Hosting:** one isolated RunPod Pod per visitor, maximum one active Pod,
   validated persistent network volume, private immutable image, existing website
   orchestrator, capability-scoped direct browser handoff.
@@ -59,7 +59,8 @@ intentional rather than an unresolved local-parity defect.
 | Runtime environment | Multi-stage Linux/amd64 CUDA Docker image with uv-managed venv | CUDA 12.4.1 cuDNN Ubuntu 22.04 images pinned by digest; Python 3.10 | Native dependencies, EGL, CUDA, and RunPod require Docker. A local MPS/CPU Pi0.5 path is explicitly rejected. |
 | Checkpoint storage | Existing private RunPod network volume `68s0bxbv7p` in `US-KS-2`, mounted read-only by convention at `/models` after bootstrap | immutable checkpoint revision above | The explicitly approved successfully allocated feasibility Pod bootstraps the exact snapshot once because direct S3 transfer was operationally unusable. It verifies the model hash, writes `REVISION` last, removes the Hub token from child processes, and switches to offline mode before inference. Later visitor startup remains offline. Baking weights or exposing a browser token is rejected. |
 | Evidence storage | Public Hugging Face dataset plus compact Git summary | immutable dataset revision recorded after publication | The Hub holds 20 videos and per-episode data; Git holds schema, manifest, summary, previews, and immutable revision, avoiding duplicate evidence. |
-| Live compute | RunPod Secure Cloud Pod | exact H100 NVL 94 GB allowlist | Required NVIDIA CUDA capacity with per-visitor isolation and the already-provisioned `US-KS-2` volume. The A100 request failed before allocation, the `US-MD-1` replacement volume could not be provisioned, and smaller silent fallbacks and Cloud Run CPU inference are rejected. |
+| Feasibility compute | RunPod Secure Cloud Pod | exact `NVIDIA RTX PRO 4500 Blackwell Server Edition`, 32 GB | It is the current US candidate colocated with the proven `US-KS-2` volume. The pinned model is 7.47 GB of BF16/F32 weights at batch size 1, while the locked PyTorch 2.10 CUDA 12.8 environment supports Blackwell. The Pod must prove host-driver/device compatibility and measured peak VRAM; no fallback or model/config optimization is allowed. |
+| Production live compute | RunPod Secure Cloud Pod | disabled; issue-authorized A40/RTX A6000 48 GB target | The feasibility amendment does not authorize production sessions or silently redefine production hardware. `VLA_LIVE_ENABLED=false` remains mandatory until a separate approval. |
 | Control plane | Existing TypeScript/Fastify demo orchestrator with provider router | repository lockfile | Preserves existing Cloud Run and local Docker behavior and avoids a second lifecycle service. |
 | Budget state | RunPod billing/Pod APIs plus atomic GCS ledger | one UTC-day object per date | RunPod billing omits names/template IDs after deletion, so a durable owned-Pod mapping is required. A waiting queue or queue database is not introduced. |
 
@@ -130,8 +131,9 @@ project venv inside the image; no dependency is installed into system Python.
 - **Rendering:** `MUJOCO_GL=egl` on Linux; no X11/Wayland dependency.
 - **GPU:** RunPod host supplies NVIDIA driver/container runtime; the app verifies
   CUDA availability and permitted GPU type before real mode.
-- **Checkpoint:** `/models/pi05-libero-v044`. On the one newly authorized
-  successfully allocated H100 NVL feasibility Pod in `US-KS-2`, a feasibility-only bootstrap downloads revision
+- **Checkpoint:** `/models/pi05-libero-v044`. On the one newly authorized,
+  successfully allocated RTX PRO 4500 Blackwell Server Edition feasibility Pod
+  in `US-KS-2`, a feasibility-only bootstrap downloads revision
   `8e174154ef5f6c60a8da12ae99c303d8963138c1`, verifies required files and
   model SHA-256
   `877b3ec1130548b69af7f8aeef3ec9d3fc7738040f0b9beb490857ec970997ae`,
@@ -187,11 +189,11 @@ not duplicate hand-entered success numbers.
 
 | Risk | What it blocks | Resolution/gate |
 | --- | --- | --- |
-| Exact-runtime memory use is unmeasured | Feasibility and all later paid work | Measure the one H100 NVL 94 GB run; do not create a second fallback Pod or optimize the model. |
+| Exact-runtime memory use is unmeasured | Feasibility and all later paid work | Measure the one RTX PRO 4500 Blackwell Server Edition 32 GB run; do not create a second fallback Pod or optimize the model/configuration. |
 | Exact policy/environment seam may expose pinned-v0.4.4 defects | Real rollout | First paid smoke must load processor files and reach simulator-derived completion before evaluation. |
 | Same-Pod checkpoint bootstrap may fail | Feasibility only | Never write the revision marker before full hash/file validation; delete the one Pod in `finally`, preserve the volume for diagnosis, and block all later paid work. |
 | Required RunPod credentials, credit, private registry, template, accepted Gemma licensing, and network volume may be absent | First paid gate | Preflight without creating resources; stop and report if any requirement is unavailable. |
-| H100 NVL Secure Cloud capacity may be unavailable | Feasibility/live flow | Preflight exact `NVIDIA H100 NVL` stock in `US-KS-2`. Fail visibly; do not choose a different GPU or create duplicate Pods. The operator explicitly authorized one H100 NVL request on 2026-08-24 after the A100 request and `US-MD-1` volume paths failed before compute. |
+| RTX PRO 4500 Server Edition capacity or Blackwell host compatibility may fail | Feasibility | Preflight exact `NVIDIA RTX PRO 4500 Blackwell Server Edition` stock in `US-KS-2`. After allocation, verify the exact device, host driver, PyTorch CUDA 12.8 runtime, supported compute capability, and a CUDA tensor operation before downloading weights. Fail visibly, delete in `finally`, and do not choose a different GPU or create a duplicate Pod. |
 | RunPod proxy behavior may differ from local gateway behavior | Live handoff | Measure proxy and direct capability routes during feasibility; do not proceed to evaluation/live integration if genuine streaming is unreliable. |
 | RunPod billing data can lag or omit ownership metadata | $5 enforcement | Durable owned-Pod ledger plus billing and active reservation reconciliation; fail closed on missing/stale/unverifiable inputs. |
 | Capability prefix may be bypassed by Gradio asset/API routes | Public isolation | Route-level tests for root, assets, API, and stream with correct/missing/foreign capabilities; real smoke before deployment. |
