@@ -59,7 +59,7 @@
       "additionalProperties": false,
       "required": ["gpu", "runpod_cost_usd"],
       "properties": {
-        "gpu": {"const": "NVIDIA H100 NVL"},
+        "gpu": {"const": "NVIDIA RTX PRO 4500 Blackwell Server Edition"},
         "runpod_cost_usd": {"type": "number", "minimum": 0}
       }
     },
