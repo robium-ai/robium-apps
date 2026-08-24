@@ -11,12 +11,13 @@ run is a complete autonomous rollout: there is no pause, manual stepping,
 scene editing, or multi-task selector. Frames come from the simulator and the
 result comes only from LIBERO's sparse success signal.
 
-The public 20-episode evaluation is not claimed. One RTX PRO 4500 feasibility
-Pod allocated successfully on 2026-08-24 but failed before CUDA because the
-immutable image's numeric runtime UID had no passwd entry; deletion was
-confirmed and the free image fix now passes locally. A corrected GPU image and
-any second paid attempt require a new gate. Production live sessions remain
-disabled pending separate operator approval.
+The public 20-episode evaluation is not claimed. A corrected RTX PRO 4500 retry
+on 2026-08-24 passed CUDA 12.8/Blackwell compatibility and populated the exact
+7.473 GB checkpoint on the private volume, but it did not produce a measured
+episode before the bounded Pod was deleted. The post-bootstrap failure cause is
+unverified because provider logs were unavailable. All later paid and
+deployment gates remain blocked. Production live sessions remain disabled
+pending separate operator approval.
 
 ## What is pinned
 

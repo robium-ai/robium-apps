@@ -50,3 +50,15 @@ entry, causing PyTorch Inductor's `getpass.getuser()` call to fail before CUDA.
 The corrected local CPU image digest is
 `sha256:ab149bf81d6c4dc938283677f8b50f4cb5fa1e188a2ee5d8639fed95631485e2`.
 No corrected GPU image was published as part of this free remediation.
+
+## Baked compatibility-first startup — 2026-08-24
+
+| Gate | Result |
+| --- | --- |
+| Request-time override removed | PASS: GPU image entrypoint is the committed `vla_pick_and_place.startup` module; template entrypoint and start-command overrides are unset |
+| Ordering | PASS: CUDA/device/tensor preflight runs before checkpoint validation or download |
+| Existing snapshot | PASS: complete revision skips download and launches with Hub/Transformers offline and `HF_TOKEN` removed |
+| Missing snapshot | PASS: exact bootstrap runs, then the child environment is token-free and offline |
+| Feasibility lifecycle | PASS: one measured CLI run is followed by the offline gateway on the same process/Pod lifecycle |
+| Full local regression | PASS: doctor, 20 tests, deterministic five-frame fake smoke |
+| Final immutable GPU build | PASS: Cloud Build `6b7bee99-33da-4fc7-96f2-eced08115344`, digest `sha256:65eb29edb290952ae46c1244fe77edb5dade83546f75389eb3083866c56cf690` |

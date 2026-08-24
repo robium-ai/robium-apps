@@ -129,8 +129,10 @@ project venv inside the image; no dependency is installed into system Python.
 - **Dependency source:** committed `pyproject.toml` and `uv.lock`, with LeRobot
   and LIBERO exact Git commits.
 - **Rendering:** `MUJOCO_GL=egl` on Linux; no X11/Wayland dependency.
-- **GPU:** RunPod host supplies NVIDIA driver/container runtime; the app verifies
-  CUDA availability and permitted GPU type before real mode.
+- **GPU:** RunPod host supplies NVIDIA driver/container runtime; the baked image
+  verifies the exact device, driver, CUDA runtime, supported compute
+  architecture, and a minimal CUDA tensor operation before any checkpoint
+  download.
 - **Checkpoint:** `/models/pi05-libero-v044`. On the one newly authorized,
   successfully allocated RTX PRO 4500 Blackwell Server Edition feasibility Pod
   in `US-KS-2`, a feasibility-only bootstrap downloads revision
@@ -139,7 +141,9 @@ project venv inside the image; no dependency is installed into system Python.
   `877b3ec1130548b69af7f8aeef3ec9d3fc7738040f0b9beb490857ec970997ae`,
   writes `REVISION` atomically as the final step, removes `HF_TOKEN` from the
   feasibility and gateway child environments, and forces Hub/Transformers
-  offline. All later starts only validate and load this path offline.
+  offline. The measured feasibility command runs once and then execs the
+  capability gateway on the same Pod for proxy/cancellation checks. All later
+  starts only validate and load this path offline.
 - **Local:** the same package and gateway run in fake mode with fixtures. Real
   inference commands fail clearly on macOS or without CUDA.
 

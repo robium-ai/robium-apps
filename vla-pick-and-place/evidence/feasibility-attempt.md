@@ -134,8 +134,51 @@ returned `robium:x:65532:65532::/tmp:/usr/sbin/nologin`, Python resolved
 protected container rollout/shutdown lifecycle passed. The same user-creation
 command was verified directly against the pinned CUDA runtime base.
 
-No fixed GPU image was published and no second Pod is authorized. The paid gate
-remains blocked until the corrected immutable image is built and reviewed, the
-Hub credential used for this Pod is rotated because an authenticated Pod-detail
-diagnostic exposed injected environment values, and the operator explicitly
-approves a new one-shot feasibility request.
+At that point no fixed GPU image had been published and no second Pod was
+authorized. The operator later accepted continued use of the Hub credential and
+authorized the bounded retry documented below.
+
+## Corrected same-Pod feasibility retry
+
+The corrected flow was made self-contained because RunPod had ignored the
+earlier request-time command override. The immutable image now creates the
+numeric runtime user, runs CUDA compatibility before any checkpoint download,
+bootstraps and validates the exact revision only when absent, executes one
+measured feasibility episode, and then starts the offline gateway on the same
+Pod for proxy and cancellation checks. Red/green startup tests increased the
+free suite from 17 to 20 tests.
+
+Cloud Build `6b7bee99-33da-4fc7-96f2-eced08115344` published the final image:
+
+`us-central1-docker.pkg.dev/robium-prod/robium/vla-pick-and-place@sha256:65eb29edb290952ae46c1244fe77edb5dade83546f75389eb3083866c56cf690`
+
+The final preflight verified balance `$22.0200467055`, `$0.002/hour` existing
+volume spend, zero Pods, zero posted 2026-08-24 Pod billing records, `Low` exact
+GPU stock in `US-KS-2`, the 20 GB volume, exact Hub revision access, and the
+template's immutable image/registry/startup configuration. Two direct REST
+create requests were rejected with HTTP 400 and returned no Pod ID; zero Pods
+was confirmed after each. RunPod's current inventory ID contains `Server
+Edition`, while its REST OpenAPI create enum exposes a shorter canonical ID.
+The official CLI handled that provider alias and created the intended hardware;
+no fallback GPU or duplicate running Pod was used.
+
+| Field | Evidence |
+| --- | --- |
+| Pod | `bzu8hoikhpaxzz`, `robium-vla-feasibility-4500-retry-20260824` |
+| Allocation | Secure Cloud, `US-KS-2`, exact device reported as `NVIDIA RTX PRO 4500 Blackwell Server Edition`, one 32 GB GPU, `$0.72/hour` |
+| Lifetime | Created `2026-08-24T16:14:58Z`; provider termination `2026-08-24T16:34:57Z`; explicit deletion at the 19-minute orchestration limit; authoritative absence confirmed |
+| CUDA | **PASS**: driver `580.178.04`, PyTorch `2.10.0+cu128`, CUDA `12.8`, compute capability `12.0`, `sm_120` present, 33,687,797,760 device bytes, minimal CUDA tensor result `6.0` |
+| Checkpoint bootstrap | **PASS**: 7,473,096,344-byte model persisted at `16:18:00Z`; exact revision marker `8e174154ef5f6c60a8da12ae99c303d8963138c1` written last at `16:18:32Z`, which occurs only after required-file, byte-size, and SHA-256 validation |
+| Measured episode | **FAILED/ABSENT**: no `feasibility.json` or video was produced, so checkpoint/processor load, peak model VRAM, latency, simulator result, proxy, and cancellation are not claimed |
+| Control plane | RunPod continued reporting `runtime: null`, uptime zero, and no port while the container was demonstrably writing CUDA/checkpoint evidence to the attached volume; those fields were not reliable startup indicators for this Pod |
+| Cost | Account balance fell by `$0.1967332148` during the attempt window; the Pod billing record had not posted at the immediate recheck. Nineteen minutes at `$0.72/hour` gives a conservative compute upper bound of `$0.228`. |
+
+The CUDA preflight object was last written at `16:33:21Z`, after the checkpoint
+marker, which is consistent with at least one container restart. Provider logs
+were unavailable to the credential (HTTP 403), so the failure after checkpoint
+bootstrap cannot honestly be classified as OOM, library incompatibility, or an
+application exception. Task 5 therefore remains failed and every later paid,
+evaluation, proxy, website, and deployment gate remains blocked. No further Pod
+is authorized by this attempt.
+
+- [Final same-Pod image build](https://console.cloud.google.com/cloud-build/builds/6b7bee99-33da-4fc7-96f2-eced08115344?project=902570464351)

@@ -153,3 +153,18 @@ evaluation, or production live sessions.
 No Pod or other resource was created during this preflight. Exact stock, balance,
 zero-Pod state, and the termination timestamp must be refreshed immediately
 before the single create request.
+
+## Corrected same-Pod retry preflight — 2026-08-24
+
+The operator accepted continued use of the existing Hub credential and
+authorized continuation. The final atomic refresh immediately before creation
+passed with balance `$22.0200467055`, existing volume spend `$0.002/hour`, zero
+Pods, zero posted 2026-08-24 Pod billing records, exact GPU stock `Low` in
+`US-KS-2`, exact Hub revision/ranged model access, and the existing 20 GB
+volume. The template had no entrypoint or command override and referenced:
+
+`us-central1-docker.pkg.dev/robium-prod/robium/vla-pick-and-place@sha256:65eb29edb290952ae46c1244fe77edb5dade83546f75389eb3083866c56cf690`
+
+Cloud Build `6b7bee99-33da-4fc7-96f2-eced08115344` proved the baked GPU
+entrypoint. The free gate passed doctor, 20 tests, deterministic fake smoke, and
+the compatibility-first startup ordering before the paid create.
