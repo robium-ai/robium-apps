@@ -72,10 +72,10 @@ Perform read-only checks for:
 - accepted checkpoint/Gemma licensing and snapshot access;
 - private registry authentication and immutable GPU image digest;
 - dedicated RunPod template/cost center;
-- attached network volume with the exact processor/config files already staged
-  and enough capacity for the approved same-Pod model bootstrap;
-- NVIDIA A100 SXM 80 GB Secure Cloud availability in the checkpoint volume's
-  S3-enabled and live-API-confirmed volume-capable datacenter;
+- a new `US-MD-1` network volume with enough capacity for the approved same-Pod
+  exact-revision checkpoint bootstrap;
+- NVIDIA A100 SXM 80 GB Secure Cloud availability in `US-MD-1`, with S3 support
+  and live-API-confirmed volume provisioning;
 - RunPod billing endpoint access; and
 - a deletion-verification path.
 
@@ -87,8 +87,10 @@ available.
 
 ## Task 5: Run one paid feasibility Pod
 
-1. Create exactly one temporary NVIDIA A100 SXM 80 GB Pod from the immutable
-   private image with the accepted network volume.
+1. Create exactly one temporary NVIDIA A100 SXM 80 GB Pod in `US-MD-1` from
+   the immutable private image with the new colocated network volume. The prior
+   `US-KS-2` request returned no Pod ID; the operator authorized this one fresh
+   allocation attempt on 2026-08-24.
 2. Record Pod/image/model startup timing and proxy behavior.
 3. Bootstrap the exact pinned checkpoint onto the attached volume, verify the
    model hash and required files, write the revision marker last, remove the Hub

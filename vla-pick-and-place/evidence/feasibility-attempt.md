@@ -40,5 +40,14 @@ same immutable template/image/volume, and live A100 capacity again.
 
 Production live sessions remain disabled and unauthorized.
 
+## Approved US-MD-1 resume
+
+On 2026-08-24, after a read-only inventory comparison, the operator explicitly
+approved one fresh A100 SXM 80 GB attempt in `US-MD-1`. Live catalog inventory
+reported `Medium` stock there at $1.59/hour, compared with `Low` stock for the
+failed `US-KS-2` location. The resume requires a new colocated 20 GB network
+volume and a complete fresh preflight before Pod creation. It does not authorize
+a different GPU, repeated create attempts, or production live sessions.
+
 - [RunPod Pod create API](https://docs.runpod.io/api-reference/pods/POST/pods)
 - [RunPod Pod list API](https://docs.runpod.io/api-reference/pods/GET/pods)

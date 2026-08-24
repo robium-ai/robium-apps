@@ -100,9 +100,10 @@ image. The image pins the base-image digests above, LeRobot and LIBERO commits,
 Python 3.10, dependency resolution, and the application source. `MUJOCO_GL=egl`
 is mandatory for real headless simulation.
 
-The GPU image does not bake checkpoint weights. By explicit user approval on
-2026-08-23, the same first and only feasibility Pod may populate its attached
-private RunPod network volume from the exact checkpoint revision. The
+The GPU image does not bake checkpoint weights. By explicit user approvals on
+2026-08-23 and 2026-08-24, the one successfully allocated feasibility Pod may
+populate its attached `US-MD-1` private RunPod network volume from the exact
+checkpoint revision. The
 feasibility-only bootstrap removes any stale revision marker, downloads config,
 weights, preprocessor JSON/safetensors, and postprocessor JSON/safetensors,
 verifies the 7,473,096,344-byte model SHA-256
@@ -125,8 +126,8 @@ mode, so it can pass before any paid GPU is allocated.
 Paid work begins only after all local tests and the CPU/fake-policy container
 gateway smoke pass. By explicit user amendment on 2026-08-23, the paid
 feasibility run must use exactly one Secure Cloud NVIDIA A100 SXM with 80 GB
-VRAM in a datacenter verified by the live provisioning API to support network
-volumes and by the S3 API to support direct access. This replaces the
+VRAM in `US-MD-1`, verified again by the live provisioning API to support
+network volumes and by the S3 API to support direct access. This replaces the
 original A40/A6000 model-name restriction without changing the single-Pod
 limit, budget, or validation gates. It performs:
 
@@ -139,8 +140,12 @@ limit, budget, or validation gates. It performs:
 4. simulator-derived result capture; and
 5. Pod deletion followed by an API check that the Pod is absent.
 
-There is no second feasibility Pod, quantization, model surgery, or launch-time
-memory optimization. Bootstrap, validation, or offline-load failure deletes the
+There is no fallback feasibility Pod, quantization, model surgery, or
+launch-time memory optimization. The 2026-08-23 `US-KS-2` create request
+returned no Pod ID and allocated no compute. On 2026-08-24 the operator
+explicitly amended the design to authorize one fresh `US-MD-1` allocation
+attempt with a new colocated volume; this is not permission for repeated
+allocation retries. Bootstrap, validation, or offline-load failure deletes the
 Pod and blocks the 20-episode evaluation.
 
 ### Twenty-episode protocol
@@ -238,7 +243,8 @@ Every VLA Pod:
   association;
 - requests exactly one GPU from the allowlist `NVIDIA A100-SXM4-80GB`, never a
   smaller or different fallback;
-- attaches the configured validated checkpoint volume at `/models`;
+- runs in `US-MD-1` and attaches the configured colocated checkpoint volume at
+  `/models`;
 - exposes only the configured HTTP gateway port;
 - receives capability, expiry, checkpoint path, and non-secret runtime config;
 - receives no Hugging Face token during normal visitor startup; and
