@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://robium.ai/schemas/pi05-libero-evidence-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "evidence_dataset", "result", "benchmark", "revisions", "compute", "episodes", "reproduce"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "evidence_dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repo_id", "revision"],
+      "properties": {
+        "repo_id": {"type": "string", "minLength": 1},
+        "revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["successes", "episodes", "target_successes", "below_target"],
+      "properties": {
+        "successes": {"type": "integer", "minimum": 0, "maximum": 20},
+        "episodes": {"const": 20},
+        "target_successes": {"const": 16},
+        "below_target": {"type": "boolean"}
+      }
+    },
+    "benchmark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["suite", "task_id", "task_name", "prompt", "prompt_class", "batch_size", "max_steps", "n_action_steps"],
+      "properties": {
+        "suite": {"const": "libero_goal"},
+        "task_id": {"const": 8},
+        "task_name": {"const": "put_the_bowl_on_the_plate"},
+        "prompt": {"const": "put the bowl on the plate"},
+        "prompt_class": {"const": "benchmark-supported"},
+        "batch_size": {"const": 1},
+        "max_steps": {"const": 300},
+        "n_action_steps": {"const": 10}
+      }
+    },
+    "revisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["checkpoint_id", "checkpoint", "lerobot", "libero", "application", "image"],
+      "properties": {
+        "checkpoint_id": {"const": "lerobot/pi05_libero_finetuned_v044"},
+        "checkpoint": {"const": "8e174154ef5f6c60a8da12ae99c303d8963138c1"},
+        "lerobot": {"const": "8fff0fde7c79f23a93d845d1a50e985de01f8b8a"},
+        "libero": {"const": "8f1084e3132a39270c3a13ebe37270a43ece2a01"},
+        "application": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "image": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    },
+    "compute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gpu", "runpod_cost_usd"],
+      "properties": {
+        "gpu": {"enum": ["NVIDIA A40", "NVIDIA RTX A6000", "NVIDIA A100 80GB PCIe", "NVIDIA A100-SXM4-80GB"]},
+        "runpod_cost_usd": {"type": "number", "minimum": 0}
+      }
+    },
+    "episodes": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 20,
+      "items": {"$ref": "#/$defs/episode"}
+    },
+    "reproduce": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "state_ids", "seeds"],
+      "properties": {
+        "command": {"type": "string", "minLength": 1},
+        "state_ids": {"type": "array", "minItems": 20, "maxItems": 20, "items": {"type": "integer", "minimum": 0, "maximum": 19}},
+        "seeds": {"type": "array", "minItems": 20, "maxItems": 20, "items": {"type": "integer", "minimum": 1000, "maximum": 1019}}
+      }
+    }
+  },
+  "$defs": {
+    "episode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["episode_index", "state_id", "seed", "success", "duration_seconds", "steps", "action_latency_ms", "video_path", "video_sha256"],
+      "properties": {
+        "episode_index": {"type": "integer", "minimum": 0, "maximum": 19},
+        "state_id": {"type": "integer", "minimum": 0, "maximum": 19},
+        "seed": {"type": "integer", "minimum": 1000, "maximum": 1019},
+        "success": {"type": "boolean"},
+        "duration_seconds": {"type": "number", "minimum": 0},
+        "steps": {"type": "integer", "minimum": 1, "maximum": 300},
+        "action_latency_ms": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mean", "p95", "max"],
+          "properties": {
+            "mean": {"type": "number", "minimum": 0},
+            "p95": {"type": "number", "minimum": 0},
+            "max": {"type": "number", "minimum": 0}
+          }
+        },
+        "video_path": {"type": "string", "pattern": "^episode-[0-9]+\\.mp4$"},
+        "video_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  }
+}

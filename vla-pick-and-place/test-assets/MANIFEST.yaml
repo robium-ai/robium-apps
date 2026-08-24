@@ -1,0 +1,24 @@
+version: 1
+mode: vendored
+source:
+  dataset: HuggingFaceVLA/libero
+  revision: 86958911c0f959db2bbbdb107eb3e17c5f9c798e
+  split: train
+  task_index: 10
+  prompt: put the bowl on the plate
+license: apache-2.0
+upstream: https://huggingface.co/datasets/HuggingFaceVLA/libero/tree/86958911c0f959db2bbbdb107eb3e17c5f9c798e
+fixtures:
+  - path: fixtures/frame-0.jpg
+    dataset_row: 101469
+    source_episode: 379
+    sha256: c820d5ba86531b2bb1eb6b02569d1d1701c8d496b9b3303efa776c29021eb9b4
+  - path: fixtures/frame-1.jpg
+    dataset_row: 107174
+    source_episode: 422
+    sha256: da4cd28994ee9ba7a167c828cedbcc9c143cd72765aea417508ee5255be01911
+  - path: fixtures/frame-2.jpg
+    dataset_row: 107606
+    source_episode: 426
+    sha256: 113fc0490a5db881b295a1f7af85ef60d6d73bce3ec9b8f294cac4ca6839dd25
+policy: Compact recorded RGB inputs for deterministic fake-policy tests only.

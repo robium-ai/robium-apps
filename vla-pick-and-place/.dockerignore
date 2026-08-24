@@ -1,7 +1,6 @@
-# Keep the build context small: the venv alone is multiple GB.
+.git
 .venv
-outputs
 .pytest_cache
-**/__pycache__
-docs
-tests
+__pycache__
+evidence/*.mp4
+outputs

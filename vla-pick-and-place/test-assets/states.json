@@ -1,0 +1,17 @@
+[
+  {
+    "state_id": 0,
+    "label": "Official fixed state 0",
+    "fixture": "fixtures/frame-0.jpg"
+  },
+  {
+    "state_id": 1,
+    "label": "Official fixed state 1",
+    "fixture": "fixtures/frame-1.jpg"
+  },
+  {
+    "state_id": 2,
+    "label": "Official fixed state 2",
+    "fixture": "fixtures/frame-2.jpg"
+  }
+]
