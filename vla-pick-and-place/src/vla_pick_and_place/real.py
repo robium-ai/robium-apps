@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from PIL import Image
 
 from vla_pick_and_place.config import (
@@ -33,6 +35,24 @@ REQUIRED_CHECKPOINT_FILES = (
     *(f"tokenizer/{name}" for name in TOKENIZER_FILES),
     "tokenizer/REVISION",
 )
+
+
+def _batch_nested_arrays(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {key: _batch_nested_arrays(item) for key, item in value.items()}
+    if isinstance(value, np.ndarray):
+        return np.expand_dims(value, axis=0)
+    return value
+
+
+def _batch_libero_robot_state(observation: dict[str, Any]) -> dict[str, Any]:
+    """Copy and batch nested state from one direct, non-vectorized LIBERO env."""
+    robot_state = observation.get("robot_state")
+    if not isinstance(robot_state, Mapping):
+        raise TypeError("LIBERO observation must contain nested robot_state")
+    batched = observation.copy()
+    batched["robot_state"] = _batch_nested_arrays(robot_state)
+    return batched
 
 
 def validate_checkpoint_snapshot(path: Path) -> None:
@@ -163,7 +183,7 @@ class Pi05PolicyAdapter:
     def select_action(self, observation: dict[str, Any], prompt: str):
         from lerobot.envs.utils import preprocess_observation
 
-        batch = preprocess_observation(observation)
+        batch = preprocess_observation(_batch_libero_robot_state(observation))
         batch["task"] = [prompt]
         batch = self.env_preprocessor(batch)
         batch = self.preprocessor(batch)
