@@ -62,3 +62,22 @@ No corrected GPU image was published as part of this free remediation.
 | Feasibility lifecycle | PASS: one measured CLI run is followed by the offline gateway on the same process/Pod lifecycle |
 | Full local regression | PASS: doctor, 20 tests, deterministic five-frame fake smoke |
 | Final immutable GPU build | PASS: Cloud Build `6b7bee99-33da-4fc7-96f2-eced08115344`, digest `sha256:65eb29edb290952ae46c1244fe77edb5dade83546f75389eb3083866c56cf690` |
+
+## Persistent startup diagnostics — 2026-08-24
+
+This free remediation followed the paid retry whose durable checkpoint evidence
+proved startup while RunPod reported `runtime: null`, but whose post-bootstrap
+exception was otherwise unavailable.
+
+| Gate | Result |
+| --- | --- |
+| Atomic phase markers | PASS: the marker names the active stage and leaves no temporary file after replacement |
+| Sanitized failure markers | PASS: configured secrets, Hugging Face token shapes, traceback, and environment contents are absent; stage, exception class, bounded message, return code, and UTC timestamp remain |
+| Exact model-load stage | PASS: a simulated runner-construction failure persisted `model_loading` rather than only the outer subprocess stage |
+| Startup ordering | PASS: durable stages cover CUDA preflight, checkpoint validation/bootstrap, model loading, rollout, artifact write, and gateway handoff |
+| Full local regression | PASS: doctor, 26 tests, deterministic five-frame fake smoke |
+| Linux/amd64 CPU image | PASS: `sha256:e1fdb18e544cd55a3846faf72f9ca66c99d23ad50634246d3616f7dceaadd726` |
+| Protected container lifecycle | PASS: hidden unscoped routes, capability claim, five-frame successful rollout, shutdown response, and confirmed container removal |
+
+No Cloud Build, registry publication, RunPod allocation, checkpoint load, or
+other paid compute was used for this diagnostics gate.

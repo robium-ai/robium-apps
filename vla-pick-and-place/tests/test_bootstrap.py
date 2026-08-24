@@ -9,6 +9,7 @@ from vla_pick_and_place.config import (
     CHECKPOINT_MODEL_SHA256,
     CHECKPOINT_REVISION,
 )
+from vla_pick_and_place.diagnostics import read_phase
 from vla_pick_and_place.real import REQUIRED_CHECKPOINT_FILES
 from vla_pick_and_place.startup import launch_feasibility, launch_gateway
 
@@ -184,3 +185,66 @@ def test_feasibility_startup_preflights_then_runs_once_and_starts_gateway(
     assert calls[2][0] == "execute"
     assert calls[2][2][-2:] == ["-m", "vla_pick_and_place.gateway"]
     assert "HF_TOKEN" not in calls[2][3]
+    assert read_phase(output) == "gateway_starting"
+
+
+def test_feasibility_startup_persists_sanitized_subprocess_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    checkpoint = tmp_path / "checkpoint"
+    output = tmp_path / "evidence"
+    secret = "hf_paid-secret-value"
+    monkeypatch.setattr(
+        "vla_pick_and_place.startup.cuda_preflight", lambda _target: None
+    )
+    monkeypatch.setattr(
+        "vla_pick_and_place.startup.validate_checkpoint_snapshot",
+        lambda _path: None,
+    )
+
+    def fail(_command, **_kwargs):
+        raise RuntimeError(f"model load rejected {secret}")
+
+    with pytest.raises(RuntimeError, match="model load rejected"):
+        launch_feasibility(
+            checkpoint_path=checkpoint,
+            output=output,
+            environment={"HF_TOKEN": secret},
+            run=fail,
+            execute=lambda *_args: pytest.fail("gateway must not start"),
+        )
+
+    failure = (output / "failure.json").read_text()
+    assert secret not in failure
+    assert '"stage": "feasibility_subprocess"' in failure
+
+
+def test_feasibility_startup_replaces_stale_failure_from_previous_restart(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    checkpoint = tmp_path / "checkpoint"
+    output = tmp_path / "evidence"
+    output.mkdir()
+    (output / "failure.json").write_text('{"message": "stale failure"}\n')
+    monkeypatch.setattr(
+        "vla_pick_and_place.startup.cuda_preflight", lambda _target: None
+    )
+    monkeypatch.setattr(
+        "vla_pick_and_place.startup.validate_checkpoint_snapshot",
+        lambda _path: None,
+    )
+
+    with pytest.raises(RuntimeError, match="current failure"):
+        launch_feasibility(
+            checkpoint_path=checkpoint,
+            output=output,
+            environment={},
+            run=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                RuntimeError("current failure")
+            ),
+            execute=lambda *_args: pytest.fail("gateway must not start"),
+        )
+
+    failure = (output / "failure.json").read_text()
+    assert "current failure" in failure
+    assert "stale failure" not in failure

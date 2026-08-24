@@ -11,10 +11,18 @@ from pathlib import Path
 from typing import Any
 
 from vla_pick_and_place.bootstrap import bootstrap_checkpoint, offline_environment
+from vla_pick_and_place.diagnostics import write_failure, write_phase
 from vla_pick_and_place.real import validate_checkpoint_snapshot
 
 Execute = Callable[[str, Sequence[str], Mapping[str, str]], object]
 Run = Callable[..., object]
+
+
+def _failure_snapshot(output: Path) -> bytes | None:
+    try:
+        return (output / "failure.json").read_bytes()
+    except OSError:
+        return None
 
 
 def cuda_preflight(output: Path | None) -> dict[str, Any]:
@@ -62,28 +70,52 @@ def _prepare_checkpoint(
     *,
     environment: Mapping[str, str],
     preflight_output: Path | None,
+    diagnostics_output: Path | None,
 ) -> None:
+    if diagnostics_output is not None:
+        write_phase(diagnostics_output, "cuda_preflight")
     cuda_preflight(preflight_output)
+    if diagnostics_output is not None:
+        write_phase(diagnostics_output, "checkpoint_validation")
     try:
         validate_checkpoint_snapshot(checkpoint_path)
     except RuntimeError:
+        if diagnostics_output is not None:
+            write_phase(diagnostics_output, "checkpoint_bootstrap")
         bootstrap_checkpoint(checkpoint_path, token=environment.get("HF_TOKEN", ""))
+    if diagnostics_output is not None:
+        write_phase(diagnostics_output, "checkpoint_ready", status="completed")
 
 
 def launch_gateway(
     *,
     checkpoint_path: Path,
     environment: Mapping[str, str],
+    output: Path | None = None,
     execute: Execute = os.execvpe,
 ) -> None:
     """Prepare the exact checkpoint when needed, then exec the gateway offline."""
-    _prepare_checkpoint(
-        checkpoint_path, environment=environment, preflight_output=None
-    )
-
-    command = [sys.executable, "-m", "vla_pick_and_place.gateway"]
-    print("CHECKPOINT READY; STARTING OFFLINE GATEWAY", flush=True)
-    execute(command[0], command, offline_environment(environment))
+    try:
+        _prepare_checkpoint(
+            checkpoint_path,
+            environment=environment,
+            preflight_output=None,
+            diagnostics_output=output,
+        )
+        if output is not None:
+            write_phase(output, "gateway_starting")
+        command = [sys.executable, "-m", "vla_pick_and_place.gateway"]
+        print("CHECKPOINT READY; STARTING OFFLINE GATEWAY", flush=True)
+        execute(command[0], command, offline_environment(environment))
+    except Exception as error:
+        if output is not None:
+            write_failure(
+                output,
+                error,
+                environment=environment,
+                return_code=getattr(error, "returncode", None),
+            )
+        raise
 
 
 def launch_feasibility(
@@ -95,24 +127,38 @@ def launch_feasibility(
     execute: Execute = os.execvpe,
 ) -> None:
     """Run one measured rollout, persist evidence, then serve the gateway."""
-    _prepare_checkpoint(
-        checkpoint_path,
-        environment=environment,
-        preflight_output=output / "cuda-preflight.json",
-    )
-    command = [
-        sys.executable,
-        "-m",
-        "vla_pick_and_place.cli",
-        "feasibility",
-        "--output",
-        str(output),
-    ]
-    offline = offline_environment(environment)
-    run(command, check=True, env=offline)
-    print("FEASIBILITY COMPLETE; STARTING OFFLINE GATEWAY", flush=True)
-    gateway = [sys.executable, "-m", "vla_pick_and_place.gateway"]
-    execute(gateway[0], gateway, offline)
+    failure_before = _failure_snapshot(output)
+    try:
+        _prepare_checkpoint(
+            checkpoint_path,
+            environment=environment,
+            preflight_output=output / "cuda-preflight.json",
+            diagnostics_output=output,
+        )
+        write_phase(output, "feasibility_subprocess")
+        command = [
+            sys.executable,
+            "-m",
+            "vla_pick_and_place.cli",
+            "feasibility",
+            "--output",
+            str(output),
+        ]
+        offline = offline_environment(environment)
+        run(command, check=True, env=offline)
+        write_phase(output, "gateway_starting")
+        print("FEASIBILITY COMPLETE; STARTING OFFLINE GATEWAY", flush=True)
+        gateway = [sys.executable, "-m", "vla_pick_and_place.gateway"]
+        execute(gateway[0], gateway, offline)
+    except Exception as error:
+        if _failure_snapshot(output) == failure_before:
+            write_failure(
+                output,
+                error,
+                environment=environment,
+                return_code=getattr(error, "returncode", None),
+            )
+        raise
 
 
 def main() -> None:
@@ -121,7 +167,14 @@ def main() -> None:
     )
     mode = os.environ.get("VLA_STARTUP_MODE", "gateway")
     if mode == "gateway":
-        launch_gateway(checkpoint_path=checkpoint_path, environment=os.environ)
+        output = Path(
+            os.environ.get("VLA_DIAGNOSTIC_OUTPUT", "/models/issue-69-gateway-startup")
+        )
+        launch_gateway(
+            checkpoint_path=checkpoint_path,
+            environment=os.environ,
+            output=output,
+        )
         return
     if mode == "feasibility":
         output = Path(

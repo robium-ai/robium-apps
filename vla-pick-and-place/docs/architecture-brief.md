@@ -79,6 +79,7 @@ and `sha256:2fcc4280646484290cc50dce5e65f388dd04352b07cbe89a635703bd1f9aedb6`.
 | `policy` | Shared policy protocol, real Pi0.5 adapter, deterministic fake policy | observation and prompt | seven-dimensional actions and latency samples |
 | `rollout` | Single-episode lock, cancellation, frame/progress streaming, hard reset | task, policy, prompt, state | complete/cancelled result and metrics |
 | `evidence` | Per-episode records, aggregation, schema validation, SHA-256, publication config | completed real episodes | manifest, summaries, videos, hashes |
+| `diagnostics` | Atomically persist the current startup stage and a sanitized bounded failure summary | startup stage, exception, process environment used only for redaction | `phase.json`, `failure.json` on the attached volume |
 | `ui` | Prompt/state controls, provenance labels, streamed frames, result | gateway-owned runner | Gradio application |
 | `gateway` | Capability-scoped claim/status/shutdown/UI/stream and process lifecycle | capability and expiry | protected HTTP interface |
 | `cli` | Test, serve, evaluate, manifest, and reproduce entry points | validated config | deterministic commands and exit codes |
@@ -111,6 +112,16 @@ readiness/status. After allocation it returns the direct RunPod proxy host plus
 capability path to the browser. The browser then talks directly to the Pod for
 claim, status, UI assets, API calls, and streaming. The orchestrator is not in
 the frame/action path.
+
+Before the gateway is reachable, startup progress is observed from durable
+volume markers: `phase.json`, `failure.json`, `cuda-preflight.json`, the
+checkpoint `REVISION`, and finally `feasibility.json`. The current phase is
+atomically replaced at CUDA preflight, checkpoint validation/bootstrap,
+model loading, rollout, artifact writing, and gateway handoff. Failure evidence
+contains no traceback or environment dump and redacts credential values and
+token shapes. RunPod's Pod `runtime` and port fields remain supporting signals,
+not the sole source of truth, because the corrected feasibility attempt wrote
+valid volume evidence while those fields stayed empty.
 
 All Pod gateway routes live under `/c/{capability}/...`. Missing or foreign
 capabilities and unrelated paths return 404. RunPod and Hugging Face credentials

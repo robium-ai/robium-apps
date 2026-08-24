@@ -63,6 +63,24 @@ it does not authorize a RunPod allocation:
 ./app image-gpu
 ```
 
+### Persistent startup diagnostics
+
+The GPU startup writes small JSON markers to the attached `/models` volume so
+a failed Pod remains diagnosable even when provider logs or runtime fields are
+unavailable. `phase.json` identifies the latest stage, from CUDA preflight and
+checkpoint validation through `model_loading`, `rollout`, artifact writing,
+and gateway startup. `failure.json` records the stage, exception class,
+sanitized bounded message, optional subprocess return code, and UTC timestamp.
+Both files are replaced atomically, contain no traceback or environment dump,
+and redact configured credentials and Hugging Face token shapes.
+
+Feasibility markers live beside `cuda-preflight.json` and the eventual
+`feasibility.json` under `VLA_EVIDENCE_OUTPUT`. Gateway-only startup markers use
+`VLA_DIAGNOSTIC_OUTPUT`, which defaults to
+`/models/issue-69-gateway-startup`. During boot, monitoring must use these
+durable volume markers together with RunPod state rather than treating an
+empty `runtime` field as proof that the container did not start.
+
 ## Evaluation protocol
 
 The publication run is exactly 20 sequential episodes. State IDs 0–19 map to

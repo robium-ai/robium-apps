@@ -15,6 +15,7 @@ from pathlib import Path
 import imageio.v2 as imageio
 
 from vla_pick_and_place.config import CANONICAL_PROMPT, PUBLICATION_EPISODES
+from vla_pick_and_place.diagnostics import write_failure, write_phase
 from vla_pick_and_place.evidence import (
     EpisodeEvidence,
     build_publication_manifest,
@@ -92,38 +93,48 @@ def _write_video(path: Path, frames) -> None:
             writer.append_data(frame)
 
 
-def feasibility(output: Path) -> int:
-    import torch
+def feasibility(output: Path, *, torch_module=None, runner_factory=None) -> int:
+    if torch_module is None:
+        import torch as torch_module
+    if runner_factory is None:
+        from vla_pick_and_place.real import build_real_runner
 
-    from vla_pick_and_place.real import build_real_runner
-
+        runner_factory = build_real_runner
     output.mkdir(parents=True, exist_ok=True)
-    torch.cuda.reset_peak_memory_stats()
-    started = time.monotonic()
-    runner = build_real_runner()
-    startup_seconds = time.monotonic() - started
-    frames = []
-    result = runner.run(
-        0,
-        CANONICAL_PROMPT,
-        lambda event: frames.append(event.frame) if event.frame else None,
-    )
-    video = output / "feasibility.mp4"
-    _write_video(video, frames)
-    report = {
-        "startup_seconds": startup_seconds,
-        "peak_vram_bytes": torch.cuda.max_memory_allocated(),
-        "rollout": {
-            **asdict(result),
-            "action_latency_ms": _latency_summary(result.action_latency_ms),
-        },
-        "video": video.name,
-        "video_sha256": sha256_file(video),
-    }
-    report["rollout"].pop("prompt")
-    (output / "feasibility.json").write_text(json.dumps(report, indent=2) + "\n")
-    print(json.dumps(report, sort_keys=True))
-    return 0
+    try:
+        torch_module.cuda.reset_peak_memory_stats()
+        write_phase(output, "model_loading")
+        started = time.monotonic()
+        runner = runner_factory()
+        startup_seconds = time.monotonic() - started
+        write_phase(output, "rollout")
+        frames = []
+        result = runner.run(
+            0,
+            CANONICAL_PROMPT,
+            lambda event: frames.append(event.frame) if event.frame else None,
+        )
+        write_phase(output, "artifact_write")
+        video = output / "feasibility.mp4"
+        _write_video(video, frames)
+        report = {
+            "startup_seconds": startup_seconds,
+            "peak_vram_bytes": torch_module.cuda.max_memory_allocated(),
+            "rollout": {
+                **asdict(result),
+                "action_latency_ms": _latency_summary(result.action_latency_ms),
+            },
+            "video": video.name,
+            "video_sha256": sha256_file(video),
+        }
+        report["rollout"].pop("prompt")
+        (output / "feasibility.json").write_text(json.dumps(report, indent=2) + "\n")
+        write_phase(output, "feasibility_complete", status="completed")
+        print(json.dumps(report, sort_keys=True))
+        return 0
+    except Exception as error:
+        write_failure(output, error, environment=os.environ)
+        raise
 
 
 def evaluate(args: argparse.Namespace) -> int:
