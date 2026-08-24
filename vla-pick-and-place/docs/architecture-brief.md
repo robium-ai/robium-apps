@@ -24,11 +24,11 @@ is the living architecture contract for implementation.
 - **Local development:** macOS Apple Silicon is a thin development client for
   fixtures, fake policy, replay, UI, evidence validation, and tests. It does not
   run Pi0.5 inference.
-- **Real compute:** Linux/amd64, NVIDIA CUDA, first feasibility attempt on one
-  Secure Cloud L40S 48 GB in an S3-enabled network-volume datacenter; one A100
-  80 GB rerun is allowed only if VRAM blocks the 48 GB attempt. This replaces
-  the original A40/A6000 model-name restriction by explicit user amendment on
-  2026-08-23; the 48 GB floor and all other paid gates remain unchanged.
+- **Real compute:** Linux/amd64, NVIDIA CUDA, one Secure Cloud A100 SXM 80 GB in
+  an S3-enabled, currently volume-capable network-volume datacenter. This
+  replaces the original A40/A6000 model-name restriction by explicit user
+  amendment on 2026-08-23; the single-Pod limit and all other paid gates remain
+  unchanged.
 - **Hosting:** one isolated RunPod Pod per visitor, maximum one active Pod,
   preloaded network volume, private immutable image, existing website
   orchestrator, capability-scoped direct browser handoff.
@@ -58,7 +58,7 @@ intentional rather than an unresolved local-parity defect.
 | Runtime environment | Multi-stage Linux/amd64 CUDA Docker image with uv-managed venv | CUDA 12.4.1 cuDNN Ubuntu 22.04 images pinned by digest; Python 3.10 | Native dependencies, EGL, CUDA, and RunPod require Docker. A local MPS/CPU Pi0.5 path is explicitly rejected. |
 | Checkpoint storage | Private RunPod network volume mounted read-only by convention at `/models` | immutable checkpoint revision above | Avoids visitor-time Hub download and keeps weights out of the private image. Baking weights or exposing a browser token is rejected. |
 | Evidence storage | Public Hugging Face dataset plus compact Git summary | immutable dataset revision recorded after publication | The Hub holds 20 videos and per-episode data; Git holds schema, manifest, summary, previews, and immutable revision, avoiding duplicate evidence. |
-| Live compute | RunPod Secure Cloud Pod | exact L40S allowlist; optional A100 feasibility fallback | Required 48 GB NVIDIA CUDA class with per-visitor isolation and S3 volume locality. Smaller silent fallbacks and Cloud Run CPU inference are rejected. |
+| Live compute | RunPod Secure Cloud Pod | exact A100 SXM 80 GB allowlist | Required NVIDIA CUDA capacity with per-visitor isolation and verified S3 volume locality. Smaller silent fallbacks and Cloud Run CPU inference are rejected. |
 | Control plane | Existing TypeScript/Fastify demo orchestrator with provider router | repository lockfile | Preserves existing Cloud Run and local Docker behavior and avoids a second lifecycle service. |
 | Budget state | RunPod billing/Pod APIs plus atomic GCS ledger | one UTC-day object per date | RunPod billing omits names/template IDs after deletion, so a durable owned-Pod mapping is required. A waiting queue or queue database is not introduced. |
 
@@ -180,10 +180,10 @@ not duplicate hand-entered success numbers.
 
 | Risk | What it blocks | Resolution/gate |
 | --- | --- | --- |
-| Checkpoint may exceed 48 GB in the exact runtime | Feasibility and all later paid work | Measure one L40S run; allow one A100 80 GB rerun only for insufficient VRAM. |
+| Exact-runtime memory use is unmeasured | Feasibility and all later paid work | Measure the one A100 SXM 80 GB run; do not create a second fallback Pod or optimize the model. |
 | Exact policy/environment seam may expose pinned-v0.4.4 defects | Real rollout | First paid smoke must load processor files and reach simulator-derived completion before evaluation. |
 | Required RunPod credentials, credit, private registry, template, accepted Gemma licensing, and network volume may be absent | First paid gate | Preflight without creating resources; stop and report if any requirement is unavailable. |
-| L40S Secure Cloud capacity may be unavailable | Feasibility/live flow | Fail visibly; do not choose a smaller GPU. Retry later or use the one allowed A100 feasibility path only for insufficient VRAM, not capacity laundering. |
+| A100 SXM Secure Cloud capacity may be unavailable | Feasibility/live flow | Fail visibly; do not choose a smaller or different GPU. Retry the allocation later without creating duplicate Pods. |
 | RunPod proxy behavior may differ from local gateway behavior | Live handoff | Measure proxy and direct capability routes during feasibility; do not proceed to evaluation/live integration if genuine streaming is unreliable. |
 | RunPod billing data can lag or omit ownership metadata | $5 enforcement | Durable owned-Pod ledger plus billing and active reservation reconciliation; fail closed on missing/stale/unverifiable inputs. |
 | Capability prefix may be bypassed by Gradio asset/API routes | Public isolation | Route-level tests for root, assets, API, and stream with correct/missing/foreign capabilities; real smoke before deployment. |

@@ -115,11 +115,12 @@ mode, so it can pass before any paid GPU is allocated.
 ### Feasibility gate
 
 Paid work begins only after all local tests and the CPU/fake-policy container
-gateway smoke pass. By explicit user amendment on 2026-08-23, the first paid
-Pod must use exactly one Secure Cloud NVIDIA L40S with 48 GB VRAM in a
-datacenter that supports the S3-compatible network-volume API. This replaces
-the original A40/A6000 model-name restriction without changing the 48 GB
-minimum, single-Pod limit, budget, or validation gates. It performs:
+gateway smoke pass. By explicit user amendment on 2026-08-23, the paid
+feasibility run must use exactly one Secure Cloud NVIDIA A100 SXM with 80 GB
+VRAM in a datacenter verified by the live provisioning API to support network
+volumes and by the S3 API to support Pod-free preload. This replaces the
+original A40/A6000 model-name restriction without changing the single-Pod
+limit, budget, or validation gates. It performs:
 
 1. offline checkpoint and processor load from the attached network volume;
 2. one hard-reset task-8 rollout at batch size 1;
@@ -128,9 +129,9 @@ minimum, single-Pod limit, budget, or validation gates. It performs:
 4. simulator-derived result capture; and
 5. Pod deletion followed by an API check that the Pod is absent.
 
-If 48 GB is insufficient, exactly one A100 80 GB feasibility rerun is allowed.
-There is no quantization, model surgery, or launch-time memory optimization.
-The 20-episode evaluation is blocked until feasibility passes.
+There is no second feasibility Pod, quantization, model surgery, or launch-time
+memory optimization. The 20-episode evaluation is blocked until feasibility
+passes.
 
 ### Twenty-episode protocol
 
@@ -225,8 +226,8 @@ Every VLA Pod:
 - uses the dedicated immutable private image and RunPod template;
 - has a `robium-vla-{session}` name plus the dedicated template/cost-center
   association;
-- requests exactly one GPU from the allowlist `NVIDIA L40S`, never a smaller
-  fallback;
+- requests exactly one GPU from the allowlist `NVIDIA A100-SXM4-80GB`, never a
+  smaller or different fallback;
 - attaches the configured preloaded network volume at `/models`;
 - exposes only the configured HTTP gateway port;
 - receives capability, expiry, checkpoint path, and non-secret runtime config;
@@ -299,8 +300,8 @@ Gates are executed in this exact order:
 3. **Application smoke:** fake-policy lifecycle and replay through the real UI.
 4. **Container gateway:** build the pinned image's CPU/fake target; verify start,
    capability acceptance/rejection, UI, stream, shutdown, and process exit.
-5. **Paid feasibility:** one real L40S 48 GB Pod; optional one A100 rerun only
-   for insufficient VRAM; record all required measurements and deletion.
+5. **Paid feasibility:** one real A100 SXM 80 GB Pod; no fallback Pod; record
+   all required measurements and deletion.
 6. **Paid evaluation:** 20 sequential hard-reset episodes; validate and publish
    the immutable evidence dataset.
 7. **Website/orchestrator:** mocked RunPod create/get/delete/reconcile, one-Pod

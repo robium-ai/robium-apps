@@ -73,8 +73,8 @@ Perform read-only checks for:
 - private registry authentication and immutable GPU image digest;
 - dedicated RunPod template/cost center;
 - preloaded network volume with exact checkpoint revision and processor files;
-- NVIDIA L40S 48 GB Secure Cloud availability in the checkpoint volume's
-  S3-enabled datacenter;
+- NVIDIA A100 SXM 80 GB Secure Cloud availability in the checkpoint volume's
+  S3-enabled and live-API-confirmed volume-capable datacenter;
 - RunPod billing endpoint access; and
 - a deletion-verification path.
 
@@ -86,8 +86,8 @@ available.
 
 ## Task 5: Run one paid feasibility Pod
 
-1. Create exactly one temporary NVIDIA L40S 48 GB Pod from the immutable private
-   image with the accepted network volume.
+1. Create exactly one temporary NVIDIA A100 SXM 80 GB Pod from the immutable
+   private image with the accepted network volume.
 2. Record Pod/image/model startup timing and proxy behavior.
 3. Load the checkpoint and processors offline from the volume.
 4. Run one complete canonical task-8 episode to a simulator-derived result.
@@ -97,8 +97,8 @@ available.
 7. Delete the Pod in a `finally` path and poll until the API confirms absence.
 8. Record measured cost and feasibility evidence.
 
-If and only if 48 GB is insufficient, repeat this task once on an A100 80 GB.
-Do not proceed for any other feasibility failure and do not optimize the model.
+Do not create a fallback Pod and do not optimize the model. Any feasibility
+failure blocks later paid work.
 
 **Gate:** real checkpoint load, processor load, full episode, required metrics,
 proxy behavior, cancellation, and confirmed deletion all pass.
