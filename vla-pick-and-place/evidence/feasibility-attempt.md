@@ -77,5 +77,23 @@ checkpoint bootstrap. It replaces the blocked A100/`US-MD-1` path without
 authorizing a fallback GPU, repeated create request, longer lifetime, larger
 budget, or production live sessions.
 
+## H100 NVL preflight result
+
+The final authenticated preflight on 2026-08-24 blocked before allocation.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Balance and current spend | PASS | Official RunPod CLI reported balance $22.0474149943, current spend $0.002/hour, and spend limit $80. |
+| Active Pods | PASS | Official REST list returned zero Pods. |
+| Existing checkpoint volume | PASS | Volume `68s0bxbv7p` remained 20 GB in `US-KS-2`; authenticated S3 listing confirmed the six staged revision/config/processor objects and no model weight, as expected before same-Pod bootstrap. |
+| Immutable image/template | PASS | Template `e56b2xl1y1` retained the exact private image digest, registry auth, bootstrap command, and gateway port. |
+| Checkpoint access | PASS | Official `hf download --dry-run` resolved the exact nine-file, 7.5 GB snapshot at the accepted revision. |
+| Daily Pod billing | PASS | The official billing endpoint returned zero Pod billing records for the current UTC day. |
+| H100 NVL capacity | **BLOCKED** | Authenticated RunPod CLI reported Secure Cloud `NVIDIA H100 NVL` with 94 GB at $3.19/hour, but its `US-KS-2` stock status was `none`. |
+
+No Pod-create request was sent because the required exact GPU was unavailable.
+Zero Pods remain, no GPU compute was allocated, and no deletion was necessary.
+Task 5 and every later paid/deployment task remain blocked.
+
 - [RunPod Pod create API](https://docs.runpod.io/api-reference/pods/POST/pods)
 - [RunPod Pod list API](https://docs.runpod.io/api-reference/pods/GET/pods)
