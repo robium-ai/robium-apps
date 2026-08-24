@@ -301,3 +301,24 @@ The subsequent same-source/target staging guard is covered by the 33-test free
 suite; a redundant local CUDA-builder re-download was cancelled before export.
 No new immutable image has been published, because direct tokenizer access must
 pass before the next paid gate. Production remains disabled.
+
+## Gated-tokenizer access recheck
+
+On 2026-08-24, after the operator accepted the PaliGemma terms for the account
+associated with the Doppler `HF_TOKEN`, a free authenticated download passed
+for all five required tokenizer files at exact revision
+`35e4f46485b4d07967e7e9935bc3786aad50687c`:
+
+| File | Downloaded bytes |
+| --- | ---: |
+| `added_tokens.json` | 24 |
+| `special_tokens_map.json` | 607 |
+| `tokenizer.json` | 17,549,604 |
+| `tokenizer.model` | 4,264,023 |
+| `tokenizer_config.json` | 39,968 |
+
+The disposable download was moved to macOS Trash after validation. This clears
+the Hugging Face licensing preflight only; it does not claim model loading or
+episode success. No Cloud Build or RunPod Pod was started, and production
+remains disabled. The next gates are a separately approved paid immutable-image
+publish followed by one bounded RunPod revalidation.
