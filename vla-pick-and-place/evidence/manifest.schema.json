@@ -59,7 +59,7 @@
       "additionalProperties": false,
       "required": ["gpu", "runpod_cost_usd"],
       "properties": {
-        "gpu": {"const": "NVIDIA A100-SXM4-80GB"},
+        "gpu": {"const": "NVIDIA H100 NVL"},
         "runpod_cost_usd": {"type": "number", "minimum": 0}
       }
     },
