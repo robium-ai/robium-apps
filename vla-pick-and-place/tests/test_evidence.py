@@ -5,7 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from vla_pick_and_place.cli import finalize_publication, parser, record_publication
+from vla_pick_and_place.cli import (
+    ensure_fresh_evaluation_output,
+    finalize_publication,
+    parser,
+    record_publication,
+)
 from vla_pick_and_place.evidence import (
     EpisodeEvidence,
     build_publication_manifest,
@@ -182,3 +187,12 @@ def test_finalize_and_record_publication_commands_write_valid_files(tmp_path):
     validate_publication_pointer(
         json.loads(pointer_path.read_text()), manifest_path=manifest
     )
+
+
+def test_evaluation_output_refuses_any_episode_retry_but_allows_diagnostics(tmp_path):
+    (tmp_path / "phase.json").write_text("{}\n")
+    ensure_fresh_evaluation_output(tmp_path)
+
+    (tmp_path / "episode-0.json").write_text("{}\n")
+    with pytest.raises(RuntimeError, match="refusing to retry"):
+        ensure_fresh_evaluation_output(tmp_path)

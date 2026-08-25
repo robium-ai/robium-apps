@@ -13,11 +13,13 @@ RUN groupadd --gid 65532 robium \
         --shell /usr/sbin/nologin robium
 WORKDIR /app
 RUN python -m pip install --no-cache-dir "uv==${UV_VERSION}"
-COPY pyproject.toml uv.lock README.md ./
-RUN uv sync --frozen --no-dev --no-install-project
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
+COPY README.md ./
 COPY src ./src
 COPY test-assets ./test-assets
-RUN uv sync --frozen --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev
 ENV VLA_RUNTIME_MODE=fake \
     VLA_GATEWAY_PORT=8765 \
     HOME=/tmp \
@@ -37,11 +39,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 RUN python3.10 -m pip install --no-cache-dir "uv==${UV_VERSION}"
 WORKDIR /app
-COPY pyproject.toml uv.lock README.md ./
-RUN uv sync --python python3.10 --frozen --no-dev --extra gpu --no-install-project
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --python python3.10 --frozen --no-dev --extra gpu --no-install-project
+COPY README.md ./
 COPY src ./src
 COPY test-assets ./test-assets
-RUN uv sync --python python3.10 --frozen --no-dev --extra gpu
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --python python3.10 --frozen --no-dev --extra gpu
 RUN git init /opt/libero \
     && git -C /opt/libero remote add origin https://github.com/huggingface/LIBERO.git \
     && git -C /opt/libero fetch --depth 1 origin "${LIBERO_REVISION}" \
@@ -67,6 +72,7 @@ COPY --from=gpu-builder /opt/libero /opt/libero
 COPY docker/libero-config.yaml /app/libero-config/config.yaml
 ENV VLA_RUNTIME_MODE=real \
     VLA_POLICY_EXECUTION=eager \
+    VLA_EVALUATION_OUTPUT=/models/issue-69-evaluation \
     VLA_CHECKPOINT_PATH=/models/pi05-libero-v044 \
     VLA_STAGED_CHECKPOINT_PATH=/tmp/pi05-libero-v044 \
     VLA_GATEWAY_PORT=8765 \

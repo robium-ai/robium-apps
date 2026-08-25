@@ -15,6 +15,7 @@ from vla_pick_and_place.config import (
 from vla_pick_and_place.diagnostics import read_phase
 from vla_pick_and_place.real import REQUIRED_CHECKPOINT_FILES
 from vla_pick_and_place.startup import (
+    launch_evaluation,
     launch_feasibility,
     launch_gateway,
     stage_checkpoint,
@@ -295,6 +296,94 @@ def test_feasibility_startup_preflights_then_runs_once_and_starts_gateway(
     assert calls[2][2][-2:] == ["-m", "vla_pick_and_place.gateway"]
     assert "HF_TOKEN" not in calls[2][3]
     assert read_phase(output) == "gateway_starting"
+
+
+def test_evaluation_startup_runs_fixed_compiled_bundle_then_holds_for_deletion(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    checkpoint = tmp_path / "checkpoint"
+    output = tmp_path / "evaluation"
+    calls = []
+    monkeypatch.setattr(
+        "vla_pick_and_place.startup.cuda_preflight",
+        lambda target: calls.append(("cuda", target)),
+    )
+    monkeypatch.setattr(
+        "vla_pick_and_place.startup.validate_checkpoint_snapshot",
+        lambda _path: None,
+    )
+
+    launch_evaluation(
+        checkpoint_path=checkpoint,
+        output=output,
+        application_commit="c" * 40,
+        image_digest="sha256:" + "a" * 64,
+        gpu="NVIDIA RTX PRO 4500 Blackwell Server Edition",
+        environment={"HF_TOKEN": "secret", "KEEP": "value"},
+        run=lambda command, **kwargs: calls.append(("run", command, kwargs)),
+        hold=lambda: calls.append(("hold",)),
+    )
+
+    assert calls[0] == ("cuda", output / "cuda-preflight.json")
+    assert calls[1][0] == "run"
+    assert calls[1][1][-9:] == [
+        "evaluate",
+        "--output",
+        str(output),
+        "--application-commit",
+        "c" * 40,
+        "--image-digest",
+        "sha256:" + "a" * 64,
+        "--gpu",
+        "NVIDIA RTX PRO 4500 Blackwell Server Edition",
+    ]
+    assert calls[1][2]["check"] is True
+    assert "HF_TOKEN" not in calls[1][2]["env"]
+    assert calls[1][2]["env"]["KEEP"] == "value"
+    assert calls[2] == ("hold",)
+    assert read_phase(output) == "evaluation_complete"
+
+
+@pytest.mark.parametrize(
+    ("application_commit", "image_digest", "gpu", "message"),
+    [
+        (
+            "main",
+            "sha256:" + "a" * 64,
+            "NVIDIA RTX PRO 4500 Blackwell Server Edition",
+            "application commit",
+        ),
+        (
+            "c" * 40,
+            "latest",
+            "NVIDIA RTX PRO 4500 Blackwell Server Edition",
+            "image digest",
+        ),
+        ("c" * 40, "sha256:" + "a" * 64, "NVIDIA A100", "GPU"),
+    ],
+)
+def test_evaluation_startup_rejects_mutable_or_wrong_identity_before_cuda(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    application_commit: str,
+    image_digest: str,
+    gpu: str,
+    message: str,
+) -> None:
+    monkeypatch.setattr(
+        "vla_pick_and_place.startup.cuda_preflight",
+        lambda _target: pytest.fail("invalid identity must fail before CUDA"),
+    )
+    with pytest.raises(ValueError, match=message):
+        launch_evaluation(
+            checkpoint_path=tmp_path / "checkpoint",
+            output=tmp_path / "evaluation",
+            application_commit=application_commit,
+            image_digest=image_digest,
+            gpu=gpu,
+            environment={},
+            hold=lambda: pytest.fail("invalid identity must not hold"),
+        )
 
 
 def test_feasibility_startup_persists_sanitized_subprocess_failure(

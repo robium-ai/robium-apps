@@ -129,6 +129,16 @@ python -m vla_pick_and_place.cli record-publication \
   --output evidence/publication.json
 ```
 
+On RunPod, the immutable entrypoint selects this evaluator with
+`VLA_STARTUP_MODE=evaluation` plus `VLA_APPLICATION_COMMIT`,
+`VLA_IMAGE_DIGEST`, and the exact `VLA_GPU_NAME`. It writes the candidate bundle
+to `/models/issue-69-evaluation`, records `evaluation_complete`, releases the
+model subprocess, and waits for controller deletion. Any pre-existing episode
+artifact makes startup fail closed so a restarted Pod cannot silently retry or
+overwrite a measured episode. Hugging Face credentials are not passed into the
+evaluation subprocess; upload and final cost/revision resolution happen after
+the Pod is deleted.
+
 ## Architecture and upstream guidance
 
 - [Active architecture brief](docs/architecture-brief.md)

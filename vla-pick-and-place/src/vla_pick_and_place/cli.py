@@ -141,11 +141,26 @@ def feasibility(output: Path, *, torch_module=None, runner_factory=None) -> int:
         raise
 
 
+def ensure_fresh_evaluation_output(output: Path) -> None:
+    protected = [
+        *(output.glob("episode-*.json")),
+        *(output.glob("episode-*.mp4")),
+        *(output / name for name in ("evaluation-run.json", "manifest.json")),
+    ]
+    existing = sorted(path.name for path in protected if path.exists())
+    if existing:
+        raise RuntimeError(
+            "evaluation output already contains measured artifacts; refusing to retry: "
+            + ", ".join(existing)
+        )
+
+
 def evaluate(args: argparse.Namespace) -> int:
     from vla_pick_and_place.real import build_real_runner
 
     output: Path = args.output
     output.mkdir(parents=True, exist_ok=True)
+    ensure_fresh_evaluation_output(output)
     runner = build_real_runner(execution_profile="compiled")
     episodes = []
     for spec in PUBLICATION_EPISODES:

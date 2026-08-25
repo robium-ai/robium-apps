@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
+import time
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -17,6 +19,11 @@ from vla_pick_and_place.real import validate_checkpoint_snapshot
 
 Execute = Callable[[str, Sequence[str], Mapping[str, str]], object]
 Run = Callable[..., object]
+Hold = Callable[[], object]
+
+GIT_REVISION_PATTERN = re.compile(r"^[0-9a-f]{40}$")
+IMAGE_DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
+EVALUATION_GPU = "NVIDIA RTX PRO 4500 Blackwell Server Edition"
 
 
 def stage_checkpoint(source: Path, target: Path) -> Path:
@@ -189,6 +196,78 @@ def launch_feasibility(
         raise
 
 
+def _hold_for_deletion() -> None:
+    while True:
+        time.sleep(3600)
+
+
+def launch_evaluation(
+    *,
+    checkpoint_path: Path,
+    output: Path,
+    application_commit: str,
+    image_digest: str,
+    gpu: str,
+    environment: Mapping[str, str],
+    run: Run = subprocess.run,
+    hold: Hold = _hold_for_deletion,
+) -> None:
+    """Run the fixed publication episodes, persist them, then await Pod deletion."""
+    failure_before = _failure_snapshot(output)
+    try:
+        if not GIT_REVISION_PATTERN.fullmatch(application_commit):
+            raise ValueError(
+                "application commit must be an immutable 40-character revision"
+            )
+        if not IMAGE_DIGEST_PATTERN.fullmatch(image_digest):
+            raise ValueError("image digest must be an immutable sha256 digest")
+        if gpu != EVALUATION_GPU:
+            raise ValueError(f"evaluation GPU must be {EVALUATION_GPU}")
+        prepared_path = _prepare_checkpoint(
+            checkpoint_path,
+            environment=environment,
+            preflight_output=output / "cuda-preflight.json",
+            diagnostics_output=output,
+        )
+        write_phase(output, "evaluation_subprocess")
+        command = [
+            sys.executable,
+            "-m",
+            "vla_pick_and_place.cli",
+            "evaluate",
+            "--output",
+            str(output),
+            "--application-commit",
+            application_commit,
+            "--image-digest",
+            image_digest,
+            "--gpu",
+            gpu,
+        ]
+        offline = offline_environment(environment)
+        offline["VLA_CHECKPOINT_PATH"] = str(prepared_path)
+        run(command, check=True, env=offline)
+        write_phase(output, "evaluation_complete", status="completed")
+        print("EVALUATION COMPLETE; WAITING FOR CONTROLLER DELETION", flush=True)
+        hold()
+    except Exception as error:
+        if _failure_snapshot(output) == failure_before:
+            write_failure(
+                output,
+                error,
+                environment=environment,
+                return_code=getattr(error, "returncode", None),
+            )
+        raise
+
+
+def _required_environment(name: str) -> str:
+    value = os.environ.get(name, "").strip()
+    if not value:
+        raise RuntimeError(f"{name} is required for evaluation startup")
+    return value
+
+
 def main() -> None:
     checkpoint_path = Path(
         os.environ.get("VLA_CHECKPOINT_PATH", "/models/pi05-libero-v044")
@@ -214,7 +293,20 @@ def main() -> None:
             environment=os.environ,
         )
         return
-    raise RuntimeError("VLA_STARTUP_MODE must be gateway or feasibility")
+    if mode == "evaluation":
+        output = Path(
+            os.environ.get("VLA_EVALUATION_OUTPUT", "/models/issue-69-evaluation")
+        )
+        launch_evaluation(
+            checkpoint_path=checkpoint_path,
+            output=output,
+            application_commit=_required_environment("VLA_APPLICATION_COMMIT"),
+            image_digest=_required_environment("VLA_IMAGE_DIGEST"),
+            gpu=_required_environment("VLA_GPU_NAME"),
+            environment=os.environ,
+        )
+        return
+    raise RuntimeError("VLA_STARTUP_MODE must be gateway, feasibility, or evaluation")
 
 
 if __name__ == "__main__":

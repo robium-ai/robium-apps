@@ -125,12 +125,15 @@ compute was used after that licensing gate failed.
 | --- | --- |
 | Publication self-reference | PASS: the manifest no longer requires its own future commit hash; a separately schema-validated pointer pins the final 40-character dataset revision and manifest SHA-256 |
 | Publication command order | PASS: `evaluate` records 20 immutable-input episodes, `finalize-publication` validates hashes and measured cost, and `record-publication` runs only after the Hub revision exists |
+| Immutable evaluation startup | PASS: exact app commit, image digest, and RTX PRO 4500 identity are validated before CUDA; the compiled evaluator receives an offline, token-free environment; artifacts and `evaluation_complete` persist on the network volume; only the lightweight parent waits for controller deletion |
+| No-retry restart guard | PASS: diagnostics may precede evaluation, but any existing episode video/record, evaluation-run metadata, or manifest makes the evaluator refuse to retry or overwrite measured output |
 | Runtime profiles | PASS: feasibility and paid evaluation select compiled execution; the real gateway defaults to explicit eager execution |
 | First visible update | PASS: the rollout generator emits `starting` before waiting for the first simulator frame and keeps the run control noninteractive while active |
 | Duplicate rollout | PASS: a concurrent request returns a readable `busy` state and does not expose `RolloutBusyError` to the visitor |
-| Full local regression | PASS: doctor, 41 tests, deterministic five-frame fake smoke, Python compileall, Ruff check/format, and `git diff --check` |
-| Linux/amd64 CPU image | PASS: rebuilt immutable local manifest `sha256:95a9fcbddc73d0ed91096c6f7a18a4fee19cda05bf9bc32c1f2f8825cfacd9c2` |
-| Linux/amd64 GPU image | PASS: full pinned CUDA/LeRobot/LIBERO target rebuilt locally as manifest `sha256:891ee6e29a61cb44f45ae4ec6468d9e970db9460bd5904b0d517ca0f3837b82c` |
+| Full local regression | PASS: doctor, 46 tests, deterministic five-frame fake smoke, Python compileall, Ruff check/format, and `git diff --check` |
+| Linux/amd64 CPU image | PASS: rebuilt immutable local manifest `sha256:c4987ec8a88055822260e9530763c39f5d831db13fac6c98328489067e9643ca` |
+| Linux/amd64 GPU image | PASS: full pinned CUDA/LeRobot/LIBERO/evaluation-startup target rebuilt locally as manifest `sha256:4ca784599854e2c95d5241bdf65cbda03064724aa09236a410f670fa304b57a4` |
+| Rebuild cache contract | PASS: dependency sync uses BuildKit uv cache mounts and README/source layers follow the locked dependency layer, so content-only changes do not invalidate the multi-gigabyte environment |
 | Protected container lifecycle | PASS: unscoped and foreign routes returned 404; the protected UI loaded; one rollout returned simulator success and nonblank frames; shutdown returned before the container exited |
 
 No Cloud Build, registry publication, RunPod allocation, Hugging Face upload,
