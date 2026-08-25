@@ -66,6 +66,7 @@ COPY --from=gpu-builder /app/test-assets /app/test-assets
 COPY --from=gpu-builder /opt/libero /opt/libero
 COPY docker/libero-config.yaml /app/libero-config/config.yaml
 ENV VLA_RUNTIME_MODE=real \
+    VLA_POLICY_EXECUTION=eager \
     VLA_CHECKPOINT_PATH=/models/pi05-libero-v044 \
     VLA_STAGED_CHECKPOINT_PATH=/tmp/pi05-libero-v044 \
     VLA_GATEWAY_PORT=8765 \

@@ -113,7 +113,8 @@ def _default_runner() -> RolloutRunner:
     if mode == "real":
         from vla_pick_and_place.real import build_real_runner
 
-        return build_real_runner()
+        execution_profile = os.environ.get("VLA_POLICY_EXECUTION", "eager")
+        return build_real_runner(execution_profile=execution_profile)
     raise RuntimeError("VLA_RUNTIME_MODE must be fake or real")
 
 

@@ -9,10 +9,9 @@
     "evidence_dataset": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["repo_id", "revision"],
+      "required": ["repo_id"],
       "properties": {
-        "repo_id": {"type": "string", "minLength": 1},
-        "revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+        "repo_id": {"const": "robium-ai/pi05-libero-goal-task-8-evidence"}
       }
     },
     "result": {

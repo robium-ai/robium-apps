@@ -37,6 +37,17 @@ REQUIRED_CHECKPOINT_FILES = (
 )
 
 
+def configure_execution_profile(profile: str) -> None:
+    """Select deterministic compiled benchmark or low-latency interactive execution."""
+    if profile == "compiled":
+        os.environ.pop("TORCHDYNAMO_DISABLE", None)
+        return
+    if profile == "eager":
+        os.environ["TORCHDYNAMO_DISABLE"] = "1"
+        return
+    raise ValueError("VLA_POLICY_EXECUTION must be compiled or eager")
+
+
 def _batch_nested_arrays(value: Any) -> Any:
     if isinstance(value, Mapping):
         return {key: _batch_nested_arrays(item) for key, item in value.items()}
@@ -193,7 +204,8 @@ class Pi05PolicyAdapter:
         return action.to("cpu").numpy()[0]
 
 
-def build_real_runner() -> RolloutRunner:
+def build_real_runner(*, execution_profile: str = "compiled") -> RolloutRunner:
+    configure_execution_profile(execution_profile)
     if os.environ.get("MUJOCO_GL") != "egl":
         raise RuntimeError("real headless runtime requires MUJOCO_GL=egl")
     checkpoint_path = Path(

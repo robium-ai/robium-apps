@@ -118,3 +118,21 @@ this remediation. Paid revalidation remains a separate approval gate.
 The gated tokenizer file download is not a free PASS: the configured Hugging
 Face account returned HTTP 403. No image was published and no further cloud
 compute was used after that licensing gate failed.
+
+## Publication and interactive-latency remediation — 2026-08-24
+
+| Gate | Result |
+| --- | --- |
+| Publication self-reference | PASS: the manifest no longer requires its own future commit hash; a separately schema-validated pointer pins the final 40-character dataset revision and manifest SHA-256 |
+| Publication command order | PASS: `evaluate` records 20 immutable-input episodes, `finalize-publication` validates hashes and measured cost, and `record-publication` runs only after the Hub revision exists |
+| Runtime profiles | PASS: feasibility and paid evaluation select compiled execution; the real gateway defaults to explicit eager execution |
+| First visible update | PASS: the rollout generator emits `starting` before waiting for the first simulator frame and keeps the run control noninteractive while active |
+| Duplicate rollout | PASS: a concurrent request returns a readable `busy` state and does not expose `RolloutBusyError` to the visitor |
+| Full local regression | PASS: doctor, 41 tests, deterministic five-frame fake smoke, Python compileall, Ruff check/format, and `git diff --check` |
+| Linux/amd64 CPU image | PASS: rebuilt immutable local manifest `sha256:95a9fcbddc73d0ed91096c6f7a18a4fee19cda05bf9bc32c1f2f8825cfacd9c2` |
+| Linux/amd64 GPU image | PASS: full pinned CUDA/LeRobot/LIBERO target rebuilt locally as manifest `sha256:891ee6e29a61cb44f45ae4ec6468d9e970db9460bd5904b0d517ca0f3837b82c` |
+| Protected container lifecycle | PASS: unscoped and foreign routes returned 404; the protected UI loaded; one rollout returned simulator success and nonblank frames; shutdown returned before the container exited |
+
+No Cloud Build, registry publication, RunPod allocation, Hugging Face upload,
+or other paid compute was used for this remediation. The 20-episode evaluation
+remains a separate paid-compute and public-publication approval gate.

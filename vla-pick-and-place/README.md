@@ -16,8 +16,8 @@ revalidation on an RTX PRO 4500 on 2026-08-24 passed the exact offline
 checkpoint/tokenizer load, one canonical LIBERO episode, RunPod's HTTPS proxy,
 capability isolation, and cooperative cancellation. With the default
 `torch.compile` path enabled, the measured episode succeeded in 75 steps, used
-7,691,964,928 peak allocated VRAM bytes, and produced 76 frames. All 35 free
-tests pass. The private RunPod template is pinned to the validated image digest
+7,691,964,928 peak allocated VRAM bytes, and produced 76 frames. All free tests
+pass. The private RunPod template is pinned to the validated image digest
 with `VLA_LIVE_ENABLED=false`. Production live sessions remain disabled pending
 separate operator approval.
 
@@ -38,6 +38,13 @@ and loaded offline; neither is baked into the image. The image sets
 checkout under `/opt/libero`, and hydrates the locked wheel's assets, so startup
 never prompts for local input or resolves module-relative files from an
 incomplete wheel.
+
+Feasibility and publication evaluation keep the checkpoint's compiled execution
+path. The interactive gateway explicitly uses eager execution because the
+measured first compiled action spent about 281 seconds in TorchInductor while
+warm/eager actions took only a few seconds. The browser receives an immediate
+starting state, the rollout button is disabled while work is active, and a
+duplicate request becomes a readable busy state instead of a traceback.
 
 ## Free local workflow
 
@@ -96,9 +103,31 @@ seeds 1000–1019; environment and policy reset before every episode; no retries
 are permitted. The target is 16/20. A lower technically valid score is
 published unchanged with a prominent warning.
 
-`evidence/manifest.schema.json` defines the committed evidence contract. The
-eventual public Hugging Face dataset contains every MP4 and per-episode record;
-Git contains only the validated manifest, summary, schema, and three previews.
+`evidence/manifest.schema.json` defines the evidence manifest and
+`evidence/publication.schema.json` defines the immutable publication pointer.
+The eventual public Hugging Face dataset contains every MP4, per-episode record,
+and the validated manifest. After upload, Git records the final 40-character
+dataset revision and manifest hash in `evidence/publication.json`; the manifest
+cannot contain its own content-dependent Git revision. Git otherwise keeps only
+the result summary, schemas, manifest, and three previews.
+
+The paid publication commands are intentionally split so the dataset revision
+is resolved only after the complete bundle exists:
+
+```bash
+python -m vla_pick_and_place.cli evaluate \
+  --output /evidence \
+  --application-commit <40-character-app-commit> \
+  --image-digest sha256:<64-hex-image-digest> \
+  --gpu "NVIDIA RTX PRO 4500 Blackwell Server Edition"
+python -m vla_pick_and_place.cli finalize-publication \
+  --output /evidence --cost-usd <measured-runpod-cost>
+# Upload and verify /evidence, then resolve its immutable Hub revision.
+python -m vla_pick_and_place.cli record-publication \
+  --manifest /evidence/manifest.json \
+  --dataset-revision <40-character-hub-revision> \
+  --output evidence/publication.json
+```
 
 ## Architecture and upstream guidance
 

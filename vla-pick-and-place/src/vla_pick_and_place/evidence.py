@@ -54,7 +54,6 @@ def _is_git_revision(value: str) -> bool:
 def build_publication_manifest(
     episodes: list[EpisodeEvidence],
     *,
-    dataset_revision: str,
     application_commit: str,
     image_digest: str,
     gpu: str,
@@ -78,7 +77,6 @@ def build_publication_manifest(
         "schema_version": "1.0.0",
         "evidence_dataset": {
             "repo_id": "robium-ai/pi05-libero-goal-task-8-evidence",
-            "revision": dataset_revision,
         },
         "result": {
             "successes": successes,
@@ -145,11 +143,42 @@ def validate_publication_manifest(
     for key in ("checkpoint", "lerobot", "libero", "application"):
         if not _is_git_revision(manifest["revisions"][key]):
             raise ValueError(f"{key} must be an immutable 40-character revision")
-    if not _is_git_revision(manifest["evidence_dataset"]["revision"]):
-        raise ValueError("evidence dataset must use an immutable revision")
     for episode in manifest["episodes"]:
         if episode["seed"] != 1000 + episode["state_id"]:
             raise ValueError("state-to-seed configuration drift")
         actual = sha256_file(artifact_root / episode["video_path"])
         if actual != episode["video_sha256"]:
             raise ValueError(f"video SHA-256 mismatch: {episode['video_path']}")
+
+
+def build_publication_pointer(
+    *, dataset_revision: str, manifest_path: Path
+) -> dict[str, str]:
+    if not _is_git_revision(dataset_revision):
+        raise ValueError(
+            "evidence dataset revision must be an immutable 40-character revision"
+        )
+    return {
+        "schema_version": "1.0.0",
+        "repo_id": "robium-ai/pi05-libero-goal-task-8-evidence",
+        "revision": dataset_revision,
+        "manifest_sha256": sha256_file(manifest_path),
+    }
+
+
+def validate_publication_pointer(
+    pointer: dict[str, Any],
+    *,
+    manifest_path: Path,
+    schema: dict[str, Any] | None = None,
+) -> None:
+    if schema is None:
+        schema_path = Path(__file__).parents[2] / "evidence" / "publication.schema.json"
+        import json
+
+        schema = json.loads(schema_path.read_text())
+    jsonschema.validate(pointer, schema)
+    if not _is_git_revision(pointer["revision"]):
+        raise ValueError("evidence dataset revision must be immutable")
+    if pointer["manifest_sha256"] != sha256_file(manifest_path):
+        raise ValueError("publication manifest SHA-256 mismatch")

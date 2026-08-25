@@ -20,7 +20,10 @@ from vla_pick_and_place.diagnostics import write_failure, write_phase
 from vla_pick_and_place.evidence import (
     EpisodeEvidence,
     build_publication_manifest,
+    build_publication_pointer,
     sha256_file,
+    validate_publication_manifest,
+    validate_publication_pointer,
 )
 from vla_pick_and_place.rollout import (
     DeterministicFakePolicy,
@@ -143,7 +146,7 @@ def evaluate(args: argparse.Namespace) -> int:
 
     output: Path = args.output
     output.mkdir(parents=True, exist_ok=True)
-    runner = build_real_runner()
+    runner = build_real_runner(execution_profile="compiled")
     episodes = []
     for spec in PUBLICATION_EPISODES:
         frames = []
@@ -174,16 +177,54 @@ def evaluate(args: argparse.Namespace) -> int:
         (output / f"episode-{spec.episode_index}.json").write_text(
             json.dumps(asdict(record), indent=2) + "\n"
         )
+    run = {
+        "application_commit": args.application_commit,
+        "image_digest": args.image_digest,
+        "gpu": args.gpu,
+    }
+    (output / "evaluation-run.json").write_text(json.dumps(run, indent=2) + "\n")
+    print(
+        json.dumps(
+            {
+                "episodes": len(episodes),
+                "successes": sum(item.success for item in episodes),
+            },
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+def finalize_publication(args: argparse.Namespace) -> int:
+    output: Path = args.output
+    run = json.loads((output / "evaluation-run.json").read_text())
+    records = []
+    for index in range(20):
+        payload = json.loads((output / f"episode-{index}.json").read_text())
+        records.append(EpisodeEvidence(**payload))
     manifest = build_publication_manifest(
-        episodes,
-        dataset_revision=args.dataset_revision,
-        application_commit=args.application_commit,
-        image_digest=args.image_digest,
-        gpu=args.gpu,
+        records,
+        application_commit=run["application_commit"],
+        image_digest=run["image_digest"],
+        gpu=run["gpu"],
         cost_usd=args.cost_usd,
     )
-    (output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    validate_publication_manifest(manifest, artifact_root=output)
+    manifest_path = output / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     print(json.dumps(manifest["result"], sort_keys=True))
+    return 0
+
+
+def record_publication(args: argparse.Namespace) -> int:
+    pointer = build_publication_pointer(
+        dataset_revision=args.dataset_revision,
+        manifest_path=args.manifest,
+    )
+    validate_publication_pointer(pointer, manifest_path=args.manifest)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(pointer, indent=2) + "\n")
+    print(json.dumps(pointer, sort_keys=True))
     return 0
 
 
@@ -196,11 +237,16 @@ def parser() -> argparse.ArgumentParser:
     feasible.add_argument("--output", type=Path, required=True)
     evaluation = commands.add_parser("evaluate")
     evaluation.add_argument("--output", type=Path, required=True)
-    evaluation.add_argument("--dataset-revision", required=True)
     evaluation.add_argument("--application-commit", required=True)
     evaluation.add_argument("--image-digest", required=True)
     evaluation.add_argument("--gpu", required=True)
-    evaluation.add_argument("--cost-usd", type=float, required=True)
+    finalization = commands.add_parser("finalize-publication")
+    finalization.add_argument("--output", type=Path, required=True)
+    finalization.add_argument("--cost-usd", type=float, required=True)
+    publication = commands.add_parser("record-publication")
+    publication.add_argument("--manifest", type=Path, required=True)
+    publication.add_argument("--dataset-revision", required=True)
+    publication.add_argument("--output", type=Path, required=True)
     return root
 
 
@@ -212,7 +258,11 @@ def main() -> None:
         raise SystemExit(smoke())
     if args.command == "feasibility":
         raise SystemExit(feasibility(args.output))
-    raise SystemExit(evaluate(args))
+    if args.command == "evaluate":
+        raise SystemExit(evaluate(args))
+    if args.command == "finalize-publication":
+        raise SystemExit(finalize_publication(args))
+    raise SystemExit(record_publication(args))
 
 
 if __name__ == "__main__":

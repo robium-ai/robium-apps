@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -10,9 +11,22 @@ from vla_pick_and_place.config import (
 )
 from vla_pick_and_place.real import (
     _batch_libero_robot_state,
+    configure_execution_profile,
     validate_checkpoint_snapshot,
     validate_tied_embedding,
 )
+
+
+def test_execution_profiles_keep_benchmarks_compiled_and_gateway_eager(monkeypatch):
+    monkeypatch.setenv("TORCHDYNAMO_DISABLE", "diagnostic")
+    configure_execution_profile("compiled")
+    assert "TORCHDYNAMO_DISABLE" not in os.environ
+
+    configure_execution_profile("eager")
+    assert os.environ["TORCHDYNAMO_DISABLE"] == "1"
+
+    with pytest.raises(ValueError, match="compiled or eager"):
+        configure_execution_profile("fast-ish")
 
 
 class Parameter:

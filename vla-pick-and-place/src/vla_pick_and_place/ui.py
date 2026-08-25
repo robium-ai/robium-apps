@@ -10,12 +10,12 @@ from dataclasses import asdict
 import gradio as gr
 
 from vla_pick_and_place.config import CANONICAL_PROMPT, CURATED_STATES
-from vla_pick_and_place.rollout import RolloutEvent, RolloutRunner
+from vla_pick_and_place.rollout import RolloutBusyError, RolloutEvent, RolloutRunner
 
 
 def stream_rollout(
     runner: RolloutRunner, state_label: str, prompt: str
-) -> Iterator[tuple[object, dict]]:
+) -> Iterator[tuple[object, dict, object]]:
     state_id = next(
         state.state_id for state in CURATED_STATES if state.label == state_label
     )
@@ -32,19 +32,52 @@ def stream_rollout(
 
     threading.Thread(target=run, daemon=True).start()
     last_frame = None
+    yield (
+        None,
+        {
+            "phase": "starting",
+            "message": "Starting the rollout. The first simulator frame can take a few seconds.",
+        },
+        gr.update(interactive=False),
+    )
     while True:
         event = events.get()
         if event is None:
             break
+        if isinstance(event, RolloutBusyError):
+            yield (
+                last_frame,
+                {
+                    "phase": "busy",
+                    "message": "A rollout is already running. Wait for it to finish or cancel it, then retry.",
+                },
+                gr.update(interactive=False),
+            )
+            return
         if isinstance(event, BaseException):
-            raise event
+            yield (
+                last_frame,
+                {
+                    "phase": "failed",
+                    "message": "The rollout failed. Retry after the session returns to ready.",
+                },
+                gr.update(interactive=True),
+            )
+            return
         if event.frame is not None:
             last_frame = event.frame
-            yield last_frame, {"phase": event.phase, "step": event.step}
+            yield (
+                last_frame,
+                {
+                    "phase": event.phase,
+                    "step": event.step,
+                },
+                gr.update(interactive=False),
+            )
     result = asdict(result_box[0])
     result.pop("prompt", None)
     result.pop("action_latency_ms", None)
-    yield last_frame, result
+    yield last_frame, result, gr.update(interactive=True)
 
 
 def build_ui(runner: RolloutRunner) -> gr.Blocks:
@@ -74,8 +107,9 @@ def build_ui(runner: RolloutRunner) -> gr.Blocks:
         run.click(
             run_rollout,
             [state, prompt],
-            [frame, result],
+            [frame, result, run],
             api_name="run_rollout",
+            trigger_mode="once",
         )
         cancel.click(runner.cancel, outputs=[], api_name="cancel_rollout")
     return blocks
