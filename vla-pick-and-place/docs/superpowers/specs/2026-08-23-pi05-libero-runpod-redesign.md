@@ -202,6 +202,7 @@ Git contains only compact publication media and metadata:
 evidence/
   manifest.schema.json
   manifest.json
+  publication.json
   results.md
   previews/
     state-0.webp
@@ -212,13 +213,22 @@ evidence/
 The public Hugging Face dataset contains all 20 MP4 videos, per-episode JSON,
 the same manifest, and a README. The manifest is the source of truth and stores:
 
-- schema version and immutable Hugging Face dataset revision;
+- schema version and evidence-repository ID;
 - aggregate success count, total episodes, target, and below-target flag;
 - every episode's task, seed, fixed-state ID, prompt class, success flag,
   duration, step count, action-latency statistics, video path, and SHA-256;
 - checkpoint, LeRobot, LIBERO, app commit, image digest, GPU, and RunPod cost;
 - reproduction command plus serialized configuration; and
 - SHA-256 for every published artifact.
+
+The dataset revision cannot be embedded in the manifest committed at that same
+revision because the commit hash depends on the manifest bytes. Publication is
+therefore two-phase: upload and validate the complete dataset including the
+manifest, resolve its immutable 40-character revision, then commit
+`publication.json` in the application repository with the repository ID,
+resolved revision, and manifest SHA-256. The website pins that pointer and
+fetches the manifest from the immutable revision. This avoids a mutable branch
+reference and an impossible self-referential commit hash.
 
 Validation rejects zero episodes, any count other than 20 for a publication
 manifest, duplicate episode/state mappings, mismatched aggregate counts,
@@ -296,6 +306,14 @@ ID both match. It never mutates unrelated resources.
 
 A busy request receives a readable state, keeps recorded evidence visible, and
 offers manual retry.
+
+Interactive gateway sessions use eager Pi0.5 execution so the first visitor
+rollout does not pay the multi-minute TorchInductor compilation cost measured
+during feasibility. Feasibility and the 20-episode benchmark keep the pinned
+default compiled execution path for measurement parity. The gateway emits an
+immediate starting state, disables the rollout control while work is active,
+and converts a duplicate request into a readable busy state instead of exposing
+a traceback.
 
 ### Daily budget
 

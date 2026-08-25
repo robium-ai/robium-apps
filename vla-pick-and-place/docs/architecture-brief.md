@@ -186,12 +186,23 @@ timings, state, seed, configuration, revisions, and hash. The aggregate manifest
 derives counts from episode records and rejects zero or non-20 publication runs.
 
 The public Hugging Face dataset stores all full evidence. Git stores only the
-schema, validated manifest, result summary, three compact previews, and immutable
-dataset revision. No checkpoint, full video set, edited prompt, visitor
-observation, or visitor video is committed or retained.
+schema, validated manifest, result summary, three compact previews, and a
+`publication.json` pointer containing the immutable dataset revision plus the
+manifest hash. The revision is resolved only after the complete dataset commit;
+it is not embedded into that same manifest because a Git commit cannot contain
+its own content-dependent hash. No checkpoint, full video set, edited prompt,
+visitor observation, or visitor video is committed or retained.
 
 The article and README read measured claims from the validated manifest. They do
 not duplicate hand-entered success numbers.
+
+The real adapter has two explicit execution profiles. Feasibility and the
+20-episode publication evaluation use the checkpoint's default compiled path.
+The interactive gateway uses eager execution, based on the measured feasibility
+result where compilation dominated the first action while subsequent eager
+actions completed quickly. The UI reports starting immediately, disables the
+run control during an active episode, and renders duplicate requests as a busy
+state rather than an exception.
 
 ## 7. Robium skills per build phase
 

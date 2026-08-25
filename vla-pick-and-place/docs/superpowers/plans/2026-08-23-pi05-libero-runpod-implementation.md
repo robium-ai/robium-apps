@@ -120,12 +120,14 @@ proxy behavior, cancellation, and confirmed deletion all pass.
    seeds 1000-1019, hard resets, batch size 1, and no retries.
 2. Preserve all results and videos, including failures.
 3. Generate and validate the manifest, aggregate score, reproduction config,
-   revisions, GPU/cost data, and SHA-256 hashes.
+   revisions, GPU/cost data, and SHA-256 hashes without trying to embed the
+   dataset commit's self-referential revision.
 4. Create or update the public Hugging Face evidence dataset and upload all 20
    videos and records.
-5. Resolve the immutable dataset revision and verify every published hash.
-6. Commit only the validated manifest/schema, result summary, three compact
-   previews, and immutable dataset revision.
+5. Resolve the immutable dataset revision, verify every published hash, and
+   generate `publication.json` with that revision and the manifest SHA-256.
+6. Commit only the validated manifest/schema, publication pointer, result
+   summary, three compact previews, and immutable dataset revision.
 
 **Gate:** 20 measured episodes exist and public evidence is immutable. A score
 below 16/20 is published with the required warning, not rerun.
@@ -147,10 +149,14 @@ below 16/20 is published with the required warning, not rerun.
    below-target warning.
 6. Add a responsive demo-specific live workspace that keeps evidence visible in
    disabled, busy, budget-exhausted, unavailable, and failed states.
-7. Run the local fake-container end-to-end lifecycle.
-8. Run orchestrator unit tests, website smoke, and existing ACT, Diffusion
+7. Configure interactive gateway sessions for eager policy execution, immediate
+   starting feedback, a disabled run control while active, and a readable
+   duplicate-request busy state. Keep feasibility and publication evaluation on
+   the compiled execution path.
+8. Run the local fake-container end-to-end lifecycle.
+9. Run orchestrator unit tests, website smoke, and existing ACT, Diffusion
    Policy, Robot Navigation, app-registry, and lifecycle regressions.
-9. Commit website/orchestrator integration without enabling production live
+10. Commit website/orchestrator integration without enabling production live
    sessions.
 
 **Gate:** all mocked/local provider, security, UI, and regression checks pass.
