@@ -116,17 +116,22 @@ proxy behavior, cancellation, and confirmed deletion all pass.
 
 ## Task 6: Run and publish the paid evaluation
 
-1. Run exactly 20 sequential canonical episodes with task 8, state IDs 0-19,
+1. Add and free-test an immutable evaluation startup mode that stages the
+   verified checkpoint, invokes the fixed compiled evaluator with immutable
+   app/image/GPU inputs, persists its candidate bundle and completion marker on
+   the network volume, and waits for controller deletion without retaining the
+   model or receiving publication credentials.
+2. Run exactly 20 sequential canonical episodes with task 8, state IDs 0-19,
    seeds 1000-1019, hard resets, batch size 1, and no retries.
-2. Preserve all results and videos, including failures.
-3. Generate and validate the manifest, aggregate score, reproduction config,
+3. Preserve all results and videos, including failures.
+4. Generate and validate the manifest, aggregate score, reproduction config,
    revisions, GPU/cost data, and SHA-256 hashes without trying to embed the
    dataset commit's self-referential revision.
-4. Create or update the public Hugging Face evidence dataset and upload all 20
+5. Create or update the public Hugging Face evidence dataset and upload all 20
    videos and records.
-5. Resolve the immutable dataset revision, verify every published hash, and
+6. Resolve the immutable dataset revision, verify every published hash, and
    generate `publication.json` with that revision and the manifest SHA-256.
-6. Commit only the validated manifest/schema, publication pointer, result
+7. Commit only the validated manifest/schema, publication pointer, result
    summary, three compact previews, and immutable dataset revision.
 
 **Gate:** 20 measured episodes exist and public evidence is immutable. A score

@@ -124,6 +124,17 @@ token shapes. RunPod's Pod `runtime` and port fields remain supporting signals,
 not the sole source of truth, because the corrected feasibility attempt wrote
 valid volume evidence while those fields stayed empty.
 
+The immutable GPU entrypoint has three explicit modes: gateway-only,
+one-episode feasibility, and the fixed 20-episode publication evaluation.
+Evaluation mode receives the immutable application commit, image digest, GPU
+name, and persistent output path as validated environment inputs; stages the
+verified checkpoint to transient disk; runs the compiled evaluator offline;
+writes every candidate artifact plus a durable completion phase to the network
+volume; releases model memory when the evaluator exits; and keeps only the
+lightweight startup process alive until the controller verifies evidence and
+deletes the Pod. Hugging Face publication and final cost/revision resolution
+happen off-Pod after deletion.
+
 All Pod gateway routes live under `/c/{capability}/...`. Missing or foreign
 capabilities and unrelated paths return 404. RunPod and Hugging Face credentials
 never cross into browser payloads. The live Pod does not need a Hugging Face
