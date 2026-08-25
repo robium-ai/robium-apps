@@ -392,6 +392,47 @@ production or validation Pod was started during deployment.
 
 - [Compiler-bearing Cloud Build](https://console.cloud.google.com/cloud-build/builds/3829dc62-c144-4956-a8a0-0d2eb14c02c3?project=902570464351)
 
-The remaining paid gate is one bounded exact-image RunPod revalidation with the
-default compile path (no `TORCHDYNAMO_DISABLE`). Production remains disabled
-and requires separate explicit approval even after that gate passes.
+## Final immutable-image revalidation
+
+The operator approved one bounded validation of the exact deployed digest on
+2026-08-24. Two RunPod creation paths silently failed the storage contract
+before the successful allocation. Pod `0qnawrzk6nzb63`, created from the
+template with `runpodctl` v2.8, eventually entered a restart loop after a long
+cold pull; the supplied system logs repeatedly showed
+`PermissionError: [Errno 13] Permission denied: '/models'`. RunPod's API
+reported `networkVolume: null`. A second CLI allocation,
+`q52n2195u9a1ed`, accepted explicit network-volume and mount flags but again
+reported `networkVolume: null`, so it was deleted before startup. Direct REST
+creation could not express the inventory's exact `NVIDIA RTX PRO 4500
+Blackwell Server Edition` identifier because the current REST enum only
+accepted the non-Server-Edition name.
+
+Official GraphQL `podFindAndDeployOnDemand` then created Pod `aujvvs0earwm5l`
+with `networkVolumeId: 68s0bxbv7p`, `volumeInGb: 0`, mount path `/models`, the
+exact Server Edition GPU, registry credential, and immutable digest. The
+GraphQL response and a follow-up read both confirmed the attached 20 GB
+`US-KS-2` network volume.
+
+| Gate | Result |
+| --- | --- |
+| Exact image | **PASS**: `us-central1-docker.pkg.dev/robium-prod/robium/vla-pick-and-place@sha256:0bc3bae587da9c175f8bce667009bfb3103251e75b11898ae8666c58ec61f083` |
+| CUDA | **PASS**: RTX PRO 4500 Blackwell Server Edition, PyTorch `2.10.0+cu128`, CUDA `12.8`, compute capability `12.0`, 33,687,797,760 device bytes, tensor result `6.0` |
+| Default compile path | **PASS**: no `TORCHDYNAMO_DISABLE` override; model startup 57.6298 s |
+| Real offline episode | **PASS**: state `0`, seed `1000`, success `true`, 75 steps, 76 frames, 291.9145 s total, 7,691,964,928 peak allocated VRAM bytes |
+| Latency | mean 3,788.5189 ms, p95 251.8201 ms, max 281,065.3675 ms; the first compiled action dominates the mean and max |
+| Video evidence | **PASS**: SHA-256 `a05ab41731ee300366aa5ef849a8e446359fb33af385dee74e53e66e871e9610`, independently matched after download |
+| Proxy isolation | **PASS**: root 404, foreign capability 404, scoped UI 200, claim/status ready |
+| Cancellation | **PASS** on separate state `2` rollout: reached running, cancel returned `cancelling: true`, result returned `cancelled: true`, `success: null`, `steps: 0`, `frame_count: 1`, final status ready |
+| Cleanup | **PASS**: all three temporary Pods deleted, authoritative Pod count zero, temporary S3 evidence prefixes empty, persistent checkpoint volume preserved |
+| Cost | Balance moved from `$20.8771312613` before this validation block to `$20.3156361353` after cleanup, an observed-window delta of `$0.5614951260` including the two failed allocations; only the persistent volume's `$0.002/hour` spend remained |
+
+The private template remains pinned to the validated digest with
+`VLA_LIVE_ENABLED=false`. The next paid gate is the issue's exact 20-episode
+public evaluation and evidence publication. Production live sessions remain a
+separate operator approval and were not enabled.
+
+RunPod API references used during recovery:
+
+- [Pod create REST API](https://docs.runpod.io/api-reference/pods/POST/pods)
+- [GraphQL Pod management](https://docs.runpod.io/sdks/graphql/manage-pods)
+- [RunPod GraphQL schema](https://graphql-spec.dev.runpod.io/)

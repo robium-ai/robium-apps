@@ -11,18 +11,15 @@ run is a complete autonomous rollout: there is no pause, manual stepping,
 scene editing, or multi-task selector. Frames come from the simulator and the
 result comes only from LIBERO's sparse success signal.
 
-The public 20-episode evaluation is not claimed. Interactive revalidation on an
-RTX PRO 4500 on 2026-08-24 passed the exact offline checkpoint/tokenizer load,
-one canonical LIBERO episode, RunPod's HTTPS proxy, capability isolation, and
-cooperative cancellation. The measured episode succeeded in 75 steps, used
-7,647,661,056 peak allocated VRAM bytes, and produced 76 frames. That session
-also identified two final image corrections: nested direct-LIBERO robot state
-must be batched at the adapter boundary, and the runtime needs the compiler and
-Python headers expected by pinned LeRobot's `torch.compile` path. All 35 free
-tests pass. The corrected immutable image was built and the private RunPod
-template was updated to its exact digest with `VLA_LIVE_ENABLED=false`; one
-bounded exact-image revalidation remains before production approval. Production
-live sessions remain disabled pending separate operator approval.
+The public 20-episode evaluation is not claimed. Final immutable-image
+revalidation on an RTX PRO 4500 on 2026-08-24 passed the exact offline
+checkpoint/tokenizer load, one canonical LIBERO episode, RunPod's HTTPS proxy,
+capability isolation, and cooperative cancellation. With the default
+`torch.compile` path enabled, the measured episode succeeded in 75 steps, used
+7,691,964,928 peak allocated VRAM bytes, and produced 76 frames. All 35 free
+tests pass. The private RunPod template is pinned to the validated image digest
+with `VLA_LIVE_ENABLED=false`. Production live sessions remain disabled pending
+separate operator approval.
 
 ## What is pinned
 
