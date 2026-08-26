@@ -27,7 +27,10 @@ rollout, active cancellation, and confirmed Pod deletion all passed. See
 Production admits up to three isolated visitor Pods concurrently. An atomic
 reservation ledger closes the fleet before provider creation, while the existing
 $5 UTC-day budget, ten-minute ready window, and twenty-minute hard expiry remain
-fail-closed.
+fail-closed. The bounded three-slot smoke allocated three RTX PRO 4500 SE Pods
+and rejected a fourth request; one reached ready while two hit the cold-boot
+timeout under concurrent shared-volume load. That smoke also drove fixes for
+per-session diagnostic paths and immediate release of reconciled reservations.
 
 ## What is pinned
 

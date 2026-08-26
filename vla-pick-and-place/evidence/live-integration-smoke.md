@@ -73,4 +73,51 @@ idle spend was only the retained network volume at `$0.002/hour`.
 
 The production browser showed `vla-live-build`, phase `IDLE`, and an enabled
 “Start private session” control after cleanup. Production remains enabled under
-the one-Pod fleet cap, ten-minute ready window, and $5 UTC-day ledger.
+the three-slot fleet cap, ten-minute ready window, and $5 UTC-day ledger.
+
+## Three-slot production capacity smoke
+
+The operator approved raising live capacity from one to three and one bounded
+three-session production smoke with no allocation retries. Application commit
+`cdcbdff` made `max_instances: 3` canonical. Website/controller commits
+`5f002d0`, `941ddc9`, `f08ce91`, and `ab290ed` added the atomic fleet guard,
+per-session diagnostics, immediate reservation release, and vanished-provider
+deletion routing discovered during the smoke.
+
+| Item | Value |
+| --- | --- |
+| Final controller revision | `demo-robot-navigation-control-00018-yik`, 100% traffic |
+| Final controller image | `us-central1-docker.pkg.dev/robium-prod/robium/demo-robot-navigation-control@sha256:e328726e26e55eedfac05ca4715517f48079deb84b9eb262bcef0066a3068ba7` |
+| Final controller Cloud Build | [`48755e15-af49-48f3-ba4e-76335380c902`](https://console.cloud.google.com/cloud-build/builds/48755e15-af49-48f3-ba4e-76335380c902?project=902570464351) |
+| Site revision | `robium-site-00036-tic`, 100% traffic |
+| Site image | `us-central1-docker.pkg.dev/robium-prod/robium/site@sha256:589a905a6d6b5ca4ccadfdb22f319083732e5c9ffbea34f135b6e13b949beeff` |
+| Site Cloud Build | [`3a8eb7aa-4208-41e0-b385-ca6d379f02ec`](https://console.cloud.google.com/cloud-build/builds/3a8eb7aa-4208-41e0-b385-ca6d379f02ec?project=902570464351) |
+
+The preflight passed with zero Pods, zero active reservations, `$19.5165281001`
+balance, `$0.002/hour` volume-only spend, and `Low` RTX PRO 4500 SE stock in
+`US-KS-2`. The controller accepted sessions `00fbddf65fe97653764aba`,
+`ca8aea0bbbc14788cca7e4`, and `67cc1ea8d35347f734b7b0`; RunPod created Pods
+`1ft1yzgh620veq`, `k4lu8tnaa5ajlw`, and `gpncldceb6t8m9`. A fourth request
+returned HTTP 429 without creating a fourth Pod.
+
+One session reached `READY`. The other two were automatically deleted at the
+eight-minute cold-boot limit. Logs proved both reached the exact immutable image
+and CUDA preflight on RTX PRO 4500 SE; concurrent shared-volume startup was too
+slow for all three to become ready. One Pod also exposed a shared diagnostic
+temp-file collision. The controller now appends the session ID to
+`VLA_DIAGNOSTIC_OUTPUT`, preventing that race for future Pods.
+
+The smoke additionally exposed stale logical capacity after automatic provider
+deletion. Reconciliation and idempotent visitor deletion now mark the atomic GCS
+reservation deleted even when the provider resource has already disappeared.
+Regression coverage rose to 50 controller tests and verifies three admitted
+sessions, fourth-session busy state, atomic reservation closure, diagnostic
+isolation, reconciliation release, and vanished-provider routing.
+
+Final checks returned zero RunPod Pods, zero active reservations, all three
+reservation deletion timestamps present, controller `available: true` with
+`maxInstances: 3`, public `vla-live-build`, and the “Three isolated GPU slots”
+copy. Account balance at the final reconciliation was `$19.1962875891`, an
+observed delta of `$0.3202405110`; RunPod billing aggregation was still lagging, so that
+balance delta is the conservative observed cost. Continuing idle spend remains
+the retained volume at `$0.002/hour`.
