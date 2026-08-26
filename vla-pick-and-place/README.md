@@ -20,6 +20,10 @@ seconds. The complete public evidence is pinned at [Hugging Face revision
 with the checked-in summary and previews in [evidence/results.md](evidence/results.md).
 The private RunPod template remains pinned with `VLA_LIVE_ENABLED=false`.
 Production live sessions remain disabled pending separate operator approval.
+The final private RunPod integration smoke passed on 2026-08-26 with immutable
+image digest `sha256:4613c522…606a`: capability isolation, a genuine state-0
+rollout, active cancellation, and confirmed Pod deletion all passed. See
+[evidence/live-integration-smoke.md](evidence/live-integration-smoke.md).
 
 ## What is pinned
 

@@ -107,12 +107,14 @@ Inside the Pod, simulator, policy, rollout coordinator, evidence hooks, and UI
 communicate by direct Python calls and in-process queues. Frames remain in memory
 and are encoded only for the Gradio stream/video writer.
 
-The orchestrator uses RunPod's authenticated REST API to provision and delete
-Pods and query billing. It polls the capability-scoped gateway only for coarse
-readiness/status. After allocation it returns the direct RunPod proxy host plus
-capability path to the browser. The browser then talks directly to the Pod for
-claim, status, UI assets, API calls, and streaming. The orchestrator is not in
-the frame/action path.
+The orchestrator uses RunPod's authenticated GraphQL API for Pod creation
+because the current REST create endpoint rejects the exact Server Edition GPU
+inventory ID and cannot express this proven template/volume contract. It uses
+the REST API for Pod reads, deletion, and billing. It polls the
+capability-scoped gateway only for coarse readiness/status. After allocation it
+returns the direct RunPod proxy host plus capability path to the browser. The
+browser then talks directly to the Pod for claim, status, UI assets, API calls,
+and streaming. The orchestrator is not in the frame/action path.
 
 Before the gateway is reachable, startup progress is observed from durable
 volume markers: `phase.json`, `failure.json`, `cuda-preflight.json`, the
