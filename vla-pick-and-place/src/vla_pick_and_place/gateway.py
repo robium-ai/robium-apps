@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 import re
+import threading
+import time
 from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
@@ -30,10 +32,17 @@ class RolloutRequest(BaseModel):
 
 
 def create_gateway(
-    *, capability: str, runner: RolloutRunner, terminate: Callable[[], None]
+    *,
+    capability: str,
+    runner: RolloutRunner,
+    terminate: Callable[[], None],
+    ready_seconds: int = 600,
+    clock: Callable[[], float] = time.monotonic,
 ) -> FastAPI:
     if not CAPABILITY_PATTERN.fullmatch(capability):
         raise ValueError("capability must be 32-128 URL-safe characters")
+    if ready_seconds <= 0:
+        raise ValueError("ready_seconds must be positive")
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
     prefix = f"/c/{capability}"
     state = {
@@ -42,6 +51,13 @@ def create_gateway(
         "selected_state_id": None,
         "outcome": None,
     }
+    ready_started = clock()
+
+    def remaining_seconds() -> int:
+        return max(0, int(ready_seconds - (clock() - ready_started)))
+
+    def expired() -> bool:
+        return clock() - ready_started >= ready_seconds
 
     @app.post(f"{prefix}/claim")
     def claim():
@@ -52,7 +68,10 @@ def create_gateway(
     def status():
         return {
             "claimed": state["claimed"],
-            "phase": "running" if runner.busy else state["phase"],
+            "phase": (
+                "expired" if expired() else "running" if runner.busy else state["phase"]
+            ),
+            "remaining_s": remaining_seconds(),
             "selected_state_id": state["selected_state_id"],
             "outcome": state["outcome"],
         }
@@ -63,6 +82,8 @@ def create_gateway(
 
     @app.post(f"{prefix}/rollout")
     def rollout(request: RolloutRequest):
+        if expired():
+            raise HTTPException(status_code=410, detail="session expired")
         frames = []
         state["selected_state_id"] = request.state_id
         state["phase"] = "running"
@@ -121,10 +142,21 @@ def _default_runner() -> RolloutRunner:
 def main() -> None:
     capability = os.environ.get("VLA_CAPABILITY", "")
     port = int(os.environ.get("VLA_GATEWAY_PORT", "8765"))
+    ready_seconds = int(os.environ.get("VLA_READY_SECONDS", "600"))
+
+    def terminate() -> None:
+        os._exit(0)
+
     app = create_gateway(
-        capability=capability, runner=_default_runner(), terminate=lambda: os._exit(0)
+        capability=capability,
+        runner=_default_runner(),
+        terminate=terminate,
+        ready_seconds=ready_seconds,
     )
     print("DEMO READY", flush=True)
+    timer = threading.Timer(ready_seconds, terminate)
+    timer.daemon = True
+    timer.start()
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
 
 

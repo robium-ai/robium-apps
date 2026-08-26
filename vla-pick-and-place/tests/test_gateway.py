@@ -59,3 +59,29 @@ def test_streamed_fake_rollout_returns_frames_and_simulator_outcome(tmp_path):
     assert body["success"] is True
     assert body["frame_count"] > 0
     assert body["prompt_class"] == "benchmark-supported"
+
+
+def test_ready_window_reports_remaining_time_and_refuses_expired_rollouts(tmp_path):
+    now = [100.0]
+    runner = RolloutRunner(
+        FixtureEnvironment(tmp_path, success=True), DeterministicFakePolicy()
+    )
+    client = TestClient(
+        create_gateway(
+            capability=CAPABILITY,
+            runner=runner,
+            terminate=lambda: None,
+            ready_seconds=10,
+            clock=lambda: now[0],
+        )
+    )
+    path = f"/c/{CAPABILITY}"
+    assert client.get(f"{path}/status").json()["remaining_s"] == 10
+    now[0] = 110.0
+    assert client.get(f"{path}/status").json()["phase"] == "expired"
+    response = client.post(
+        f"{path}/rollout",
+        json={"state_id": 0, "prompt": "put the bowl on the plate"},
+    )
+    assert response.status_code == 410
+    assert response.json() == {"detail": "session expired"}
