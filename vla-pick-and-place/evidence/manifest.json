@@ -1,0 +1,383 @@
+{
+  "schema_version": "1.0.0",
+  "evidence_dataset": {
+    "repo_id": "robium/pi05-libero-goal-task-8-evidence"
+  },
+  "result": {
+    "successes": 20,
+    "episodes": 20,
+    "target_successes": 16,
+    "below_target": false
+  },
+  "benchmark": {
+    "suite": "libero_goal",
+    "task_id": 8,
+    "task_name": "put_the_bowl_on_the_plate",
+    "prompt": "put the bowl on the plate",
+    "prompt_class": "benchmark-supported",
+    "batch_size": 1,
+    "max_steps": 300,
+    "n_action_steps": 10
+  },
+  "revisions": {
+    "checkpoint_id": "lerobot/pi05_libero_finetuned_v044",
+    "checkpoint": "8e174154ef5f6c60a8da12ae99c303d8963138c1",
+    "lerobot": "8fff0fde7c79f23a93d845d1a50e985de01f8b8a",
+    "libero": "8f1084e3132a39270c3a13ebe37270a43ece2a01",
+    "application": "9aba9cba20ea18e5b98f95ccce65f242bc2a8eff",
+    "image": "sha256:1301937ab020a8120b54aefd680f40ed4191857406e9cb1e73816bfaf1270f0c"
+  },
+  "compute": {
+    "gpu": "NVIDIA RTX PRO 4500 Blackwell Server Edition",
+    "runpod_cost_usd": 0.2252055332
+  },
+  "episodes": [
+    {
+      "episode_index": 0,
+      "state_id": 0,
+      "seed": 1000,
+      "success": true,
+      "duration_seconds": 239.238975035958,
+      "steps": 80,
+      "action_latency_ms": {
+        "mean": 2904.144859102962,
+        "p95": 74.49185498990119,
+        "max": 231214.32969497982
+      },
+      "video_path": "episode-0.mp4",
+      "video_sha256": "43f1aa11b8ca00afbc2c5ab91f1cf04f65ad8b6b08e5566e11358e1765a95b2e"
+    },
+    {
+      "episode_index": 1,
+      "state_id": 1,
+      "seed": 1001,
+      "success": true,
+      "duration_seconds": 6.74693509505596,
+      "steps": 76,
+      "action_latency_ms": {
+        "mean": 13.518241595623916,
+        "p95": 74.08778602257371,
+        "max": 118.09481889940798
+      },
+      "video_path": "episode-1.mp4",
+      "video_sha256": "4fc49c544977c1848a22cb48ded28ec7dd937bc813f4cffce27854638b90f9d2"
+    },
+    {
+      "episode_index": 2,
+      "state_id": 2,
+      "seed": 1002,
+      "success": true,
+      "duration_seconds": 6.337609570007771,
+      "steps": 77,
+      "action_latency_ms": {
+        "mean": 19.524405391390932,
+        "p95": 125.5953130312264,
+        "max": 141.41041797120124
+      },
+      "video_path": "episode-2.mp4",
+      "video_sha256": "ab8a707d78749f86dd4577b276eb9002ff0d16784b6248bbd4cd91fd65c76b68"
+    },
+    {
+      "episode_index": 3,
+      "state_id": 3,
+      "seed": 1003,
+      "success": true,
+      "duration_seconds": 6.092820410965942,
+      "steps": 71,
+      "action_latency_ms": {
+        "mean": 15.509521362411094,
+        "p95": 74.91085596848279,
+        "max": 140.816458966583
+      },
+      "video_path": "episode-3.mp4",
+      "video_sha256": "60bc331e6175f6f18cd7eddc1d7e7739de43d1a9df0d0799838990ae4acec87c"
+    },
+    {
+      "episode_index": 4,
+      "state_id": 4,
+      "seed": 1004,
+      "success": true,
+      "duration_seconds": 6.201051355921663,
+      "steps": 74,
+      "action_latency_ms": {
+        "mean": 16.26502859840371,
+        "p95": 74.93815594352782,
+        "max": 123.58039000537246
+      },
+      "video_path": "episode-4.mp4",
+      "video_sha256": "28304095a96d4c9dc2681a4f678c02917b6b32410eae3d4f54b32ca300b6cd50"
+    },
+    {
+      "episode_index": 5,
+      "state_id": 5,
+      "seed": 1005,
+      "success": true,
+      "duration_seconds": 6.41539943695534,
+      "steps": 75,
+      "action_latency_ms": {
+        "mean": 14.769027389896413,
+        "p95": 75.21825097501278,
+        "max": 80.06809093058109
+      },
+      "video_path": "episode-5.mp4",
+      "video_sha256": "37aff82bc5e674fd4d7ad8dd02c621457c98b58dc1a6e2a94eadc1ce89c89cf3"
+    },
+    {
+      "episode_index": 6,
+      "state_id": 6,
+      "seed": 1006,
+      "success": true,
+      "duration_seconds": 6.588957499945536,
+      "steps": 70,
+      "action_latency_ms": {
+        "mean": 23.974119002066022,
+        "p95": 95.26899503543973,
+        "max": 203.69398791808635
+      },
+      "video_path": "episode-6.mp4",
+      "video_sha256": "0e04d14f8b869593a0383629849995a6468ac8c86e08af648f1bb5cca8815288"
+    },
+    {
+      "episode_index": 7,
+      "state_id": 7,
+      "seed": 1007,
+      "success": true,
+      "duration_seconds": 6.264976046979427,
+      "steps": 77,
+      "action_latency_ms": {
+        "mean": 14.511059274195464,
+        "p95": 74.95420007035136,
+        "max": 78.61182501073927
+      },
+      "video_path": "episode-7.mp4",
+      "video_sha256": "80bfb18099091a77e343c514597f3c88aef3986c0d8a8cc018e46d3b07a0dbb4"
+    },
+    {
+      "episode_index": 8,
+      "state_id": 8,
+      "seed": 1008,
+      "success": true,
+      "duration_seconds": 6.208059201017022,
+      "steps": 76,
+      "action_latency_ms": {
+        "mean": 12.708198161195277,
+        "p95": 74.06105706468225,
+        "max": 139.79834003839642
+      },
+      "video_path": "episode-8.mp4",
+      "video_sha256": "2f80df3b1723f2a702ca8b98c67717690838c11ccd4458bbee0d492ae4fb1d8e"
+    },
+    {
+      "episode_index": 9,
+      "state_id": 9,
+      "seed": 1009,
+      "success": true,
+      "duration_seconds": 6.209648323012516,
+      "steps": 73,
+      "action_latency_ms": {
+        "mean": 15.857843655059497,
+        "p95": 74.79525392409414,
+        "max": 136.7385300109163
+      },
+      "video_path": "episode-9.mp4",
+      "video_sha256": "ca2d2e749a049f50a4feb97fe22228717bbbf47290f4f4ae6915d73da7cc2801"
+    },
+    {
+      "episode_index": 10,
+      "state_id": 10,
+      "seed": 1010,
+      "success": true,
+      "duration_seconds": 6.414085712982342,
+      "steps": 77,
+      "action_latency_ms": {
+        "mean": 15.244647323807047,
+        "p95": 79.38439899589866,
+        "max": 135.58322098106146
+      },
+      "video_path": "episode-10.mp4",
+      "video_sha256": "dabe3f1c9751c60feb234e348324a648ab517ea0453c0d0a416cd57dd21a33eb"
+    },
+    {
+      "episode_index": 11,
+      "state_id": 11,
+      "seed": 1011,
+      "success": true,
+      "duration_seconds": 6.306467333924957,
+      "steps": 72,
+      "action_latency_ms": {
+        "mean": 15.76271558587905,
+        "p95": 74.64134704787284,
+        "max": 77.79639703221619
+      },
+      "video_path": "episode-11.mp4",
+      "video_sha256": "4dc885fde421fede71d864e61f818eb90315d0ac7db719f8496f6f60f7ae3486"
+    },
+    {
+      "episode_index": 12,
+      "state_id": 12,
+      "seed": 1012,
+      "success": true,
+      "duration_seconds": 6.307990328990854,
+      "steps": 76,
+      "action_latency_ms": {
+        "mean": 14.207782183994391,
+        "p95": 75.15917299315333,
+        "max": 82.14608707930893
+      },
+      "video_path": "episode-12.mp4",
+      "video_sha256": "567c0511428b3cd8b5a624d2e00f84cdf0e2de565471beebf659d5d0e813c79c"
+    },
+    {
+      "episode_index": 13,
+      "state_id": 13,
+      "seed": 1013,
+      "success": true,
+      "duration_seconds": 6.689299345947802,
+      "steps": 78,
+      "action_latency_ms": {
+        "mean": 15.976136644335034,
+        "p95": 78.41113698668778,
+        "max": 136.90950407180935
+      },
+      "video_path": "episode-13.mp4",
+      "video_sha256": "0721bc1ce90263a85e2fc6ad223ea6066c38b8bbb4ca79be4f14a22829db0605"
+    },
+    {
+      "episode_index": 14,
+      "state_id": 14,
+      "seed": 1014,
+      "success": true,
+      "duration_seconds": 6.179513896931894,
+      "steps": 71,
+      "action_latency_ms": {
+        "mean": 14.573793469692095,
+        "p95": 75.22369793150574,
+        "max": 139.22000396996737
+      },
+      "video_path": "episode-14.mp4",
+      "video_sha256": "36aeacae614a7d5c9bc35336dec2c03eb04020d4f47113747e62a3ba68d59299"
+    },
+    {
+      "episode_index": 15,
+      "state_id": 15,
+      "seed": 1015,
+      "success": true,
+      "duration_seconds": 6.254037958104163,
+      "steps": 77,
+      "action_latency_ms": {
+        "mean": 18.14017062039151,
+        "p95": 75.71224996354431,
+        "max": 130.8218319900334
+      },
+      "video_path": "episode-15.mp4",
+      "video_sha256": "2be9b84c28e92f1ada6e4a00d2a188d9e1211a9dc7959dbf6d1caf5887bf40d4"
+    },
+    {
+      "episode_index": 16,
+      "state_id": 16,
+      "seed": 1016,
+      "success": true,
+      "duration_seconds": 6.461535697919317,
+      "steps": 76,
+      "action_latency_ms": {
+        "mean": 18.874119495433803,
+        "p95": 75.11633809190243,
+        "max": 257.54285301081836
+      },
+      "video_path": "episode-16.mp4",
+      "video_sha256": "6e258f6be1a5e3afb98e6dded74fefc3fc7a42782e4fc0206c19b078cad078ca"
+    },
+    {
+      "episode_index": 17,
+      "state_id": 17,
+      "seed": 1017,
+      "success": true,
+      "duration_seconds": 6.344824644038454,
+      "steps": 76,
+      "action_latency_ms": {
+        "mean": 14.17484241200758,
+        "p95": 74.97089297976345,
+        "max": 78.01450905390084
+      },
+      "video_path": "episode-17.mp4",
+      "video_sha256": "dece1871c2983631081632bb3c8977cd13803e3b947b009c2bbc3ab7f151b027"
+    },
+    {
+      "episode_index": 18,
+      "state_id": 18,
+      "seed": 1018,
+      "success": true,
+      "duration_seconds": 6.362225504009984,
+      "steps": 77,
+      "action_latency_ms": {
+        "mean": 17.84934005216248,
+        "p95": 75.28761203866452,
+        "max": 136.47966692224145
+      },
+      "video_path": "episode-18.mp4",
+      "video_sha256": "15c2388701ecc87d795a7e2068af5ac1328d027ae7b10de26b1e0d7fdf2651af"
+    },
+    {
+      "episode_index": 19,
+      "state_id": 19,
+      "seed": 1019,
+      "success": true,
+      "duration_seconds": 6.394636073033325,
+      "steps": 75,
+      "action_latency_ms": {
+        "mean": 15.433948643816015,
+        "p95": 75.09793108329177,
+        "max": 136.05879491660744
+      },
+      "video_path": "episode-19.mp4",
+      "video_sha256": "40568779ffc4b66ed655263a7178fb233d919b0a1b3ba951d97e93ca489f65d0"
+    }
+  ],
+  "reproduce": {
+    "command": "python -m vla_pick_and_place.cli evaluate --output /evidence",
+    "state_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ],
+    "seeds": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004,
+      1005,
+      1006,
+      1007,
+      1008,
+      1009,
+      1010,
+      1011,
+      1012,
+      1013,
+      1014,
+      1015,
+      1016,
+      1017,
+      1018,
+      1019
+    ]
+  }
+}

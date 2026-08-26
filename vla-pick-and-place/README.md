@@ -11,15 +11,15 @@ run is a complete autonomous rollout: there is no pause, manual stepping,
 scene editing, or multi-task selector. Frames come from the simulator and the
 result comes only from LIBERO's sparse success signal.
 
-The public 20-episode evaluation is not claimed. Final immutable-image
-revalidation on an RTX PRO 4500 on 2026-08-24 passed the exact offline
-checkpoint/tokenizer load, one canonical LIBERO episode, RunPod's HTTPS proxy,
-capability isolation, and cooperative cancellation. With the default
-`torch.compile` path enabled, the measured episode succeeded in 75 steps, used
-7,691,964,928 peak allocated VRAM bytes, and produced 76 frames. All free tests
-pass. The private RunPod template is pinned to the validated image digest
-with `VLA_LIVE_ENABLED=false`. Production live sessions remain disabled pending
-separate operator approval.
+The immutable public evaluation passed **20/20 episodes** (states 0–19, seeds
+1000–1019, no retries) on an RTX PRO 4500 on 2026-08-25, exceeding the 16/20
+acceptance target. The first episode took 239.239 seconds because its first
+compiled action took 231.214 seconds; the remaining 19 episodes averaged 6.357
+seconds. The complete public evidence is pinned at [Hugging Face revision
+`d9908eb717d3e8d62ca7ba0820a825daf36fa7c0`](https://huggingface.co/datasets/robium/pi05-libero-goal-task-8-evidence/tree/d9908eb717d3e8d62ca7ba0820a825daf36fa7c0),
+with the checked-in summary and previews in [evidence/results.md](evidence/results.md).
+The private RunPod template remains pinned with `VLA_LIVE_ENABLED=false`.
+Production live sessions remain disabled pending separate operator approval.
 
 ## What is pinned
 
@@ -105,8 +105,8 @@ published unchanged with a prominent warning.
 
 `evidence/manifest.schema.json` defines the evidence manifest and
 `evidence/publication.schema.json` defines the immutable publication pointer.
-The eventual public Hugging Face dataset contains every MP4, per-episode record,
-and the validated manifest. After upload, Git records the final 40-character
+The public Hugging Face dataset contains every MP4, per-episode record, and the
+validated manifest. After upload, Git records the final 40-character
 dataset revision and manifest hash in `evidence/publication.json`; the manifest
 cannot contain its own content-dependent Git revision. Git otherwise keeps only
 the result summary, schemas, manifest, and three previews.
