@@ -54,11 +54,12 @@ commit, and every result above comes from the replacement digest
 ## Production enablement smoke
 
 The operator explicitly approved production live sessions on 2026-08-26. The
-controller revision `demo-robot-navigation-control-00008-cus` and site revision
-`robium-site-00032-zes` were promoted by exact revision ID. The site image is
-`us-central1-docker.pkg.dev/robium-prod/robium/site@sha256:0af9db57088f48717d4537d8bf490255ea032e21e392c708d82281f2ae8e4480`;
+controller revision `demo-robot-navigation-control-00008-cus` and final site
+revision `robium-site-00034-nox` were promoted by exact revision ID. The final
+site image is
+`us-central1-docker.pkg.dev/robium-prod/robium/site@sha256:1af8c4db07c4bb7cba358d5440217bd16e089b4e0927bc7932d3c029b79e3a63`;
 its Cloud Build is
-[`dbf0cc39-bc53-429c-a46c-8459f969e890`](https://console.cloud.google.com/cloud-build/builds/dbf0cc39-bc53-429c-a46c-8459f969e890?project=902570464351).
+[`703eaecc-4324-4ddd-86bd-8893d49a7552`](https://console.cloud.google.com/cloud-build/builds/703eaecc-4324-4ddd-86bd-8893d49a7552?project=902570464351).
 
 The public controller created Pod `c74qvd52y74rm6` for session
 `a99c53d8a3ad0526140fcb`. It reached `READY`, reported `remaining_s=565`, and
