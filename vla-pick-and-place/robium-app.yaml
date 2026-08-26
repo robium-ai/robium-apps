@@ -27,7 +27,7 @@ modes:
     summary: One paid 32 GB RTX PRO 4500 rollout; run only after the issue's paid preflight gate.
 
 requirements:
-  hardware: [NVIDIA RTX PRO 4500 Blackwell Server Edition 32GB]
+  hardware: [NVIDIA A40 48GB, NVIDIA RTX A6000 48GB]
   gpu: remote
   network: required
 
@@ -38,16 +38,37 @@ demo:
     provider: runpod
     demo_id: vla-pick-and-place
     title: Pi0.5 · LIBERO-Goal task 8
-    image: us-central1-docker.pkg.dev/robium-prod/robium/vla-pick-and-place@sha256:49c2a30a8fd7c88c3db0c21a18d4df785bf692affde06f2d9527b4e25ae28595
-    command: [python, -m, vla_pick_and_place.gateway]
+    local_image: robium/vla-pick-and-place:fake
+    image: us-central1-docker.pkg.dev/robium-prod/robium/vla-pick-and-place@sha256:1301937ab020a8120b54aefd680f40ed4191857406e9cb1e73816bfaf1270f0c
+    command: [/app/.venv/bin/python, -m, vla_pick_and_place.gateway]
     gateway_port: 8765
     ready_log: DEMO READY
     max_instances: 1
+    session_seconds: 600
     boot_timeout_seconds: 480
     ready_seconds: 600
     absolute_lifetime_seconds: 1200
     gpu_allowlist: [NVIDIA A40, NVIDIA RTX A6000]
-    network_volume_mount: /models
+    env:
+      VLA_LIVE_ENABLED: false
+      VLA_STARTUP_MODE: gateway
+      VLA_RUNTIME_MODE: fake
+      VLA_POLICY_EXECUTION: eager
+      VLA_CHECKPOINT_PATH: /models/pi05-libero-v044
+      VLA_STAGED_CHECKPOINT_PATH: /tmp/pi05-libero-v044
+      VLA_DIAGNOSTIC_OUTPUT: /models/issue-69-live-diagnostics
+      VLA_GATEWAY_PORT: 8765
+      HF_HUB_OFFLINE: 1
+      TRANSFORMERS_OFFLINE: 1
+      MUJOCO_GL: egl
+    runpod:
+      template_id: e56b2xl1y1
+      registry_auth_id: cmt6r3i1c004cq5uqoj4666yr
+      data_center_ids: [US-KS-2]
+      network_volume_id: 68s0bxbv7p
+      volume_mount_path: /models
+      max_hourly_rate_usd: 1.5
+      daily_budget_usd: 5
   estimated_startup_seconds: 480
 
 artifacts:

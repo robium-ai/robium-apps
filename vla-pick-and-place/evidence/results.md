@@ -43,9 +43,9 @@ validated eager profile so a visitor does not wait through this compilation.
 The following compact previews were generated directly from the immutable public
 MP4s; the public dataset remains the source of truth.
 
-| State 0 | State 10 | State 19 |
+| State 0 | State 1 | State 2 |
 | --- | --- | --- |
-| ![State 0 rollout](previews/state-0.gif) | ![State 10 rollout](previews/state-10.gif) | ![State 19 rollout](previews/state-19.gif) |
+| ![State 0 rollout](previews/state-0.gif) | ![State 1 rollout](previews/state-1.gif) | ![State 2 rollout](previews/state-2.gif) |
 
 Production live sessions remain disabled. This evaluation proves the fixed
 benchmark and immutable runtime; it does not authorize enabling live traffic.
