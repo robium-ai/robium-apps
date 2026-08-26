@@ -39,7 +39,7 @@ demo:
     demo_id: vla-pick-and-place
     title: Pi0.5 · LIBERO-Goal task 8
     local_image: robium/vla-pick-and-place:fake
-    image: us-central1-docker.pkg.dev/robium-prod/robium/vla-pick-and-place@sha256:1301937ab020a8120b54aefd680f40ed4191857406e9cb1e73816bfaf1270f0c
+    image: us-central1-docker.pkg.dev/robium-prod/robium/vla-pick-and-place@sha256:4613c5229d88d7e4bb8ce055f92db3cd71d33077a9ab1efe33c18b4bf52a606a
     command: [/app/.venv/bin/python, -m, vla_pick_and_place.gateway]
     gateway_port: 8765
     ready_log: DEMO READY
