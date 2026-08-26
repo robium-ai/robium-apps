@@ -27,7 +27,7 @@ modes:
     summary: One paid 32 GB RTX PRO 4500 rollout; run only after the issue's paid preflight gate.
 
 requirements:
-  hardware: [NVIDIA A40 48GB, NVIDIA RTX A6000 48GB]
+  hardware: [NVIDIA RTX PRO 4500 Blackwell Server Edition 32GB, NVIDIA A40 48GB, NVIDIA RTX A6000 48GB]
   gpu: remote
   network: required
 
@@ -48,7 +48,7 @@ demo:
     boot_timeout_seconds: 480
     ready_seconds: 600
     absolute_lifetime_seconds: 1200
-    gpu_allowlist: [NVIDIA A40, NVIDIA RTX A6000]
+    gpu_allowlist: [NVIDIA RTX PRO 4500 Blackwell Server Edition, NVIDIA A40, NVIDIA RTX A6000]
     env:
       VLA_LIVE_ENABLED: false
       VLA_STARTUP_MODE: gateway

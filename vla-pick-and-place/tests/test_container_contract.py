@@ -31,3 +31,12 @@ def test_gpu_image_bakes_noninteractive_libero_config() -> None:
         "datasets": "/opt/libero/libero/datasets",
         "init_states": "/opt/libero/libero/libero/init_files",
     }
+
+
+def test_live_gpu_contract_includes_the_approved_available_fallback() -> None:
+    metadata = (APP_ROOT / "robium-app.yaml").read_text()
+
+    assert (
+        "gpu_allowlist: [NVIDIA RTX PRO 4500 Blackwell Server Edition, "
+        "NVIDIA A40, NVIDIA RTX A6000]"
+    ) in metadata
