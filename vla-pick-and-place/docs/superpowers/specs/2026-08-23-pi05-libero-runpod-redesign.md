@@ -280,9 +280,10 @@ Every future production VLA Pod:
 - uses the dedicated immutable private image and RunPod template;
 - has a `robium-vla-{session}` name plus the dedicated template/cost-center
   association;
-- remains unallocatable while `VLA_LIVE_ENABLED=false`; its issue-authorized
-  production target remains the A40/RTX A6000 48 GB allowlist and is not
-  changed by this feasibility-only amendment;
+- remains unallocatable while `VLA_LIVE_ENABLED=false`; by explicit operator
+  amendment on 2026-08-25, its exact production-smoke allowlist is RTX PRO
+  4500 Blackwell Server Edition 32 GB, A40 48 GB, or RTX A6000 48 GB, with no
+  GPU outside that list and no change to the model/runtime contract;
 - runs in `US-KS-2` and attaches the configured colocated checkpoint volume at
   `/models`;
 - exposes only the configured HTTP gateway port;
