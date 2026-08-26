@@ -33,8 +33,10 @@ is the living architecture contract for implementation.
 - **Hosting:** one isolated RunPod Pod per visitor, maximum one active Pod,
   validated persistent network volume, private immutable image, existing website
   orchestrator, capability-scoped direct browser handoff.
-- **Production:** deploy with `VLA_LIVE_ENABLED=false`; live production remains
-  blocked pending separate explicit approval.
+- **Production:** the reusable RunPod template defaults to
+  `VLA_LIVE_ENABLED=false`; after explicit operator approval on 2026-08-26, the
+  production controller overrides it to `true` behind the one-Pod and $5/day
+  gates. Rollback restores the controller and site to their disabled revisions.
 - **Privacy:** do not log edited prompts, observations, or visitor videos.
   Operational logging is limited to phase, GPU, coarse timings, public state
   identifier, prompt class, simulator outcome, deletion reason, and cost.
@@ -60,7 +62,7 @@ intentional rather than an unresolved local-parity defect.
 | Checkpoint storage | Existing private RunPod network volume `68s0bxbv7p` in `US-KS-2`, mounted read-only by convention at `/models` after bootstrap; transient container-disk staging before load | checkpoint `8e174154ef5f6c60a8da12ae99c303d8963138c1`; PaliGemma tokenizer `35e4f46485b4d07967e7e9935bc3786aad50687c` | The bootstrap verifies the model hash plus the separately gated tokenizer snapshot, writes revision markers last, removes the Hub token from child processes, and switches to offline mode. Startup copies the verified 7.47 GB snapshot sequentially to container disk before LeRobot memory-maps it; random tensor reads directly from the RunPod network volume stalled after state-dict discovery. Baking weights or exposing a browser token is rejected. |
 | Evidence storage | Public Hugging Face dataset plus compact Git summary | immutable dataset revision recorded after publication | The Hub holds 20 videos and per-episode data; Git holds schema, manifest, summary, previews, and immutable revision, avoiding duplicate evidence. |
 | Feasibility compute | RunPod Secure Cloud Pod | exact `NVIDIA RTX PRO 4500 Blackwell Server Edition`, 32 GB | It is the current US candidate colocated with the proven `US-KS-2` volume. The pinned model is 7.47 GB of BF16/F32 weights at batch size 1, while the locked PyTorch 2.10 CUDA 12.8 environment supports Blackwell. The Pod must prove host-driver/device compatibility and measured peak VRAM; no fallback or model/config optimization is allowed. |
-| Production live compute | RunPod Secure Cloud Pod | disabled; exact allowlist of RTX PRO 4500 Blackwell Server Edition 32 GB, A40 48 GB, or RTX A6000 48 GB | On 2026-08-25 the operator approved the proven 32 GB RTX PRO 4500 Server Edition as a production-smoke fallback because neither 48 GB SKU was stocked with the existing `US-KS-2` volume. The immutable image, one-Pod limit, capability, budget, and lifetime contracts are unchanged. `VLA_LIVE_ENABLED=false` remains mandatory until a separate production-enable approval. |
+| Production live compute | RunPod Secure Cloud Pod | enabled; exact allowlist of RTX PRO 4500 Blackwell Server Edition 32 GB, A40 48 GB, or RTX A6000 48 GB | On 2026-08-26 the operator explicitly approved production enablement. The public lifecycle smoke passed on the available 32 GB RTX PRO 4500 Server Edition; the immutable image, one-Pod limit, capability, budget, and lifetime contracts remain unchanged. The reusable template stays default-off and the production controller owns the explicit live override. |
 | Control plane | Existing TypeScript/Fastify demo orchestrator with provider router | repository lockfile | Preserves existing Cloud Run and local Docker behavior and avoids a second lifecycle service. |
 | Budget state | RunPod billing/Pod APIs plus atomic GCS ledger | one UTC-day object per date | RunPod billing omits names/template IDs after deletion, so a durable owned-Pod mapping is required. A waiting queue or queue database is not introduced. |
 
@@ -246,4 +248,4 @@ state rather than an exception.
 | Capability prefix may be bypassed by Gradio asset/API routes | Public isolation | Route-level tests for root, assets, API, and stream with correct/missing/foreign capabilities; real smoke before deployment. |
 | Pod deletion can be delayed or fail | Cost and privacy | Delete on every terminal path, poll until absent, reconcile owned expired Pods on restart, and fail closed while an owned Pod remains. |
 | Measured 20-episode score may be below 16/20 | Headline target | Publish the valid lower score unchanged with a prominent warning and expected-failure disclosure. |
-| Production could be enabled accidentally | Unauthorized paid sessions | Default and deployed `VLA_LIVE_ENABLED=false`; tests assert disabled allocation; separate explicit approval is required to change it. |
+| Production could be enabled accidentally | Unauthorized paid sessions | The template and site build default to false; tests cover both outputs. The explicit live controller/site revisions were promoted only after operator approval and a public rollout/cancel/delete smoke. Rollback revisions remain identified. |

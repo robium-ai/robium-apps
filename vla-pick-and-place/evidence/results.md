@@ -47,5 +47,6 @@ MP4s; the public dataset remains the source of truth.
 | --- | --- | --- |
 | ![State 0 rollout](previews/state-0.gif) | ![State 1 rollout](previews/state-1.gif) | ![State 2 rollout](previews/state-2.gif) |
 
-Production live sessions remain disabled. This evaluation proves the fixed
-benchmark and immutable runtime; it does not authorize enabling live traffic.
+Production live sessions were separately approved and enabled on 2026-08-26.
+That deployment does not broaden this evaluation claim: the measured result is
+still only the fixed benchmark and immutable runtime described above.

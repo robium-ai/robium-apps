@@ -51,10 +51,25 @@ One earlier smoke Pod exposed a stale live image pin because its status lacked
 commit, and every result above comes from the replacement digest
 `sha256:4613c522…606a`. No Pod remained after either attempt.
 
-## Deployment state
+## Production enablement smoke
 
-The production controller and website are deployed with immutable image
-digests. Production reports this demo as `available=false`, `phase=DISABLED`;
-an allocation request returns HTTP 503, and the RunPod Pod list remains empty.
-`VLA_LIVE_ENABLED=false` is still the mandatory production setting. Enabling
-the one-Pod production fleet remains a separate operator approval gate.
+The operator explicitly approved production live sessions on 2026-08-26. The
+controller revision `demo-robot-navigation-control-00008-cus` and site revision
+`robium-site-00032-zes` were promoted by exact revision ID. The site image is
+`us-central1-docker.pkg.dev/robium-prod/robium/site@sha256:0af9db57088f48717d4537d8bf490255ea032e21e392c708d82281f2ae8e4480`;
+its Cloud Build is
+[`dbf0cc39-bc53-429c-a46c-8459f969e890`](https://console.cloud.google.com/cloud-build/builds/dbf0cc39-bc53-429c-a46c-8459f969e890?project=902570464351).
+
+The public controller created Pod `c74qvd52y74rm6` for session
+`a99c53d8a3ad0526140fcb`. It reached `READY`, reported `remaining_s=565`, and
+passed root/missing/foreign isolation (404), scoped status/UI/claim (200), a
+canonical state-0 success (75 steps, 76 frames, 3.439 seconds), and active
+state-1 cancellation. The visitor DELETE returned 204 and the authoritative
+RunPod list immediately returned zero active Pods. The budget reservation was
+released; provider billing was still delayed at the final check, so no
+per-session charge is invented. Account balance was `$19.5277963445`; continuing
+idle spend was only the retained network volume at `$0.002/hour`.
+
+The production browser showed `vla-live-build`, phase `IDLE`, and an enabled
+“Start private session” control after cleanup. Production remains enabled under
+the one-Pod fleet cap, ten-minute ready window, and $5 UTC-day ledger.

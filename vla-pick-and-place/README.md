@@ -18,9 +18,9 @@ compiled action took 231.214 seconds; the remaining 19 episodes averaged 6.357
 seconds. The complete public evidence is pinned at [Hugging Face revision
 `d9908eb717d3e8d62ca7ba0820a825daf36fa7c0`](https://huggingface.co/datasets/robium/pi05-libero-goal-task-8-evidence/tree/d9908eb717d3e8d62ca7ba0820a825daf36fa7c0),
 with the checked-in summary and previews in [evidence/results.md](evidence/results.md).
-The private RunPod template remains pinned with `VLA_LIVE_ENABLED=false`.
-Production live sessions remain disabled pending separate operator approval.
-The final private RunPod integration smoke passed on 2026-08-26 with immutable
+The private RunPod template remains safely pinned with `VLA_LIVE_ENABLED=false`;
+the production controller explicitly enables allocation after the operator's
+2026-08-26 approval. The final public production smoke passed with immutable
 image digest `sha256:4613c522…606a`: capability isolation, a genuine state-0
 rollout, active cancellation, and confirmed Pod deletion all passed. See
 [evidence/live-integration-smoke.md](evidence/live-integration-smoke.md).
