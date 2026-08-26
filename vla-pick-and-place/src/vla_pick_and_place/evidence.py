@@ -14,6 +14,7 @@ from vla_pick_and_place.config import (
     CANONICAL_PROMPT,
     CHECKPOINT_ID,
     CHECKPOINT_REVISION,
+    EVIDENCE_REPO_ID,
     LEROBOT_REVISION,
     LIBERO_REVISION,
     MAX_STEPS,
@@ -76,7 +77,7 @@ def build_publication_manifest(
     return {
         "schema_version": "1.0.0",
         "evidence_dataset": {
-            "repo_id": "robium-ai/pi05-libero-goal-task-8-evidence",
+            "repo_id": EVIDENCE_REPO_ID,
         },
         "result": {
             "successes": successes,
@@ -160,7 +161,7 @@ def build_publication_pointer(
         )
     return {
         "schema_version": "1.0.0",
-        "repo_id": "robium-ai/pi05-libero-goal-task-8-evidence",
+        "repo_id": EVIDENCE_REPO_ID,
         "revision": dataset_revision,
         "manifest_sha256": sha256_file(manifest_path),
     }

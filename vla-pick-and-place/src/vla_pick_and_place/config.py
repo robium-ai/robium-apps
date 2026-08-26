@@ -22,6 +22,7 @@ TOKENIZER_FILES = (
 )
 LEROBOT_REVISION = "8fff0fde7c79f23a93d845d1a50e985de01f8b8a"
 LIBERO_REVISION = "8f1084e3132a39270c3a13ebe37270a43ece2a01"
+EVIDENCE_REPO_ID = "robium/pi05-libero-goal-task-8-evidence"
 
 TASK_SUITE = "libero_goal"
 TASK_ID = 8

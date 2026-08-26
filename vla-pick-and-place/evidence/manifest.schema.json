@@ -11,7 +11,7 @@
       "additionalProperties": false,
       "required": ["repo_id"],
       "properties": {
-        "repo_id": {"const": "robium-ai/pi05-libero-goal-task-8-evidence"}
+        "repo_id": {"const": "robium/pi05-libero-goal-task-8-evidence"}
       }
     },
     "result": {

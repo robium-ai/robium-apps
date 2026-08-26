@@ -52,6 +52,9 @@ def test_publication_manifest_aggregates_simulator_results_and_validates_hashes(
 ):
     episodes = [episode(tmp_path, index, index < 16) for index in range(20)]
     manifest = build(episodes)
+    assert manifest["evidence_dataset"]["repo_id"] == (
+        "robium/pi05-libero-goal-task-8-evidence"
+    )
     assert manifest["result"] == {
         "successes": 16,
         "episodes": 20,
@@ -97,7 +100,7 @@ def test_publication_pointer_pins_final_dataset_revision_and_manifest_hash(tmp_p
 
     assert pointer == {
         "schema_version": "1.0.0",
-        "repo_id": "robium-ai/pi05-libero-goal-task-8-evidence",
+        "repo_id": "robium/pi05-libero-goal-task-8-evidence",
         "revision": "d" * 40,
         "manifest_sha256": sha256_file(manifest_path),
     }
