@@ -43,7 +43,7 @@ demo:
     command: [/app/.venv/bin/python, -m, vla_pick_and_place.gateway]
     gateway_port: 8765
     ready_log: DEMO READY
-    max_instances: 1
+    max_instances: 3
     session_seconds: 600
     boot_timeout_seconds: 480
     ready_seconds: 600

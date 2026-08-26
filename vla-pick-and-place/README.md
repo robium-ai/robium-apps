@@ -24,6 +24,10 @@ the production controller explicitly enables allocation after the operator's
 image digest `sha256:4613c522…606a`: capability isolation, a genuine state-0
 rollout, active cancellation, and confirmed Pod deletion all passed. See
 [evidence/live-integration-smoke.md](evidence/live-integration-smoke.md).
+Production admits up to three isolated visitor Pods concurrently. An atomic
+reservation ledger closes the fleet before provider creation, while the existing
+$5 UTC-day budget, ten-minute ready window, and twenty-minute hard expiry remain
+fail-closed.
 
 ## What is pinned
 

@@ -24,18 +24,18 @@ is the living architecture contract for implementation.
 - **Local development:** macOS Apple Silicon is a thin development client for
   fixtures, fake policy, replay, UI, evidence validation, and tests. It does not
   run Pi0.5 inference.
-- **Real compute:** Linux/amd64, NVIDIA CUDA, one Secure Cloud RTX PRO 4500
+- **Real compute:** Linux/amd64, NVIDIA CUDA, each session on one Secure Cloud RTX PRO 4500
   Blackwell Server Edition 32 GB in `US-KS-2`, subject to a fresh live capacity
   preflight. This inference-only choice was explicitly approved on 2026-08-24
   after exact checkpoint sizing showed 7,473,096,344 weight bytes at batch size
-  1 and larger A100/H100 paths repeatedly failed before compute. The one-Pod
-  limit and all other paid gates remain unchanged.
-- **Hosting:** one isolated RunPod Pod per visitor, maximum one active Pod,
+  1 and larger A100/H100 paths repeatedly failed before compute. Up to three
+  isolated sessions may run concurrently; all other paid gates remain unchanged.
+- **Hosting:** one isolated RunPod Pod per visitor, maximum three active Pods,
   validated persistent network volume, private immutable image, existing website
   orchestrator, capability-scoped direct browser handoff.
 - **Production:** the reusable RunPod template defaults to
   `VLA_LIVE_ENABLED=false`; after explicit operator approval on 2026-08-26, the
-  production controller overrides it to `true` behind the one-Pod and $5/day
+  production controller overrides it to `true` behind the three-slot and $5/day
   gates. Rollback restores the controller and site to their disabled revisions.
 - **Privacy:** do not log edited prompts, observations, or visitor videos.
   Operational logging is limited to phase, GPU, coarse timings, public state
@@ -62,7 +62,7 @@ intentional rather than an unresolved local-parity defect.
 | Checkpoint storage | Existing private RunPod network volume `68s0bxbv7p` in `US-KS-2`, mounted read-only by convention at `/models` after bootstrap; transient container-disk staging before load | checkpoint `8e174154ef5f6c60a8da12ae99c303d8963138c1`; PaliGemma tokenizer `35e4f46485b4d07967e7e9935bc3786aad50687c` | The bootstrap verifies the model hash plus the separately gated tokenizer snapshot, writes revision markers last, removes the Hub token from child processes, and switches to offline mode. Startup copies the verified 7.47 GB snapshot sequentially to container disk before LeRobot memory-maps it; random tensor reads directly from the RunPod network volume stalled after state-dict discovery. Baking weights or exposing a browser token is rejected. |
 | Evidence storage | Public Hugging Face dataset plus compact Git summary | immutable dataset revision recorded after publication | The Hub holds 20 videos and per-episode data; Git holds schema, manifest, summary, previews, and immutable revision, avoiding duplicate evidence. |
 | Feasibility compute | RunPod Secure Cloud Pod | exact `NVIDIA RTX PRO 4500 Blackwell Server Edition`, 32 GB | It is the current US candidate colocated with the proven `US-KS-2` volume. The pinned model is 7.47 GB of BF16/F32 weights at batch size 1, while the locked PyTorch 2.10 CUDA 12.8 environment supports Blackwell. The Pod must prove host-driver/device compatibility and measured peak VRAM; no fallback or model/config optimization is allowed. |
-| Production live compute | RunPod Secure Cloud Pod | enabled; exact allowlist of RTX PRO 4500 Blackwell Server Edition 32 GB, A40 48 GB, or RTX A6000 48 GB | On 2026-08-26 the operator explicitly approved production enablement. The public lifecycle smoke passed on the available 32 GB RTX PRO 4500 Server Edition; the immutable image, one-Pod limit, capability, budget, and lifetime contracts remain unchanged. The reusable template stays default-off and the production controller owns the explicit live override. |
+| Production live compute | RunPod Secure Cloud Pod | enabled; exact allowlist of RTX PRO 4500 Blackwell Server Edition 32 GB, A40 48 GB, or RTX A6000 48 GB | On 2026-08-26 the operator explicitly approved production enablement and then a three-slot fleet. The public lifecycle smoke passed on the available 32 GB RTX PRO 4500 Server Edition. Each visitor retains an isolated Pod; the controller enforces the three-slot cap with atomic reservations alongside the existing capability, budget, and lifetime contracts. The reusable template stays default-off and the production controller owns the explicit live override. |
 | Control plane | Existing TypeScript/Fastify demo orchestrator with provider router | repository lockfile | Preserves existing Cloud Run and local Docker behavior and avoids a second lifecycle service. |
 | Budget state | RunPod billing/Pod APIs plus atomic GCS ledger | one UTC-day object per date | RunPod billing omits names/template IDs after deletion, so a durable owned-Pod mapping is required. A waiting queue or queue database is not introduced. |
 
