@@ -1,36 +1,79 @@
 # Pi0.5 VLA pick and place
 
-This app evaluates the official
+Give the official
 [`lerobot/pi05_libero_finetuned_v044`](https://huggingface.co/lerobot/pi05_libero_finetuned_v044)
-checkpoint on one fixed benchmark: the Franka Panda in zero-based
-LIBERO-Goal task 8, `put_the_bowl_on_the_plate`.
+model one instruction — **“put the bowl on the plate”** — and watch a simulated
+Franka Panda work out the movements. Change the words, replay three starting
+scenes, or watch all 20 saved attempts.
 
-The canonical instruction is **“put the bowl on the plate.”** Edited prompts
-are allowed in the eventual live workspace but are labeled experimental. Each
-run is a complete autonomous rollout: there is no pause, manual stepping,
-scene editing, or multi-task selector. Frames come from the simulator and the
-result comes only from LIBERO's sparse success signal.
+The local application uses deterministic fixtures and does not require an
+NVIDIA GPU. Real Pi0.5 inference runs in the pinned Linux CUDA image.
 
-The immutable public evaluation passed **20/20 episodes** (states 0–19, seeds
-1000–1019, no retries) on an RTX PRO 4500 on 2026-08-25, exceeding the 16/20
-acceptance target. The first episode took 239.239 seconds because its first
-compiled action took 231.214 seconds; the remaining 19 episodes averaged 6.357
-seconds. The complete public evidence is pinned at [Hugging Face revision
-`d9908eb717d3e8d62ca7ba0820a825daf36fa7c0`](https://huggingface.co/datasets/robium/pi05-libero-goal-task-8-evidence/tree/d9908eb717d3e8d62ca7ba0820a825daf36fa7c0),
-with the checked-in summary and previews in [evidence/results.md](evidence/results.md).
-The private RunPod template remains safely pinned with `VLA_LIVE_ENABLED=false`;
-the production controller explicitly enables allocation after the operator's
-2026-08-26 approval. The final public production smoke passed with immutable
-image digest `sha256:4613c522…606a`: capability isolation, a genuine state-0
-rollout, active cancellation, and confirmed Pod deletion all passed. See
-[evidence/live-integration-smoke.md](evidence/live-integration-smoke.md).
-Production admits up to three isolated visitor Pods concurrently. An atomic
-reservation ledger closes the fleet before provider creation, while the existing
-$5 UTC-day budget, ten-minute ready window, and twenty-minute hard expiry remain
-fail-closed. The bounded three-slot smoke allocated three RTX PRO 4500 SE Pods
-and rejected a fourth request; one reached ready while two hit the cold-boot
-timeout under concurrent shared-volume load. That smoke also drove fixes for
-per-session diagnostic paths and immediate release of reconciled reservations.
+**Stack:** LeRobot 0.4.4, the official Pi0.5 LIBERO checkpoint, LIBERO, MuJoCo,
+Gradio, uv, Python 3.10, local fixtures, and a RunPod NVIDIA GPU runtime.
+
+## What you can do
+
+- Replay three fixed LIBERO starting states with the canonical instruction.
+- Edit the instruction for clearly labeled qualitative experiments.
+- Watch the complete autonomous rollout and LIBERO success signal.
+- Watch all 20 attempts and download the files used to make them.
+- Exercise prompt, state, cancellation, evidence, and private-session behavior
+  locally without allocating a GPU.
+
+We tried 20 different starting arrangements on an RTX PRO 4500. The robot put
+the bowl on the plate in all 20. Each attempt started fresh and was counted
+once; this tells you what happened in those saved runs, not what every robot
+will do in every scene.
+
+## Quick start
+
+Install [uv](https://docs.astral.sh/uv/), then run:
+
+```bash
+cd vla-pick-and-place
+./app doctor
+./app run
+```
+
+Open the capability URL printed by the launcher. The local workspace uses a
+deterministic fake policy with three compact official task-8 frames. It
+exercises the same prompt rules, state mapping, rollout lock, cancellation,
+evidence validation, gateway, and Gradio UI as the hosted path.
+
+| Command | Purpose |
+| --- | --- |
+| `./app doctor` | Check the environment and application contract |
+| `./app test` | Run the focused unit and contract tests |
+| `./app smoke` | Exercise one complete deterministic local rollout |
+| `./app run` | Start the fixture-backed workspace |
+
+## Use the policy workspace
+
+Choose state 0, 1, or 2, then run the canonical instruction. Keeping the state
+fixed makes prompt experiments comparable. Edited prompts are labeled
+experimental and do not inherit the published 20/20 result.
+
+Each run is a complete autonomous rollout. There is no manual stepping, scene
+editing, or scripted grasp controller. Frames come from the simulator, and the
+result comes only from LIBERO's sparse success signal. The interface allows one
+rollout at a time and turns a duplicate click into a readable busy state.
+
+## What happened
+
+The first attempt looked frozen for almost four minutes while PyTorch prepared
+the model for the GPU. After that one-time work, the remaining 19 attempts took
+about six seconds each.
+
+The complete set is saved at [this Hugging Face revision
+`d9908eb717d3e8d62ca7ba0820a825daf36fa7c0`](https://huggingface.co/datasets/robium/pi05-libero-goal-task-8-evidence/tree/d9908eb717d3e8d62ca7ba0820a825daf36fa7c0).
+The checked-in [result summary](evidence/results.md) explains how we ran it and
+links the three previews.
+
+The final production lifecycle smoke used immutable image digest
+`sha256:4613c522…606a` and verified capability isolation, a genuine state-0
+rollout, active cancellation, and confirmed Pod deletion. See the
+[live integration smoke](evidence/live-integration-smoke.md).
 
 ## What is pinned
 
@@ -57,18 +100,7 @@ warm/eager actions took only a few seconds. The browser receives an immediate
 starting state, the rollout button is disabled while work is active, and a
 duplicate request becomes a readable busy state instead of a traceback.
 
-## Free local workflow
-
-Local macOS does not load Pi0.5. It exercises the same prompt, state mapping,
-rollout lock, cancellation, evidence validation, gateway, and Gradio UI with a
-deterministic fake policy and three compact official task-8 frames.
-
-```bash
-./app doctor
-./app test
-./app smoke
-./app run
-```
+## Build the runtime images
 
 The local UI uses this development-only capability URL:
 
@@ -76,14 +108,14 @@ The local UI uses this development-only capability URL:
 http://127.0.0.1:8765/c/local_0123456789abcdefghijklmnopqrstuvwxyz/ui/
 ```
 
-Build the pinned Linux/amd64 CPU target before any paid gate:
+Build the pinned Linux/amd64 fixture target before any paid gate:
 
 ```bash
 ./app image-fake
 ```
 
-The GPU image target is also reproducible locally, but building or publishing
-it does not authorize a RunPod allocation:
+The GPU image target is reproducible locally. Building or publishing it does
+not authorize a RunPod allocation:
 
 ```bash
 ./app image-gpu
@@ -149,6 +181,29 @@ artifact makes startup fail closed so a restarted Pod cannot silently retry or
 overwrite a measured episode. Hugging Face credentials are not passed into the
 evaluation subprocess; upload and final cost/revision resolution happen after
 the Pod is deleted.
+
+## Testing
+
+| Command | Purpose |
+| --- | --- |
+| `./app test` | Run the 48 focused unit and contract tests |
+| `./app smoke` | Complete a fixture-backed rollout through the local UI |
+| `make image-contract-smoke` | Verify both fixture and GPU image contracts |
+
+Paid GPU gates remain separate from local testing. The immutable publication
+bundle and [live integration smoke](evidence/live-integration-smoke.md) record
+the real-platform checks that cannot run on macOS.
+
+## Hosting
+
+The website controller allocates one capability-protected RunPod Pod per
+visitor. Production admits up to three concurrent sessions, closes reservations
+before provider creation, and fails closed at the $5 UTC-day budget. A ready
+session lasts ten minutes; the hard expiry is twenty minutes.
+
+Website integration and production configuration live in the separate
+`robium-website` repository. Building this application does not deploy it or
+authorize a paid GPU allocation.
 
 ## Architecture and upstream guidance
 
