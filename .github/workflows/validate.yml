@@ -28,3 +28,9 @@ jobs:
       - run: python3 shared/demo-gateway/test_gateway.py
       - name: Validate shared asset catalog and resolver
         run: uv run --with 'pyyaml>=6,<7' --with pytest python -m pytest shared/assets/tests -q
+      - name: Validate Lichtblick Dashboard
+        run: |
+          npm ci --prefix shared/lichtblick-dashboard
+          npm run lint --prefix shared/lichtblick-dashboard
+          npm run build --prefix shared/lichtblick-dashboard
+          npm run package --prefix shared/lichtblick-dashboard

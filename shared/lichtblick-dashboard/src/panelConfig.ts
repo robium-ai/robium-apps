@@ -103,7 +103,8 @@ function normalizeSimulationWorlds(value: unknown): SimulationWorld[] {
     return [];
   }
   const worlds: SimulationWorld[] = [];
-  for (const candidate of value) {
+  for (const item of value) {
+    const candidate: unknown = item;
     if (
       typeof candidate === "object" &&
       candidate != undefined &&
