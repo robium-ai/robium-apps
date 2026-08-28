@@ -21,17 +21,23 @@ applications repository and no promotion-copy workflow.
 
 ## Maintainer collaboration preference
 
-For feature work in this repository, present one rough design or plan for
-approval. After the maintainer approves that direction, proceed through
-implementation and verification without additional conversational approval
-gates. Prefer delivering working software that the maintainer can try, then
-iterate from concrete feedback. Pause only when a missing choice would
-materially change the result, the scope needs to expand, or safety/external
+An explicit bounded change request authorizes implementation after inspecting
+the affected app; do not announce a process classification or ask for duplicate
+approval. For a new app or material architecture change, present one rough
+direction for approval, then proceed through implementation and verification
+without additional conversational gates. Prefer the cheapest risk-reducing
+probe and working software the maintainer can try. Pause only when a missing
+choice materially changes the result, scope must expand, or safety/external
 authority requires confirmation.
 
-## Parallel work isolation (permanent policy)
+## Parallel work isolation
 
-One app per agent, each in its own worktree/branch (`promote/<app-name>`):
+When agents work concurrently, isolate one app per agent in its own
+worktree/branch (`promote/<app-name>`). Solo maintainer-authorized work may land
+directly on local `main` when explicitly requested; that does not authorize a
+push or release.
+
+For concurrent work:
 
 - **Write surface = your app's directory + its README/REGISTRY entries.**
   Shared infrastructure changes must be explicitly in scope.
