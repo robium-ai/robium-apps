@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">PushT Diffusion Policy application flow</title>
+  <desc id="desc">The PushT environment sends an image and agent state through a compatibility processor to Diffusion Policy, which returns an action horizon for the simulator and Rerun timeline.</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#2563EB"/></marker></defs>
+  <rect width="1200" height="520" fill="#EDEFEE"/>
+  <text x="64" y="70" fill="#2563EB" font-family="ui-monospace, monospace" font-size="18" letter-spacing="2">PUSHT / SYSTEM FLOW</text>
+  <g font-family="Inter, Arial, sans-serif" fill="#101719">
+    <g transform="translate(64 150)"><rect width="190" height="120" fill="#E8ECEB" stroke="#ADBAB9"/><text x="24" y="50" font-size="24" font-weight="650">Workspace</text><text x="24" y="82" font-size="16" fill="#3B494C">seed · shape · quality</text></g>
+    <g transform="translate(310 150)"><rect width="200" height="120" fill="#E8ECEB" stroke="#ADBAB9"/><text x="24" y="50" font-size="24" font-weight="650">PushT</text><text x="24" y="82" font-size="16" fill="#3B494C">image · agent state</text></g>
+    <g transform="translate(566 150)"><rect width="220" height="120" fill="#E0E6E5" stroke="#ADBAB9"/><text x="24" y="50" font-size="24" font-weight="650">Processor adapter</text><text x="24" y="82" font-size="16" fill="#3B494C">pinned normalization</text></g>
+    <g transform="translate(842 150)"><rect width="250" height="120" fill="#DFE9FF" stroke="#2563EB"/><text x="24" y="50" font-size="24" font-weight="650">Diffusion Policy</text><text x="24" y="82" font-size="16" fill="#3B494C">denoised action horizon</text></g>
+    <g transform="translate(430 350)"><rect width="340" height="100" fill="#E0E6E5" stroke="#ADBAB9"/><text x="24" y="43" font-size="22" font-weight="650">Direct frame + Rerun</text><text x="24" y="72" font-size="16" fill="#3B494C">observation · action · coverage</text></g>
+  </g>
+  <g stroke="#2563EB" stroke-width="3" fill="none" marker-end="url(#arrow)"><path d="M254 210 H300"/><path d="M510 210 H556"/><path d="M786 190 H832"/><path d="M842 238 H796"/><path d="M510 275 L540 340"/></g>
+  <text x="794" y="177" fill="#718083" font-family="ui-monospace, monospace" font-size="14">observation</text>
+  <text x="794" y="260" fill="#718083" font-family="ui-monospace, monospace" font-size="14">next actions</text>
+</svg>
