@@ -7,6 +7,10 @@ storage: pointer
 license:
   id: MIT
   file: LICENSE
+  url: https://github.com/aws-robotics/aws-robomaker-small-house-world/blob/ff9631ca6d1db9c1ba656498151464b5ab74aafe/LICENSE
+verification:
+  date: "2026-08-27"
+  method: Clean-cache archive fetch, SHA-256 verification, entrypoint check, and pinned-license byte comparison.
 source:
   type: git-archive
   repository: https://github.com/aws-robotics/aws-robomaker-small-house-world

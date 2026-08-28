@@ -17,8 +17,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       # Single source of truth: the robium CLI's schema validator
       # (robium-ai app validate). Requires robium#67 on main to go green.
       - run: node .robium-cli/cli/bin/robium.js app validate --dir .
       # The hosted-demo session contract (stdlib-only, no ROS/Docker).
       - run: python3 shared/demo-gateway/test_gateway.py
+      - name: Validate shared asset catalog and resolver
+        run: uv run --with 'pyyaml>=6,<7' --with pytest python -m pytest shared/assets/tests -q

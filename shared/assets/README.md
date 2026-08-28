@@ -36,6 +36,21 @@ uv run --with 'pyyaml>=6,<7' shared/assets/scripts/fetch_assets.py \
   world.aws-small-house --destination /opt/robium/assets/world.aws-small-house
 ```
 
+The catalog is regression-tested without downloading large payloads:
+
+```bash
+uv run --with 'pyyaml>=6,<7' --with pytest \
+  python -m pytest shared/assets/tests -q
+```
+
+The tests require every catalog entry to match its per-asset manifest and to
+carry a pinned source revision, SHA-256, repository URL, entrypoints, license
+identifier, a checked-in license evidence file, and a dated verification method.
+A clean-cache verification
+of every actively consumed pointer is still required when a pointer is added or
+changed; unit tests use tiny local archives and do not substitute for that
+network check.
+
 Applications declare only what they consume:
 
 ```yaml
