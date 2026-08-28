@@ -1,426 +1,198 @@
 ---
-title: Build a ROS 2 navigation app with Nav2, Gazebo, Lichtblick, and Foxglove
-summary: Run the Robot Navigation reference app and see how Robium connects ROS 2, Nav2, Gazebo, and browser visualization.
+title: Mapping and navigation with ROS 2, from one app
+summary: Drive a simulated TurtleBot3, build a map, localize, save waypoints, and watch Nav2 plan in a browser workspace.
 collection: blog
 category: tutorial
 kind: tutorial
-voice: technical
+voice: product-lab
 author: Robium team
 audience: robotics-developer
 level: intermediate
 app: robot-navigation
-date: 2026-08-15
+date: 2026-08-28
 tested: 2026-08-16
 tags: [robium, ros2, nav2, gazebo, slam, turtlebot3, visualization, lichtblick, foxglove]
 hero: assets/gifs/trailer.gif
-hero_alt: Simulated TurtleBot3 Waffle Pi navigating through an environment in the browser dashboard
-social_image: assets/stills/navigation-progress.png
+hero_alt: A simulated TurtleBot3 follows a planned route through a mapped environment
+social_image: assets/social/card.png
 featured: true
 ---
 
-We built this navigation application with [Robium](https://robium.ai/). Its
-skills helped us choose the stack, structure the environment, connect ROS 2,
-Nav2, Gazebo, and Lichtblick, and debug problems at the boundaries between
-them. This tutorial explains the navigation workflow while showing how Robium
-helped turn those separate tools into a repeatable application.
+A navigation goal looks like one click in the browser. Behind it, localization
+has to agree with the map, the planner has to find a route, the controller has
+to turn that route into velocity commands, and the simulated sensors have to
+keep the robot out of walls.
 
-**Robot Navigation** is also a living Robium reference application. We continue
-to fix bugs and improve the workflow as the underlying robotics tools evolve.
+This application puts that full loop in one place. A TurtleBot3 Waffle Pi runs
+in Gazebo, SLAM Toolbox builds the map, AMCL localizes against it, Nav2 drives
+the robot, and Lichtblick shows the camera, plans, transforms, logs, and
+application controls.
 
-Development was also a feedback loop. We captured the approaches that worked,
-the failures we encountered, and the fixes we verified, then fed those lessons
-back into Robium. Future applications can begin with guidance grounded in this
-working reference instead of starting from scratch.
+![A TurtleBot3 mapping and navigating in the browser workspace](../assets/gifs/trailer.gif)
 
-A common first step in robotics is getting a mobile robot moving through an
-environment. That sounds simple, but even a basic navigation application needs
-sensors, mapping, localization, planning, control, visualization, and
-communication between several robot modules.
+*A recorded Gazebo session viewed through Lichtblick. The robot, occupancy map,
+active plan, camera, and control panel update from the same ROS 2 system.*
 
-[ROS 2](https://docs.ros.org/en/jazzy/) has long provided the backbone for
-connecting these systems. Robotics is now expanding toward Physical AI,
-vision-language-action models, and higher-level reasoning, but the underlying
-plumbing has not disappeared. ROS remains a practical way to get a robot stack
-working while you focus on your area of interest. You might build learned arm
-control, reason over camera images, or develop task-level autonomy while ROS
-handles lower-level capabilities such as navigation and communication.
+## One loop, two environments
 
-This tutorial gives you an all-in-one starting point. A
-[TurtleBot3](https://emanual.robotis.com/docs/en/platform/turtlebot3/overview/)
-runs in [Gazebo](https://gazebosim.org/docs/harmonic/getstarted/), so you do not
-need a physical robot, GPU, or system ROS installation. You can choose between
-a simulated house and an industrial warehouse.
+The application includes a simulated house and an industrial warehouse. Both
+use the same workflow:
 
-You will use
-[SLAM Toolbox](https://github.com/SteveMacenski/slam_toolbox) to create a map,
-localize the robot on that map, save named waypoints, and navigate between them
-with [Nav2](https://docs.nav2.org/). You will also visualize the robot's camera,
-map, position, global plan, local plan, and navigation state in the browser.
-
-By the end, you should have a practical view of how the main parts of a
-classical robotics application fit together and a foundation for building more
-specialized robotics applications.
-
-> **Robium skills used:**
-> [architect](https://github.com/robium-ai/robium/tree/main/skills/architect),
-> [integration](https://github.com/robium-ai/robium/tree/main/skills/integration),
-> and [environments](https://github.com/robium-ai/robium/tree/main/skills/environments)
-> helped select the stack and shape the application boundary.
-
-## Run the ROS 2 navigation stack
-
-The application provides one interactive control panel for the main navigation
-loop:
-
-1. Start a TurtleBot3 Waffle Pi in the House or Warehouse environment.
-2. Drive the robot while SLAM builds a map.
+1. Start the simulation.
+2. Drive while SLAM builds an occupancy map.
 3. Save the map and load it for localization.
-4. Save the current robot pose as a named waypoint.
-5. Send a goal and watch Nav2 plan and drive.
-6. Monitor the robot in Lichtblick and control the workflow through the Robium
-   Dashboard extension.
+4. Give AMCL an initial pose.
+5. Send a goal or save the current pose as a waypoint.
+6. Watch Nav2 plan, control, and report status.
 
-The browser workspace runs in
-[Lichtblick](https://github.com/Lichtblick-Suite/lichtblick), a visualization
-tool that works with the Foxglove protocol. Its default layout places the
-camera and 3D scene across the top with ROS logs below. The reusable
-[Robium Dashboard](https://github.com/robium-ai/robium-apps/tree/main/shared/lichtblick-dashboard)
-extension occupies the right side and provides controls for simulation
-environments, robot movement, mapping, localization, navigation, and saved
-waypoints.
+The browser workspace uses
+[Lichtblick](https://github.com/Lichtblick-Suite/lichtblick) with a committed
+layout and the reusable Robium Dashboard extension. The same ROS data is also
+available to the official [Foxglove](https://docs.foxglove.dev/) application at
+`ws://localhost:8765`.
 
-## System requirements
+Lichtblick is the default because it can ship with the application and does not
+require an account. Foxglove remains useful for teams that want its broader
+product and support.
 
-Robot Navigation is tested on macOS and Ubuntu. You can run it on a laptop or
-an Ubuntu/Linux server with:
+## How the pieces connect
 
-- Git;
-- Docker with Compose v2;
-- a modern browser;
-- ports 8080 and 8765 available to the browser.
+![Robot Navigation system flow](../assets/diagrams/system.svg)
 
-Docker Desktop is the simplest option on macOS. On Ubuntu, use Docker Engine
-with the Compose plugin. For a remote server, expose or forward port 8080 for
-the Lichtblick workspace and port 8765 for the ROS WebSocket bridge. The
-simulation does not require a GPU, physical robot, or system ROS installation.
+*Gazebo publishes the simulated sensors and motion. ROS 2 navigation processes
+consume that data, then the bridge and application services expose it to the
+browser.*
 
-## Install Robium and start the application
+The main ROS processes share one container and network namespace. On Docker
+Desktop for macOS, this avoids DDS multicast discovery problems between
+containers. It also gives local and hosted runs one portable image.
 
-Install the Robium skills, then clone the applications repository:
+Gazebo publishes lidar, odometry, IMU, camera, and transforms. During mapping,
+`slam_toolbox` turns lidar and odometry into an occupancy map. During
+localization, AMCL estimates the robot pose on a saved map. Nav2 plans a route
+and publishes velocity commands. `foxglove_bridge` carries the topics and
+services to the browser.
+
+The Dashboard stays separate from the app-specific ROS interfaces. Another
+project can reuse the extension with fewer controls, different service names,
+or no simulator section.
+
+## Start the stack
+
+You need Git, Docker with Compose v2, a modern browser, and ports 8080 and 8765.
+The simulation does not require a GPU, physical robot, or system ROS install.
 
 ```bash
 npx robium-ai@latest setup
 git clone https://github.com/robium-ai/robium-apps.git
-cd robium-apps
-```
-
-`setup` installs Robium for your supported coding agents. The separate
-repository clone provides the reference applications.
-
-Enter the application directory and use its repository-local launcher:
-
-```bash
-cd robot-navigation
-./app help
+cd robium-apps/robot-navigation
 ./app doctor
 ./app run
 ```
 
-`./app` is a small command interface around the application's Docker Compose
-services; it does not require Make. `doctor` checks Docker, Compose, ports 8080
-and 8765, and image readiness without changing the running system. `run`
-builds the image automatically when it is missing. The first build can take
-about 10 minutes; later runs reuse the image unless the source, dependencies,
-Dashboard, or simulation assets changed.
+Open [http://localhost:8080](http://localhost:8080). The robot and Gazebo start
+in the background, but the application begins in `IDLE`. Mapping and
+localization start only when requested.
 
-Open [http://localhost:8080](http://localhost:8080). The robot and Gazebo are
-already running, but the session starts in **IDLE**. There is no `/map` yet.
-Mapping and localization start only when you ask for them.
+The first image build can take about ten minutes. Later runs reuse it unless
+the source, dependencies, Dashboard, or simulation assets change. The
+[application README](https://github.com/robium-ai/robium-apps/tree/main/robot-navigation)
+covers remote access, remaining commands, and troubleshooting.
 
-> **Robium skills used:**
-> [integration](https://github.com/robium-ai/robium/tree/main/skills/integration)
-> and [environments](https://github.com/robium-ai/robium/tree/main/skills/environments)
-> guided the Docker-first setup and the connections between application
-> services.
+## Build a map that localization can use
 
-## Visualize ROS 2 with Lichtblick or Foxglove
+Choose House or Warehouse, enter a map name, and select Start mapping. Drive
+with WASD, arrow keys, or the on-screen controls. The lidar scan appears in the
+3D view while `slam_toolbox` expands the occupancy map.
 
-The included browser workspace uses Lichtblick. It is an open-source,
-browser-based starting point that runs without a separate account and includes
-the configured Robium Dashboard extension.
+![The occupancy map growing as TurtleBot3 explores the house](../assets/gifs/mapping.gif)
 
-You can also connect the official [Foxglove](https://docs.foxglove.dev/)
-application to `ws://localhost:8765`. Foxglove provides a commercial product
-with a free plan, and its current account and plan requirements apply. Teams
-that want its wider commercial ecosystem and support may prefer it for
-longer-term use.
+*The camera, scan, occupancy map, logs, and Dashboard stay visible during the
+mapping run.*
 
-For this tutorial, Lichtblick provides the most direct path because the viewer,
-layout, and Dashboard are already bundled. Foxglove can inspect the same ROS
-data today, but the application does not yet provide a dedicated viewer
-selector or a preconfigured Robium Dashboard experience for Foxglove.
+Observe walls from more than one angle and return near the starting area to
+close the loop. A quick pass can leave gaps or misaligned walls even when the
+map looks mostly filled.
 
-> **Robium skills used:**
-> [visualization](https://github.com/robium-ai/robium/tree/main/skills/visualization)
-> helped compare the available tools, while
-> [foxglove](https://github.com/robium-ai/robium/tree/main/skills/foxglove)
-> guided the live ROS bridge and browser connection.
+Finish mapping saves the files for the active environment and returns the app
+to `IDLE`. Maps and waypoint sidecars remain local and untracked.
 
-## Create a map
+## Localize before tuning the planner
 
-The Simulation section offers two environments:
+Load the saved map, then set the robot's initial pose and heading in the 3D
+panel. Before sending a goal, check that the map is visible, the scan aligns
+with nearby walls, and the robot model sits where expected.
 
-- **House** is the default and uses the AWS RoboMaker Small House.
-- **Warehouse** uses the Open Robotics Tugbot Warehouse environment.
+If the scan is offset, fix the initial pose first. Planner tuning cannot
+compensate for a robot localized in the wrong place.
 
-Choose an environment, enter a map name, and select **Start mapping**. The
-button changes to **Finish mapping** while the mapping session is active.
+> [!DECISION]
+> The workspace keeps localization, plans, and logs visible together because a
+> missing route and a bad pose can look like the same “robot does not move”
+> failure from a control panel alone.
 
-Drive the robot with WASD, the arrow keys, or the movement buttons. The lidar
-scan appears in the 3D view and `slam_toolbox` updates the occupancy map as new
-space becomes visible. Use the speed sliders when narrow passages need slower
-motion.
+## Follow a route and save the destination
 
-![The occupancy map growing as TurtleBot3 explores the simulated house](../assets/gifs/mapping.gif)
+Use the 3D goal tool to select a reachable point and heading. Nav2 draws the
+global plan in cyan. The local controller plan appears in orange and adjusts as
+the robot moves.
 
-*Lichtblick keeps the simulated camera, live occupancy map, ROS logs, and
-Robium Dashboard visible throughout mapping.*
+![Nav2 global route over the saved occupancy map](../assets/stills/navigation-plan.png)
 
-Try to observe walls from more than one angle and close the loop by returning
-near the starting area. A map built from one quick pass can look complete while
-still containing poor alignments or unexplored gaps.
+*The saved map, localized robot pose, and active global route are visible
+before the robot starts moving.*
 
-Select **Finish mapping** when the useful area is covered. The app saves the
-map under the selected environment, stops the mapping stack, and returns to
-IDLE. Only maps created for the active environment appear in the list.
+A waypoint stores the robot's current map-frame position and heading. Drive or
+navigate to a useful place, give it a name, and select Save position. Waypoints
+are stored per map in `<map>.waypoints.json`, so locations from one environment
+do not appear in another.
 
-Saved maps are local files. They are deliberately untracked, and the app does
-not delete or publish them automatically.
+![Named waypoints in the Robium Dashboard](../assets/stills/waypoint-saved.png)
 
-![Completed occupancy map of the simulated house in Lichtblick](../assets/stills/mapping-complete.png)
+*Bedroom, dining table, and kitchen remain attached to the selected house map.*
 
-*A completed mapping session, with explored walls and free space visible in
-the 3D panel.*
+Stop navigation cancels the active Nav2 goal. Stop robot also publishes zero
+velocity. In this simulated application it is a useful control, not a hardware
+emergency stop.
 
-The warehouse provides a second environment for trying the same workflow with
-long aisles and a more industrial layout.
+## Read the visible layers before the logs
 
-![TurtleBot3 driving through the industrial warehouse while the Robium Dashboard controls the simulation](../assets/gifs/warehouse.gif)
+The map and plan displays narrow failures quickly:
 
-*The application can restart the simulation in the warehouse without changing
-the ROS 2 workflow or browser controls.*
-
-> **Robium skills used:**
-> [simulation](https://github.com/robium-ai/robium/tree/main/skills/simulation),
-> [gazebo](https://github.com/robium-ai/robium/tree/main/skills/gazebo), and
-> [ros2](https://github.com/robium-ai/robium/tree/main/skills/ros2) guided the
-> simulated environments, sensor data, and SLAM integration.
-
-## Load the map and localize
-
-Select the saved map and choose **Load & localize**. This starts the map server,
-AMCL, and Nav2 against that map.
-
-[AMCL](https://docs.nav2.org/configuration/packages/configuring-amcl.html)
-needs an estimate of the robot's pose within the saved map. Use the 3D panel's
-initial-pose tool if the estimate is missing or incorrect. Set the position
-first, then drag the heading indicator in the direction the robot is facing.
-
-Before sending a goal, check three things in the 3D view:
-
-- the map is visible;
-- the laser scan lines up with nearby walls;
-- the robot model sits where you expect it on the map.
-
-If the scan is offset from the walls, correct the initial pose before changing
-Nav2 parameters. A planner cannot compensate for a robot localized in the
-wrong place.
-
-> **Robium skills used:**
-> [ros2](https://github.com/robium-ai/robium/tree/main/skills/ros2) and
-> [nav2](https://github.com/robium-ai/robium/tree/main/skills/nav2) guided the
-> map, transform, localization, planning, and navigation interfaces.
-
-## Send a navigation goal
-
-Use the 3D panel's goal tool to select a reachable point and heading. Nav2
-creates a global route across the saved map, then the local controller adjusts
-that route around nearby obstacles while driving.
-
-The layout uses different colors for the two plans:
-
-- cyan for the global Nav2 plan;
-- orange for the local controller plan.
-
-The Navigation card reports **Navigating** while a goal is active. Select
-**Stop navigation** to cancel it. The button remains disabled while no goal is
-running.
-
-![Nav2 global route displayed over the saved occupancy map](../assets/stills/navigation-plan.png)
-
-*The map view makes the robot pose and active Nav2 route visible before and
-during motion.*
-
-The following captures show two separate navigation requests. The camera,
-route, robot pose, and Dashboard status update together as Nav2 drives toward
-each saved destination.
-
-![TurtleBot3 following the first navigation route](../assets/gifs/navigation-1.gif)
-
-*Navigation run one.*
-
-![TurtleBot3 following a second navigation route](../assets/gifs/navigation-2.gif)
-
-*Navigation run two.*
-
-**Stop robot** publishes a zero velocity command and cancels active navigation.
-It is useful during simulation, but it is not a hardware emergency stop.
-
-## Save and reuse waypoints
-
-A waypoint records the robot's current map-frame position and heading. It does
-not record a point clicked elsewhere in the 3D view.
-
-With a map loaded and localization active:
-
-1. Drive or navigate the robot to the position you want to save.
-2. Enter a waypoint name.
-3. Select **Save position**.
-4. Select **Navigate** beside that waypoint to return to it later.
-
-![Saving named robot positions with the waypoint manager in the Robium Dashboard](../assets/gifs/waypoint-creation.gif)
-
-*The Dashboard stores the localized robot pose as each named waypoint is
-created.*
-
-Waypoints are listed alphabetically and can be deleted from the same card.
-They are stored per map in a local `<map>.waypoints.json` sidecar, so a kitchen
-waypoint from one map will not appear when another map is loaded.
-
-The Navigate action confirms that Nav2 received the stored pose. Watch the
-Navigation status and robot motion to confirm the run itself.
-
-![Bedroom, dining table, and kitchen waypoints saved in the Robium Dashboard](../assets/stills/waypoint-saved.png)
-
-*Saved waypoints remain associated with the selected map and are ready to use
-as navigation targets.*
-
-## Use the logs and plans together
-
-The bottom panel provides three views of the shared `/rosout` stream:
-
-- **All** for the complete log;
-- **Navigation** for Nav2 and localization nodes;
-- **Mapping & App** for SLAM and application services.
-
-If the robot does not move, the visible layers help narrow the problem:
-
-- no map usually points to the session or map server;
-- no global plan points to localization, the goal, or the planner;
-- a global plan with no motion points farther down the command path;
-- a changing local plan with repeated stops often points to sensors, costmaps,
+- No map usually points to the session or map server.
+- No global plan points to localization, the goal, or the planner.
+- A global plan with no motion points farther down the command path.
+- A changing local plan with repeated stops often points to sensors, costmaps,
   or collision monitoring.
 
-The 3D visibility settings are stored in the Lichtblick layout. If a plan is
-missing, confirm its topic is visible before treating it as a Nav2 failure. A
-plan also exists only after Nav2 receives a goal and publishes one.
+The log panel then filters the shared `/rosout` stream into all messages,
+navigation, and mapping plus application output. A plan only exists after Nav2
+receives a goal, so an empty plan display is not automatically an error.
 
-## How the ROS 2 navigation stack fits together
+> [!EVIDENCE]
+> The recorded sessions cover mapping, map reuse, initial-pose correction,
+> waypoint storage, and multiple navigation goals in Gazebo. They do not cover
+> a physical TurtleBot3.
 
-The application keeps the data path conventional:
+## Debug the path, then keep the lesson
 
-```text
-Gazebo sensors and motion
-          |
-          v
-ROS 2 + slam_toolbox + Nav2
-          |
-          v
-foxglove_bridge + app services
-          |
-          v
-Lichtblick + Robium Dashboard
-```
+The `architect`, `simulation`, and `visualization` skills kept the first slice
+on one inspectable navigation loop. `integration` and `environments` shaped the
+single-container ROS boundary. `ros2`, `nav2`, and `foxglove` guided the topic,
+transform, localization, and browser interfaces.
 
-Gazebo publishes lidar, odometry, IMU, camera, and transform data for the
-TurtleBot3 Waffle Pi. During mapping, `slam_toolbox` turns lidar and odometry
-into an occupancy map. During localization, AMCL estimates the robot pose on a
-saved map. Nav2 plans a route and publishes velocity commands. The
-[Foxglove Bridge](https://docs.foxglove.dev/docs/connecting-to-data/ros-foxglove-bridge)
-makes ROS topics and services available to the browser.
+The repeated lesson was to debug the visible data path before changing
+parameters. Fixes for browser publishers, velocity message types, map sessions,
+simulation assets, and waypoint storage were added back to the relevant skills
+rather than staying as notes inside this app.
 
-The main workflow keeps these ROS processes in one container and network
-namespace. This avoids DDS multicast discovery problems across Docker
-containers on macOS. It also gives the project one portable image for local and
-hosted runs.
+## Simulation is the boundary
 
-The Dashboard is a reusable Lichtblick extension rather than app-specific
-HTML. This app enables mapping, navigation, waypoints, simulation, movement,
-and stop controls through its committed layout. Another application can use
-the same extension with a smaller set of sections and different ROS interface
-names.
+This project covers one simulated TurtleBot3 model with two Gazebo
+environments. Connecting the same surface to a physical robot needs separate
+hardware interfaces, networking, safety controls, and calibration. The bundled
+Lichtblick layout is the primary browser experience; Foxglove can inspect the
+ROS data but does not receive the same configured Dashboard workflow.
 
-> **Robium skills used:**
-> [integration](https://github.com/robium-ai/robium/tree/main/skills/integration)
-> helped keep the Dashboard reusable while the navigation application supplied
-> its own ROS interfaces and layout configuration.
-
-## How Robium helped build this application
-
-We used Robium throughout the development of this application. It helped us
-choose the stack, connect the components, and debug integration problems. As
-we worked, we captured what succeeded and what failed, then fed those lessons
-back into Robium. Future applications can start with better guidance instead
-of rediscovering the same problems.
-
-Robium helped us:
-
-- **Choose the visualization path.** Robium supports RViz, Foxglove,
-  Lichtblick, and Rerun. Lichtblick was the best fit here because it provides
-  browser-based ROS visualization without requiring an account.
-- **Build a reusable Dashboard.** The Robium Dashboard extension combines
-  teleoperation, mapping, localization, waypoints, navigation status, and
-  simulation controls in one compact Lichtblick panel.
-- **Connect the full stack.** Robium helped scaffold and integrate Docker, ROS
-  2, Nav2, Gazebo, Lichtblick, and the application services.
-- **Debug integration problems.** Development exposed issues with browser
-  publishers, velocity message types, maps, simulation environments,
-  navigation sessions, and waypoint storage. Those findings are now available
-  to improve future Robium applications.
-
-The result is more than one working navigation application. It is also a
-tested reference that Robium can use to help build the next robotics
-application faster.
-
-## Inspect and stop the app
-
-Use the application launcher to inspect or stop it:
-
-```bash
-./app status
-./app logs
-./app help
-./app stop
-```
-
-Press Ctrl-C in the foreground `run` terminal before using the stop command.
-`./app help` prints the available commands at any time.
-
-[Install Robium](https://robium.ai/#install) to use the same skills and
-application workflow in your own robotics project.
-
-The source is available in the
+Source, smoke tests, architecture notes, and the reusable Dashboard live in the
 [Robot Navigation application](https://github.com/robium-ai/robium-apps/tree/main/robot-navigation).
-The repository also contains the full
-[architecture brief](https://github.com/robium-ai/robium-apps/blob/main/robot-navigation/docs/architecture-brief.md)
-and the reusable
-[Robium Dashboard](https://github.com/robium-ai/robium-apps/tree/main/shared/lichtblick-dashboard).
-
-Robot Navigation receives ongoing bug fixes and improvements. Try the latest
-version, and if you find a problem or have an improvement idea, please
-[file an issue](https://github.com/robium-ai/robium-apps/issues) with your host
-platform, command, and the behavior you observed.
-
-This project currently proves the workflow in simulation with one TurtleBot3
-Waffle Pi. Connecting the same control surface to a physical robot will require
-separate work on hardware interfaces, networking, safety, and configuration.

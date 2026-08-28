@@ -33,7 +33,7 @@ export type AdapterSnapshot = {
   maps: string[];
   waypoints: string[];
   navigationState: NavigationState;
-  world: string | "UNKNOWN";
+  world: string;
   selectedParameter?: string;
   colorScheme: "dark" | "light";
   canPublish: boolean;
@@ -117,7 +117,7 @@ function normalizeMode(message: unknown): MappingMode {
   return "UNKNOWN";
 }
 
-function normalizeWorld(message: unknown, config: PanelConfig): string | "UNKNOWN" {
+function normalizeWorld(message: unknown, config: PanelConfig): string {
   const world = stringMessageData(message).trim();
   return isSimulationWorld(world, config.simulationWorlds) ? world : "UNKNOWN";
 }

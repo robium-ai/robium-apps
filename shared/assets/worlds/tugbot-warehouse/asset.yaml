@@ -8,6 +8,9 @@ license:
   id: CC-BY-NC-ND-4.0
   file: LICENSE
   url: https://creativecommons.org/licenses/by-nc-nd/4.0/
+verification:
+  date: "2026-08-27"
+  method: Clean-cache Fuel archive fetch, SHA-256 verification, entrypoint check, and Fuel world-details license check.
 source:
   type: fuel-world-zip
   repository: https://fuel.gazebosim.org/1.0/OpenRobotics/worlds/Tugbot%20in%20Warehouse

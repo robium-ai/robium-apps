@@ -1,385 +1,177 @@
 ---
-title: Run a published Diffusion Policy on macOS with LeRobot and PushT
-summary: Use Robium's PushT reference app to compare policy choices, replay seeded layouts, and inspect a published Diffusion Policy without training it first.
+title: Why PushT needed Diffusion Policy
+summary: A failed ACT configuration led to a task-matched checkpoint, a careful compatibility adapter, and a faster way to inspect PushT on macOS.
 collection: blog
 category: tutorial
 kind: tutorial
-voice: technical
+voice: product-lab
 author: Robium team
 audience: robotics-developer
 level: intermediate
 app: diffusion-policy-pusht
-date: 2026-08-22
+date: 2026-08-28
 tested: 2026-08-22
-tags: [robium, lerobot, imitation-learning, diffusion-policy, act, smolvla, pusht, gradio, rerun, macos]
+tags: [robium, lerobot, imitation-learning, diffusion-policy, act, pusht, gradio, rerun, macos]
 hero: assets/gifs/workspace-rollout.gif
-hero_alt: A seeded PushT rollout running in the Robium Diffusion Policy workspace
-social_image: assets/stills/solved-rerun-timeline.png
+hero_alt: A blue circular agent pushes a gray T-shaped block toward a green target
+social_image: assets/social/card.png
 featured: false
 ---
 
-We built this manipulation application with
-[Robium](https://robium.ai/). Its skills helped us choose a policy for the
-task, keep the environment fast on Apple Silicon, evaluate the result against
-repeatable seeds, and turn the working policy into a local and browser-hosted
-reference app.
+This project began with the wrong policy contract. We trained ACT checkpoints
+at 1k, 3k, 5k, and 10k steps, but none completed PushT. The policy observed one
+frame and could execute a 100-action chunk at 10 Hz, which was most of an
+episode before it looked again.
 
-The project began as a training demonstration. We wanted to show checkpoints
-improving as a policy learned to push a T-shaped block into a target. That
-version trained an ACT policy locally, but the 1k, 3k, 5k, and 10k checkpoints
-never solved the task. Continuing to train and benchmark that configuration
-would have made the demo slower without answering the more useful question:
-what policy should we use for PushT?
+More training would not fix that control loop. We kept the unsuccessful runs,
+changed direction, and built the application around LeRobot's published
+Diffusion Policy checkpoint instead.
 
-We changed direction. The current application starts from LeRobot's published
-Diffusion Policy checkpoint, preserves its evaluation evidence, and lets you
-run fresh seeded episodes on a Mac or in a CPU container. Training remains
-available for research, but it is no longer a prerequisite for opening the
-application.
+![A seeded PushT rollout in the application workspace](../assets/gifs/workspace-rollout.gif)
 
-**PushT with Diffusion Policy** is also a living Robium reference application.
-The problems we found while loading the older checkpoint, comparing metrics,
-streaming live frames, and packaging the CPU runtime were captured as
-learnings for future manipulation projects.
+*A recorded rollout from the browser workspace. The live frame stays visible
+while the policy replans and Rerun records the trajectory.*
 
-> **Robium skills used:**
-> [architect](https://github.com/robium-ai/robium/tree/main/skills/architect)
-> helped frame the application around a concrete benchmark;
-> [lerobot](https://github.com/robium-ai/robium/tree/main/skills/lerobot)
-> guided the policy and checkpoint workflow; and
-> [environments](https://github.com/robium-ai/robium/tree/main/skills/environments)
-> kept native MPS and reproducible CPU delivery as separate, explicit paths.
+## PushT is small, but the contacts are not simple
 
-## What PushT tests
+[PushT](https://huggingface.co/datasets/lerobot/pusht) uses a circular agent to
+push a T-shaped block into a green target. The observation is a 96 by 96 RGB
+image plus the agent position. The action is the next 2D position command. An
+episode succeeds when the block covers more than 95 percent of the target.
 
-[PushT](https://huggingface.co/datasets/lerobot/pusht) is a compact visual
-manipulation benchmark. A circular agent pushes a T-shaped block across a 2D
-workspace. The goal is to align the block with a green target region.
+The policy has to choose useful contact points, rotate and translate the block,
+recover after losing contact, and handle different initial layouts. Several
+action sequences can make sense from the same image.
 
-The observation is a 96×96 RGB image plus the agent position. The action is
-the next 2D position command. An episode succeeds when the block covers more
-than 95% of the target.
+Diffusion Policy fits that shape of problem. It starts with a noisy action
+sequence and refines it while conditioning on the current observation. PushT is
+also an established evaluation task for the method, and LeRobot publishes a
+task-matched checkpoint with a 500-episode result.
 
-The environment is small enough to run on a laptop, but the behavior is not
-trivial. The policy must make contact at useful points, rotate and translate
-the block, recover when contact is lost, and approach the target from
-different initial layouts. Several action sequences may be reasonable from
-the same visual state.
+> [!DECISION]
+> ACT remains a useful baseline for demonstration-driven manipulation, but our
+> execution horizon did not fit PushT. A VLA would add language and model cost
+> to a task whose objective is entirely geometric. Diffusion Policy matched the
+> behavior and the available checkpoint.
 
-That makes PushT a useful policy-selection exercise. The simulator is simple;
-the interesting part is how the policy represents and generates behavior.
+## What runs between the frame and the next move
 
-![The published Diffusion Policy pushes a T-shaped block into its target](../assets/gifs/official-policy-rollout.gif)
+![PushT Diffusion Policy system flow](../assets/diagrams/system.svg)
 
-The blue circle is the agent, the gray T is the object, and the green region
-is the target. The policy must discover a useful sequence of contacts rather
-than move the object along a predefined path.
+*The policy turns the current image and agent state into a denoised action
+sequence. The simulator executes a short horizon, then the policy observes
+again.*
 
-## ACT, Diffusion Policy, or SmolVLA?
+The workspace exposes two inference settings. Fast uses 10 denoising steps for
+more responsive local interaction. Reference uses 100 steps, matching the
+published evaluation schedule. The setting changes inference compute, not the
+model weights.
 
-LeRobot supports several policy families behind a common dataset and training
-workflow. Three of the most relevant starting points are ACT, Diffusion
-Policy, and SmolVLA. They solve different problems.
+The T shape routes directly to the upstream `gym_pusht/PushT-v0` environment.
+L, I, and Z are qualitative geometry probes built locally. They are useful for
+watching behavior outside the benchmark, but they were not part of the
+checkpoint's training task.
 
-| Policy | What it predicts | Good starting point when | Main cost |
-| --- | --- | --- | --- |
-| ACT | A chunk of future actions from observations and robot state | The task is well represented by demonstrations and you want a compact imitation-learning baseline | Chunk length and execution horizon need task-specific tuning |
-| Diffusion Policy | An action sequence refined through iterative denoising | The task has contact-rich or multimodal behavior and a strong task-matched checkpoint or dataset exists | Each plan requires several network evaluations |
-| SmolVLA | Language-conditioned action chunks from images, state, and an instruction | Language and task-level semantic variation are part of the problem | More model capacity, data preparation, and fine-tuning compute |
+Keep the layout seed fixed when comparing settings. Seeds 1000 through 1499
+match the official evaluation range; other seeds are labeled qualitative.
 
-[ACT](https://arxiv.org/abs/2304.13705), or Action Chunking with Transformers,
-was developed for fine-grained manipulation. Predicting a sequence rather
-than one action at a time can smooth behavior and reduce the effective
-planning horizon. LeRobot recommends ACT as a practical first policy, and it
-was a sensible first experiment here.
+## Run the native Mac path
 
-Our mistake was treating an ALOHA-oriented default configuration as if it were
-already tuned for PushT. The policy observed one frame and could execute a
-100-action chunk. At the environment's 10 Hz control rate, that was most of an
-episode before the next observation. Training more steps would not correct
-that execution contract. The failed result was evidence about our
-configuration, not a general verdict on ACT.
-
-[Diffusion Policy](https://diffusion-policy.cs.columbia.edu/) generates an
-action sequence by starting from noise and repeatedly denoising it while
-conditioning on the current observation. The method was designed to represent
-multimodal action distributions and uses receding-horizon control. PushT is
-one of its established evaluation tasks, and LeRobot publishes a task-matched
-checkpoint with a 500-episode result. That combination made it the strongest
-reference choice for this application.
-
-[SmolVLA](https://huggingface.co/docs/lerobot/smolvla) is a compact
-vision-language-action model. It accepts multiple camera views, robot state,
-and a natural-language instruction, then generates an action chunk. We would
-choose it when instructions such as “place the red block in the left bin” and
-variation across tasks or objects are part of the application. PushT has one
-geometry-driven objective and no language input. Adding a VLA would increase
-the training and runtime surface without giving the policy useful information
-for this benchmark.
-
-The practical rule is simple: start with the least complex policy that matches
-the task. ACT remains a good baseline for many demonstration-driven
-manipulation tasks. Diffusion Policy earned its place here because the behavior
-and available checkpoint matched PushT. SmolVLA belongs in an application
-where language conditioning is a requirement rather than a label added after
-the fact.
-
-> **Robium skills used:**
-> The
-> [lerobot](https://github.com/robium-ai/robium/tree/main/skills/lerobot)
-> skill supplied the policy and evaluation framework. The
-> [testing](https://github.com/robium-ai/robium/tree/main/skills/testing)
-> skill kept the failed ACT checkpoints, the incomplete local Diffusion run,
-> and the published checkpoint from being mixed into one misleading curve.
-
-## System requirements
-
-The native application is tested on Apple Silicon macOS. You need:
-
-- Git;
-- [uv](https://docs.astral.sh/uv/);
-- ffmpeg;
-- a modern browser;
-- port 8765 available.
-
-No NVIDIA GPU, physical robot, or local training run is required. The first
-build downloads roughly 1 GB for the pinned model.
-
-Docker is optional. It is used for the website-compatible CPU image and local
-hosted-demo testing. Docker Desktop on macOS cannot expose the Mac's Metal
-accelerator to a Linux container, so the native path is the faster choice for
-interactive use.
-
-## Install Robium and start the application
-
-Install the Robium skills, then clone the applications repository:
+The tested local path uses Apple Silicon, [uv](https://docs.astral.sh/uv/),
+ffmpeg, a modern browser, and port 8765. It does not require an NVIDIA GPU,
+physical robot, or training run.
 
 ```bash
 npx robium-ai@latest setup
 git clone https://github.com/robium-ai/robium-apps.git
 cd robium-apps/diffusion-policy-pusht
-```
-
-Install ffmpeg if it is not already available:
-
-```bash
-brew install ffmpeg
-```
-
-Use the repository-local launcher:
-
-```bash
-./app help
 ./app doctor
 ./app run
 ```
 
-`doctor` checks uv, ffmpeg, the lockfile, checkpoint readiness, port 8765,
-and optional Docker availability. It does not install packages or change the
-running system.
+Open [http://localhost:8765](http://localhost:8765). The first build downloads
+roughly 1 GB for the pinned model. Native PyTorch uses MPS; the optional Docker
+image uses CPU inference because Docker Desktop cannot expose Metal to Linux.
 
-`run` prepares the uv environment and pinned checkpoint when needed, then
-starts the native policy workspace. This is the same six-command application
-surface used by the Robot Navigation reference app: `doctor`, `build`,
-`run`, `status`, `logs`, and `stop`.
+The [application README](https://github.com/robium-ai/robium-apps/tree/main/diffusion-policy-pusht)
+contains the remaining launcher commands and setup details.
 
-Open [http://localhost:8765](http://localhost:8765).
-
-> **Robium skills used:**
-> [environments](https://github.com/robium-ai/robium/tree/main/skills/environments)
-> guided the uv-first native setup. The optional Docker image remains a
-> separate CPU path because hiding it behind the default command would make
-> inference substantially slower on a Mac.
-
-## Read the policy workspace
-
-The control panel is organized as an experiment rather than a polished video
-player. Each control changes one part of the rollout contract.
-
-![The live policy workspace with checkpoint, denoising, shape, and seed controls](../assets/stills/live-policy-workspace.png)
-
-### Policy evidence
-
-**Official LeRobot 175k** is the default. The
-[model card](https://huggingface.co/lerobot/diffusion_pusht) reports 65.4%
-success and 0.955 average maximum normalized reward over 500 episodes.
-
-**Local 5k experiment** preserves the separate training attempt. Its benchmark
-was stopped after 30 of 50 episodes, with one success. It remains visible
-because failed and incomplete results are useful evidence, but the chart does
-not connect it to the official checkpoint. The models were trained with
-different configurations.
-
-### Inference quality
-
-The **Fast** setting uses 10 denoising steps. It makes local interaction more
-responsive, but it does not inherit the official success claim.
-
-The **Reference** setting uses 100 denoising steps, matching the published
-checkpoint's evaluation schedule. It takes longer because every replan
-performs 100 refinement passes.
-
-Changing this control does not retrain or modify the model. It changes how much
-compute is used to turn noise into the next action sequence.
-
-### Block shape and layout seed
-
-T is the benchmark. It runs in the original upstream PushT environment.
-
-L, I, and Z are qualitative out-of-distribution probes. They use the same
-policy with a generalized local geometry builder, but those letters were not
-part of the model's training task.
-
-The seed controls the initial agent, block, and target layout. Keep it fixed
-when comparing policy evidence or inference quality. Randomize it when you
-want another layout. Seeds 1000 through 1499 correspond to the official
-evaluation range; other seeds are labeled qualitative.
-
-### Live observation and Rerun
-
-The live 96×96 RGB frame is the primary view. It remains visible while the
-policy runs and does not depend on an external viewer.
-
-Rerun adds a timeline for observations, actions, and target coverage. You can
-pause and scrub through a rollout to inspect where contact changed or where a
-planned sequence stopped making progress.
-
-![A solved seeded rollout with its Rerun observation, coverage, and action timelines](../assets/stills/solved-rerun-timeline.png)
-
-> **Robium skills used:**
-> [rerun](https://github.com/robium-ai/robium/tree/main/skills/rerun)
-> guided the rollout timeline. The
-> [live-demo](https://github.com/robium-ai/robium/tree/main/skills/live-demo)
-> skill kept the direct RGB frame primary and treated richer telemetry as an
-> additive debugging surface.
-
-## Why the official checkpoint needed an adapter
+## The checkpoint adapter had to preserve old statistics
 
 The checkpoint is pinned to revision
-`84a7c23178445c6bbf7e1a884ff497017910f653`. Its weights are not modified.
+`84a7c23178445c6bbf7e1a884ff497017910f653`. It predates LeRobot 0.6's separate
+`policy_preprocessor.json` and `policy_postprocessor.json` files, so a current
+loader cannot open the repository as published.
 
-It was published before LeRobot 0.6 separated normalization into
-`policy_preprocessor.json` and `policy_postprocessor.json`. Loading the
-repository directly under LeRobot 0.6 therefore fails because those files are
-missing.
+Our first adapter generated processors from the current PushT dataset. The
+model loaded, but its behavior was poor. The checkpoint already contained the
+normalization buffers it expected, including ImageNet image mean and standard
+deviation, and those values differed from the current dataset statistics.
 
-The first compatibility attempt generated processors from the current PushT
-dataset statistics. The model loaded, but its behavior was poor. Inspection of
-the original checkpoint showed why: it already contained the normalization
-buffers it expected, including ImageNet image mean and standard deviation.
-The current dataset's pixel statistics were different.
+The application now reads the embedded image, state, and action buffers,
+creates current processor files from those tensors, leaves the weights
+unchanged, records the source revision, and checks tensor equality before
+inference.
 
-The application now performs a deterministic conversion:
+The environment needed the same care. A custom T looked right but had different
+inertia from the benchmark. The reference path now uses the upstream T exactly;
+only the optional letter probes use custom geometry.
 
-1. Fetch the pinned checkpoint revision.
-2. Read its embedded image, state, and action normalization buffers.
-3. Create LeRobot 0.6 processor files with those exact tensors.
-4. Keep the original model weights unchanged.
-5. Write a provenance file recording the source revision and conversion.
-6. Assert tensor equality before running the policy.
+## What the runs say
 
-The environment needed the same care. A custom T builder looked visually
-correct but produced different inertia from the upstream benchmark. The
-official T option now routes directly to `gym_pusht/PushT-v0`; only L, I,
-and Z use custom geometry.
+LeRobot's model card reports 65.4 percent success and 0.955 average maximum
+normalized reward over 500 episodes for the official checkpoint.
 
-After both corrections, a native 100-denoise rollout on official seed 1000
-solved the task in 231 steps, reached 0.955 maximum raw coverage, and took 164
-seconds on the tested Apple M5. That episode is a runtime and compatibility
-check, not a replacement for the published 500-episode benchmark.
+The stopped local 5k ACT experiment recorded one success in 30 completed
+episodes. It remains available as a separate experiment, not as a point on the
+official checkpoint's curve.
 
-> **Robium skills used:**
-> The
-> [testing](https://github.com/robium-ai/robium/tree/main/skills/testing)
-> skill pushed us beyond “the checkpoint loads” to exact processor assertions,
-> upstream-environment parity, and a full seeded rollout. The
-> [lerobot](https://github.com/robium-ai/robium/tree/main/skills/lerobot)
-> skill identified the processor-era checkpoint boundary that the adapter
-> needed to cross.
+After the processor and environment fixes, a native Reference rollout on seed
+1000 completed in 231 steps, reached 0.955 maximum raw coverage, and took 164
+seconds on the tested Apple M5. The container path later completed the same
+seed in 116 steps at 0.953 raw coverage.
 
-## Local and website delivery
+![A completed seeded rollout with its Rerun timelines](../assets/stills/solved-rerun-timeline.png)
 
-The same experiment workspace has two runtime paths.
+*The direct frame shows the final layout. Rerun aligns observation, action, and
+target-coverage timelines for the same episode.*
 
-The local path uses uv and native PyTorch. On Apple Silicon, LeRobot selects
-MPS. The `./app` launcher records the process and log so another terminal can
-inspect or stop it without searching for a Python process manually.
+> [!EVIDENCE]
+> These seeded episodes check the adapter and runtime paths. The published
+> 500-episode result remains the larger evaluation.
 
-The website path uses a multi-stage CPU image. The build stage resolves
-Linux-only CPU PyTorch wheels, prepares the processor files, and fetches the
-pinned checkpoint. The runtime stage receives only the environment,
-checkpoint, and application source. Hub access is disabled at runtime.
+## From local workspace to a temporary browser session
 
-A small FastAPI gateway mounts Gradio at `/ui` and provides the same
-start/status/shutdown contract used by Robium's live-demo orchestrator. The
-policy loads in the background so lifecycle status remains responsive. Each
-container accepts one session claim, serializes rollouts, and expires after 30
-minutes.
+The local process uses MPS and remains the faster Mac experience. The website
+path uses a multi-stage CPU image containing the pinned checkpoint, processor
+files, application source, and Linux-only CPU PyTorch wheels. Hub access is
+disabled at runtime.
 
-Local verification exercised the full website path. Start created a private
-container, BOOTING advanced to READY, the observation stayed visible, a live
-rollout solved seed 1000 in 116 steps at 0.953 raw coverage, and Stop removed
-the container.
+A FastAPI gateway mounts Gradio at `/ui` and exposes start, status, and shutdown
+for one private session. The policy loads in the background, rollouts are
+serialized, and the session expires after 30 minutes. Local container testing
+covered claim isolation, the visible observation, a complete rollout, and
+container removal on Stop.
 
-> **Robium skills used:**
-> [integration](https://github.com/robium-ai/robium/tree/main/skills/integration)
-> kept the policy, simulator, UI, and lifecycle gateway in one supervisable
-> runtime. The
-> [live-demo](https://github.com/robium-ai/robium/tree/main/skills/live-demo)
-> skill defined the private-session lifecycle and browser acceptance checks.
+## The failed policy stayed useful
 
-## How Robium helped build this application
+The `lerobot` skill helped separate a policy choice from a configuration
+mistake. `testing` kept the failed ACT run, stopped local benchmark, official
+checkpoint result, and individual rollouts from becoming one misleading chart.
+`environments` preserved the native MPS path while `live-demo` and `integration`
+shaped the CPU image and private-session boundary.
 
-Robium was useful here because the difficult parts sat between tools rather
-than inside one model class.
+The most consequential test was not “the checkpoint loads.” It compared the
+adapter's tensors with the values embedded in the pinned model, used the
+upstream T dynamics, and ran a seeded episode to completion.
 
-It helped us:
+## Where the comparison stops
 
-- **Choose a task-matched policy.** The first ACT run was treated as evidence,
-  then the LeRobot workflow was re-evaluated against the actual PushT task.
-- **Keep claims comparable.** Published evaluation, a stopped local benchmark,
-  and individual live rollouts are labeled separately.
-- **Preserve Mac performance.** Native MPS remains the default while the CPU
-  image serves reproducibility and website delivery.
-- **Debug checkpoint compatibility.** The final processor conversion follows
-  the tensors embedded in the pinned model instead of silently substituting
-  current dataset statistics.
-- **Test behavior, not just startup.** Seeded T and OOD rollouts, cancellation,
-  frame continuity, session isolation, and container teardown all belong to
-  the pass bar.
-- **Feed the failures back.** The ACT configuration mismatch, legacy processor
-  conversion, environment dynamics drift, Gradio frame replacement, and CPU
-  wheel resolution are now captured as reusable Robium learnings.
+This application runs an existing checkpoint. It does not establish that
+Diffusion Policy is the best choice for every contact task, and the L, I, and Z
+shapes are qualitative probes rather than benchmark results. Fast inference
+uses fewer denoising steps than the published schedule. The CPU container is
+convenient for delivery, but native MPS remains quicker on Apple Silicon.
 
-The result is a working application and a reference for deciding how a learned
-manipulation policy should be evaluated, packaged, and explained.
-
-## Inspect and stop the application
-
-Use the same launcher from another terminal:
-
-```bash
-./app status
-./app logs
-./app help
-./app stop
-```
-
-`status` prints the process ID, URL, and log path. `logs` follows model
-loading and server output. Pressing Ctrl-C in the original `run` terminal
-also stops the workspace cleanly.
-
-[Install Robium](https://robium.ai/#install) to use the same skills in your
-own robotics project.
-
-The source is available in the
-[PushT with Diffusion Policy application](https://github.com/robium-ai/robium-apps/tree/main/diffusion-policy-pusht).
-The repository also contains the
-[architecture brief](https://github.com/robium-ai/robium-apps/blob/main/diffusion-policy-pusht/docs/architecture-brief.md)
-and the complete local and container smoke tests.
-
-This project demonstrates one visual policy in a 2D simulator. The official
-success rate remains 65.4%, L/I/Z are qualitative probes, and a successful
-seed does not establish a new benchmark. Moving the same approach to a
-physical arm requires new demonstrations, camera and action calibration,
-safety limits, and evaluation on the target hardware.
+Source, smoke tests, and the architecture brief are available in the
+[PushT application](https://github.com/robium-ai/robium-apps/tree/main/diffusion-policy-pusht).

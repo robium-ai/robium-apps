@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">Robot Navigation application flow</title>
+  <desc id="desc">Gazebo publishes TurtleBot3 sensor and motion data to ROS 2. SLAM Toolbox, AMCL, and Nav2 process it. The bridge and app services connect the stack to Lichtblick and the Robium Dashboard.</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#2563EB"/></marker></defs>
+  <rect width="1200" height="520" fill="#EDEFEE"/>
+  <text x="64" y="70" fill="#2563EB" font-family="ui-monospace, monospace" font-size="18" letter-spacing="2">ROBOT NAVIGATION / SYSTEM FLOW</text>
+  <g font-family="Inter, Arial, sans-serif" fill="#101719">
+    <g transform="translate(64 155)"><rect width="210" height="130" fill="#E8ECEB" stroke="#ADBAB9"/><text x="24" y="50" font-size="24" font-weight="650">Gazebo</text><text x="24" y="82" font-size="16" fill="#3B494C">TurtleBot3 · sensors</text><text x="24" y="106" font-size="16" fill="#3B494C">motion · transforms</text></g>
+    <g transform="translate(330 155)"><rect width="240" height="130" fill="#DFE9FF" stroke="#2563EB"/><text x="24" y="50" font-size="24" font-weight="650">ROS 2 navigation</text><text x="24" y="82" font-size="16" fill="#3B494C">SLAM · AMCL · Nav2</text><text x="24" y="106" font-size="16" fill="#3B494C">maps · plans · velocity</text></g>
+    <g transform="translate(626 155)"><rect width="220" height="130" fill="#E0E6E5" stroke="#ADBAB9"/><text x="24" y="50" font-size="24" font-weight="650">Bridge + services</text><text x="24" y="82" font-size="16" fill="#3B494C">topics · controls</text><text x="24" y="106" font-size="16" fill="#3B494C">waypoints · status</text></g>
+    <g transform="translate(902 155)"><rect width="234" height="130" fill="#E8ECEB" stroke="#ADBAB9"/><text x="24" y="50" font-size="24" font-weight="650">Lichtblick</text><text x="24" y="82" font-size="16" fill="#3B494C">3D · camera · logs</text><text x="24" y="106" font-size="16" fill="#3B494C">Robium Dashboard</text></g>
+  </g>
+  <g stroke="#2563EB" stroke-width="3" fill="none" marker-end="url(#arrow)"><path d="M274 220 H320"/><path d="M570 220 H616"/><path d="M846 220 H892"/></g>
+  <path d="M1018 300 C1018 420 450 420 450 300" stroke="#718083" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <text x="655" y="402" fill="#718083" font-family="ui-monospace, monospace" font-size="14">goals · mapping actions · waypoint requests</text>
+</svg>

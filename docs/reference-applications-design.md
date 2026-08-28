@@ -273,7 +273,7 @@ live components. Documented commands are tested exactly as written (the
 clean-clone honesty check). Performance claims state hardware, data, scenario,
 and measurement method.
 
-### The article (case study as a living, portable document)
+### The article (a living, portable product-lab document)
 
 `docs/case-study.md` IS the app's public article. One markdown file is the
 single source for the website's article pages, the frontpage feature slots,
@@ -283,25 +283,38 @@ when cross-posting:
 
 ```markdown
 ---
-title: The article headline
-summary: One or two sentences shown on cards and list pages.
-app: robot-navigation        # must equal the app id
-date: 2026-08-05              # last substantive revision (living document)
-hero: assets/trailer.gif      # app-relative short clip (or image); optional
-featured: true                # frontpage candidates; the site shows up to 3
+title: A natural headline about the result or decision
+summary: One compact sentence shown on cards and list pages.
+voice: product-lab
+audience: robotics-developer
+level: intermediate
+app: robot-navigation
+date: 2026-08-28
+tested: 2026-08-16
+hero: assets/gifs/trailer.gif
+hero_alt: What the recorded run visibly shows
+social_image: assets/social/card.png
+featured: true
 ---
 
-Article body: problem, constraints, approach, Robium components used,
-major decisions, results, limitations, next steps.
+Article body: outcome, important decision, system flow, short run path, scoped
+result, one account of how Robium changed the build, and limits. These are
+editorial checks, not required visible headings.
 ```
 
-Rules: the hero is a short clip (roughly 20 s or less, GIF/MP4) or a still
-image, honestly labeled (sim footage reads as sim); date moves when the
-content substantively changes - it is a living document, revised as the app
-evolves; the website lists ALL articles on its articles page and shows up
-to three featured ones on the frontpage. Ingestion follows the catalog
-pattern: generated from the apps checkout at build time with a committed
-fallback.
+Write like someone who built the application: direct, specific, and restrained.
+Do not use em dashes, canned AI transitions, repeated summaries, or inflated
+certainty. Detailed command catalogs and troubleshooting stay in the README.
+
+The standard media set is one real-result hero, one clear system diagram, and a
+1200 by 630 social card composed from real project imagery. Short motion is
+optional. Generated conceptual art may explain an idea, but it is labeled as an
+illustration and never presented as application output.
+
+The hero is a short clip or still with descriptive alt text and a useful
+caption. `date` moves when the article changes substantively; `tested` records
+the run date for the described path. Ingestion follows the catalog pattern:
+generated from the apps checkout at build time with a committed fallback.
 
 ## 10. Growth, scaffolding, and roadmap
 

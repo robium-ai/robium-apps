@@ -73,4 +73,5 @@ demo:
 
 artifacts:
   architecture: docs/architecture-brief.md
+  case_study: docs/case-study.md
   evidence_schema: evidence/manifest.schema.json

@@ -35,6 +35,7 @@ class AssetError(RuntimeError):
 @dataclass(frozen=True)
 class Source:
     type: str
+    repository: str
     url: str
     revision: str
     sha256: str
@@ -43,10 +44,27 @@ class Source:
 
 
 @dataclass(frozen=True)
+class License:
+    id: str
+    file: Path
+    url: str | None
+
+
+@dataclass(frozen=True)
+class Verification:
+    date: str
+    method: str
+
+
+@dataclass(frozen=True)
 class Asset:
     id: str
+    kind: str
+    name: str
     revision: str
     manifest: Path
+    license: License
+    verification: Verification
     source: Source
     entrypoints: dict[str, str]
 
@@ -87,7 +105,7 @@ def _manifest_path(root: Path, value: str) -> Path:
     return candidate
 
 
-def _load_manifest(path: Path, expected_id: str) -> Asset:
+def _load_manifest(path: Path, expected_id: str, expected_kind: str, expected_name: str) -> Asset:
     data = _load_yaml(path)
     if data.get("schema_version") != SCHEMA_VERSION:
         raise AssetError(f"{path}: unsupported schema_version")
@@ -96,7 +114,34 @@ def _load_manifest(path: Path, expected_id: str) -> Asset:
         raise AssetError(f"{path}: invalid or mismatched asset id {asset_id!r}")
     if data.get("storage") != "pointer":
         raise AssetError(f"{path}: resolver currently supports pointer assets only")
+    kind = _required_string(data, "kind", str(path))
+    name = _required_string(data, "name", str(path))
+    if kind != expected_kind or not asset_id.startswith(f"{kind}."):
+        raise AssetError(f"{path}: kind does not match catalog or asset id")
+    if name != expected_name:
+        raise AssetError(f"{path}: name does not match catalog")
     revision = _required_string(data, "revision", str(path))
+
+    license_data = _mapping(data.get("license"), f"{path}.license")
+    license_id = _required_string(license_data, "id", f"{path}.license")
+    license_relative = _safe_relative(
+        _required_string(license_data, "file", f"{path}.license"),
+        f"{path}.license.file",
+    )
+    license_file = path.parent / Path(*license_relative.parts)
+    if not license_file.is_file():
+        raise AssetError(f"{path}: license file does not exist: {license_relative}")
+    license_url = license_data.get("url")
+    if license_url is not None and (not isinstance(license_url, str) or not license_url.strip()):
+        raise AssetError(f"{path}: license.url must be a non-empty string or null")
+
+    verification_data = _mapping(data.get("verification"), f"{path}.verification")
+    verification_date = _required_string(verification_data, "date", f"{path}.verification")
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", verification_date) is None:
+        raise AssetError(f"{path}: verification.date must use YYYY-MM-DD")
+    verification_method = _required_string(
+        verification_data, "method", f"{path}.verification"
+    )
 
     source_data = _mapping(data.get("source"), f"{path}.source")
     source_type = _required_string(source_data, "type", f"{path}.source")
@@ -116,20 +161,25 @@ def _load_manifest(path: Path, expected_id: str) -> Asset:
 
     entrypoint_data = _mapping(data.get("entrypoints"), f"{path}.entrypoints")
     entrypoints: dict[str, str] = {}
-    for name, value in entrypoint_data.items():
-        if not isinstance(name, str) or not name or not isinstance(value, str):
+    for entrypoint_name, value in entrypoint_data.items():
+        if not isinstance(entrypoint_name, str) or not entrypoint_name or not isinstance(value, str):
             raise AssetError(f"{path}: entrypoints must map names to paths")
-        _safe_relative(value, f"{path}.entrypoints.{name}")
-        entrypoints[name] = value
+        _safe_relative(value, f"{path}.entrypoints.{entrypoint_name}")
+        entrypoints[entrypoint_name] = value
     if not entrypoints:
         raise AssetError(f"{path}: at least one entrypoint is required")
 
     return Asset(
         id=asset_id,
+        kind=kind,
+        name=name,
         revision=revision,
         manifest=path,
+        license=License(id=license_id, file=license_file, url=license_url),
+        verification=Verification(date=verification_date, method=verification_method),
         source=Source(
             type=source_type,
+            repository=_required_string(source_data, "repository", f"{path}.source"),
             url=_required_string(source_data, "url", f"{path}.source"),
             revision=_required_string(source_data, "revision", f"{path}.source"),
             sha256=digest,
@@ -159,7 +209,12 @@ def _load_catalog_file(root: Path, catalog_path: Path) -> dict[str, Asset]:
         manifest = _manifest_path(
             root, _required_string(entry, "manifest", f"{catalog_path}.assets[{index}]")
         )
-        assets[asset_id] = _load_manifest(manifest, asset_id)
+        assets[asset_id] = _load_manifest(
+            manifest,
+            asset_id,
+            _required_string(entry, "kind", f"{catalog_path}.assets[{index}]"),
+            _required_string(entry, "name", f"{catalog_path}.assets[{index}]"),
+        )
     return assets
 
 

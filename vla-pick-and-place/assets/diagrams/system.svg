@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">Pi0.5 and LIBERO application flow</title>
+  <desc id="desc">The instruction, camera frame, and Panda state pass through the application adapter to Pi0.5. The model returns an action chunk to LIBERO, which produces the next state and a recorded run.</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#2563EB"/></marker></defs>
+  <rect width="1200" height="520" fill="#EDEFEE"/>
+  <text x="64" y="70" fill="#2563EB" font-family="ui-monospace, monospace" font-size="18" letter-spacing="2">PI0.5 + LIBERO / SYSTEM FLOW</text>
+  <g font-family="Inter, Arial, sans-serif" fill="#101719">
+    <g transform="translate(64 150)"><rect width="230" height="130" fill="#E8ECEB" stroke="#ADBAB9"/><text x="24" y="45" font-size="23" font-weight="650">Task inputs</text><text x="24" y="78" font-size="16" fill="#3B494C">instruction · camera</text><text x="24" y="103" font-size="16" fill="#3B494C">Panda state</text></g>
+    <g transform="translate(350 150)"><rect width="220" height="130" fill="#E0E6E5" stroke="#ADBAB9"/><text x="24" y="45" font-size="23" font-weight="650">App adapter</text><text x="24" y="78" font-size="16" fill="#3B494C">processor contract</text><text x="24" y="103" font-size="16" fill="#3B494C">ten-action horizon</text></g>
+    <g transform="translate(626 150)"><rect width="210" height="130" fill="#DFE9FF" stroke="#2563EB"/><text x="24" y="45" font-size="23" font-weight="650">Pi0.5</text><text x="24" y="78" font-size="16" fill="#3B494C">language-conditioned</text><text x="24" y="103" font-size="16" fill="#3B494C">action chunk</text></g>
+    <g transform="translate(892 150)"><rect width="244" height="130" fill="#E8ECEB" stroke="#ADBAB9"/><text x="24" y="45" font-size="23" font-weight="650">LIBERO</text><text x="24" y="78" font-size="16" fill="#3B494C">Panda simulation</text><text x="24" y="103" font-size="16" fill="#3B494C">task condition</text></g>
+    <g transform="translate(450 360)"><rect width="300" height="92" fill="#E0E6E5" stroke="#ADBAB9"/><text x="24" y="40" font-size="22" font-weight="650">Run archive</text><text x="24" y="68" font-size="16" fill="#3B494C">video · result · timing · hashes</text></g>
+  </g>
+  <g stroke="#2563EB" stroke-width="3" fill="none" marker-end="url(#arrow)"><path d="M294 215 H340"/><path d="M570 215 H616"/><path d="M836 190 H882"/><path d="M892 245 H846"/><path d="M1014 285 C1014 335 750 335 720 350"/></g>
+  <text x="842" y="177" fill="#718083" font-family="ui-monospace, monospace" font-size="14">observation</text>
+  <text x="842" y="268" fill="#718083" font-family="ui-monospace, monospace" font-size="14">actions</text>
+</svg>
