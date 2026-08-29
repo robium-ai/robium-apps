@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Watching a robot dog learn to walk</title>
+  <desc id="desc">A simulated Unitree Go2 beside a paper panel naming the checkpoint progression project.</desc>
+  <defs><clipPath id="media"><rect width="720" height="630"/></clipPath></defs>
+  <rect width="1200" height="630" fill="#EDEFEE"/>
+  <image href="../../evidence/previews/go2-hero.png" x="0" y="0" width="720" height="630" preserveAspectRatio="xMidYMid slice" clip-path="url(#media)"/>
+  <rect x="720" width="480" height="630" fill="#EDEFEE"/>
+  <rect x="760" y="94" width="80" height="6" fill="#2563EB"/>
+  <g font-family="Inter, Arial, sans-serif" fill="#101719">
+    <text x="760" y="152" font-size="24" fill="#1D4ED8">robium / applications</text>
+    <text x="760" y="250" font-size="43" font-weight="650">Watching a</text>
+    <text x="760" y="304" font-size="43" font-weight="650">robot dog</text>
+    <text x="760" y="358" font-size="43" font-weight="650">learn to walk</text>
+    <text x="760" y="421" font-size="25" fill="#3B494C">checkpoint by checkpoint</text>
+    <text x="760" y="548" font-size="16" font-family="monospace" fill="#718083">ISAAC LAB / UNITREE GO2 / PPO</text>
+  </g>
+</svg>

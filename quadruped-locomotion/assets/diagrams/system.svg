@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">Quadruped locomotion training and publication flow</title>
+  <desc id="desc">Velocity commands and robot observations enter a PPO policy, actions drive thousands of simulated Go2 robots, rewards update the policy, and selected checkpoints become recorded and live experiences.</desc>
+  <rect width="1200" height="560" fill="#EDEFEE"/>
+  <g font-family="Inter, Arial, sans-serif" fill="#101719">
+    <text x="60" y="72" font-size="18" font-family="monospace" fill="#1D4ED8">QUADRUPED LOCOMOTION</text>
+    <text x="60" y="108" font-size="30" font-weight="650">From velocity command to walking policy</text>
+  </g>
+  <g fill="#E0E6E5" stroke="#ADBAB9" stroke-width="2">
+    <rect x="60" y="190" width="220" height="145"/>
+    <rect x="365" y="190" width="220" height="145"/>
+    <rect x="670" y="190" width="220" height="145"/>
+    <rect x="975" y="190" width="165" height="145"/>
+  </g>
+  <g font-family="Inter, Arial, sans-serif" fill="#101719">
+    <text x="84" y="230" font-size="14" font-family="monospace" fill="#1D4ED8">COMMAND + STATE</text>
+    <text x="84" y="269" font-size="25" font-weight="650">Observation</text>
+    <text x="84" y="301" font-size="15" fill="#3B494C">target velocity, joints,</text>
+    <text x="84" y="324" font-size="15" fill="#3B494C">base motion, last action</text>
+
+    <text x="389" y="230" font-size="14" font-family="monospace" fill="#1D4ED8">RSL-RL</text>
+    <text x="389" y="269" font-size="25" font-weight="650">PPO policy</text>
+    <text x="389" y="301" font-size="15" fill="#3B494C">observation in, twelve</text>
+    <text x="389" y="324" font-size="15" fill="#3B494C">joint targets out</text>
+
+    <text x="694" y="230" font-size="14" font-family="monospace" fill="#1D4ED8">ISAAC LAB</text>
+    <text x="694" y="269" font-size="25" font-weight="650">Parallel Go2s</text>
+    <text x="694" y="301" font-size="15" fill="#3B494C">physics, contacts, reward,</text>
+    <text x="694" y="324" font-size="15" fill="#3B494C">and episode resets</text>
+
+    <text x="998" y="230" font-size="14" font-family="monospace" fill="#1D4ED8">OUTPUT</text>
+    <text x="998" y="269" font-size="25" font-weight="650">Checkpoints</text>
+    <text x="998" y="301" font-size="15" fill="#3B494C">recorded clips</text>
+    <text x="998" y="324" font-size="15" fill="#3B494C">and live control</text>
+  </g>
+  <g stroke="#2563EB" stroke-width="4" fill="none">
+    <path d="M280 262H349"/>
+    <path d="M585 262H654"/>
+    <path d="M890 262H959"/>
+    <path d="M780 355V435H475V351"/>
+  </g>
+  <g fill="#2563EB">
+    <path d="M349 262l-14-8v16z"/>
+    <path d="M654 262l-14-8v16z"/>
+    <path d="M959 262l-14-8v16z"/>
+    <path d="M475 351l-8 14h16z"/>
+  </g>
+  <text x="575" y="467" text-anchor="middle" font-family="monospace" font-size="14" fill="#1D4ED8">REWARD UPDATES THE POLICY</text>
+</svg>

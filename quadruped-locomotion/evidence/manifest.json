@@ -1,0 +1,342 @@
+{
+  "schema_version": 1,
+  "app_id": "quadruped-locomotion",
+  "generated_at": "2026-08-28T20:50:46.698510+00:00",
+  "source": {
+    "kind": "archive",
+    "name": "go2_artifacts.tar.gz",
+    "size_bytes": 22480521,
+    "sha256": "de11ce9711a400de005dddff4c6500a8d81e8ae9149016ca159abe563439477f"
+  },
+  "metadata": {
+    "status": "historical-baseline",
+    "recorded_at": "2026-07-27",
+    "run_id": "2026-07-27_05-32-14",
+    "task": "Isaac-Velocity-Flat-Unitree-Go2-v0",
+    "training": {
+      "library": "rsl_rl",
+      "algorithm": "PPO",
+      "seed": 42,
+      "parallel_environments": 4096,
+      "iterations": 2000,
+      "training_seconds": 1937.53,
+      "checkpoints": 21
+    },
+    "environment": {
+      "provider": "RunPod",
+      "gpu": "NVIDIA L4",
+      "container": "nvcr.io/nvidia/isaac-lab:3.0.0-beta2-post1",
+      "driver": "580.159.04",
+      "python": "3.12"
+    },
+    "final_training_metrics": {
+      "mean_reward": 34.97,
+      "mean_episode_length": 1000.0,
+      "success_rate": 1.0,
+      "velocity_error_xy": 0.0946,
+      "velocity_error_yaw": 0.1612
+    },
+    "curated_checkpoints": [
+      {
+        "iteration": 0,
+        "preview": "go2_walk_iter0.mp4"
+      },
+      {
+        "iteration": 100,
+        "preview": "go2_walk_iter100.mp4"
+      },
+      {
+        "iteration": 300,
+        "preview": "go2_walk_iter300.mp4"
+      },
+      {
+        "iteration": 1000,
+        "preview": "go2_walk_iter1000.mp4"
+      },
+      {
+        "iteration": 1999,
+        "preview": "go2_walk_iter1999.mp4"
+      }
+    ],
+    "cost": {
+      "scope": "training, rendering, live-demo iteration, and setup",
+      "gpu_hours_estimate": "4-5",
+      "usd_estimate": "1.50-2.00"
+    },
+    "evaluation": {
+      "status": "fresh-evaluation-required",
+      "note": "The recorded archive contains real training metrics and rollouts, but not the new current-stack evaluation required to close issue #70."
+    }
+  },
+  "summary": {
+    "files": 43,
+    "roles": {
+      "checkpoint": 21,
+      "configuration": 2,
+      "log": 1,
+      "policy-export": 3,
+      "rollout": 15,
+      "support": 1
+    }
+  },
+  "files": [
+    {
+      "path": "go2_full.log",
+      "role": "log",
+      "size_bytes": 3252440,
+      "sha256": "1cb473806c339f11dde717665aa184a8a5b4118b91501b2d1ed30a42a2126fe0"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/exported/policy.onnx",
+      "role": "policy-export",
+      "size_bytes": 11303,
+      "sha256": "d4430993d02d901cccd51d5c21a5bef7d970057ab425834ec6a364b4afa374a1"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/exported/policy.onnx.data",
+      "role": "policy-export",
+      "size_bytes": 163328,
+      "sha256": "4513c322679dd7751de68cac805d98497686f46981cc7e4fc593324266ef9e56"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/exported/policy.pt",
+      "role": "policy-export",
+      "size_bytes": 175468,
+      "sha256": "8c9be5ec24e4c0f7f7cc4ecafab31baaacd1197f4fa9d669bf35791f595413d5"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_0.pt",
+      "role": "checkpoint",
+      "size_bytes": 983319,
+      "sha256": "fca767cc245e187bc791f042f14435405563579bdce3585cbbbbbc3f865bd138"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_100.pt",
+      "role": "checkpoint",
+      "size_bytes": 983915,
+      "sha256": "1996219bac8e0319293654d07c2e412a9c4102122ad9ff4fef77fa827eaf08bd"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_1000.pt",
+      "role": "checkpoint",
+      "size_bytes": 983989,
+      "sha256": "0e35055292257f93c40e0316ab6a2176f461367d5c3bd43d13c1ff81dd5b826c"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_1100.pt",
+      "role": "checkpoint",
+      "size_bytes": 983989,
+      "sha256": "600da34b75b578bf7cc56a97ea6fa9abd80eeca5c11fe883e8442c669d7aee48"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_1200.pt",
+      "role": "checkpoint",
+      "size_bytes": 983989,
+      "sha256": "9e602c1bc3894e4c1263fbaefe96d4b7c989011068625d30bbeb4501b48c3a35"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_1300.pt",
+      "role": "checkpoint",
+      "size_bytes": 983989,
+      "sha256": "048b84883c40291793ed9781ecd5dfda4e90345e1b604172ed79a2cf399096ac"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_1400.pt",
+      "role": "checkpoint",
+      "size_bytes": 983989,
+      "sha256": "fd35ae65e47342c5a4ade3dceb2ef40ce4c56d48fe30508623ffbbb8cbd463fd"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_1500.pt",
+      "role": "checkpoint",
+      "size_bytes": 983989,
+      "sha256": "0531492117fc7ba29a00cd60f06367208a1e1a6e02b1531b3b02cf364f6d260c"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_1600.pt",
+      "role": "checkpoint",
+      "size_bytes": 983989,
+      "sha256": "9accb5c57c290be07330980e82655779e88413af54be6991f8a3caa64b83b349"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_1700.pt",
+      "role": "checkpoint",
+      "size_bytes": 983989,
+      "sha256": "0e8f352876cb45e90eee857ede24d94170c413184ea34000d200fa60c1c9657c"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_1800.pt",
+      "role": "checkpoint",
+      "size_bytes": 983989,
+      "sha256": "aff8cc24f822defe27bb0deb17ba425cdc30d70669324af1bf56248aa1bb150c"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_1900.pt",
+      "role": "checkpoint",
+      "size_bytes": 983989,
+      "sha256": "5a0fb3a2864b8a6534edbe1bbc0de84308c546359c937623308c4530bc92425d"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_1999.pt",
+      "role": "checkpoint",
+      "size_bytes": 983989,
+      "sha256": "0b95d1438ffac922ec07aa9309a8105a9d25618019da8e19c95b9a221827a071"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_200.pt",
+      "role": "checkpoint",
+      "size_bytes": 983915,
+      "sha256": "4412620d6ec06c25607cebe845292aac47c6d96ab100ff373c061c0811556ee7"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_300.pt",
+      "role": "checkpoint",
+      "size_bytes": 983915,
+      "sha256": "318bb7055345cc4141f01bec72dbb28bf8120bcbeb321524c1a5da383fc8d739"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_400.pt",
+      "role": "checkpoint",
+      "size_bytes": 983915,
+      "sha256": "0a58c4af7660a9043be612eca810c4a440144f9853cd7efd859a1b4e07363bf3"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_500.pt",
+      "role": "checkpoint",
+      "size_bytes": 983915,
+      "sha256": "f743169f30e5fedae3574d6aa2d4edc2e9ae0903daff2ea233144138c43e56d2"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_600.pt",
+      "role": "checkpoint",
+      "size_bytes": 983915,
+      "sha256": "3d2e300425459a1529b7e9c1cb584cbe091b30b6e54fc239a0812d9c12477acd"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_700.pt",
+      "role": "checkpoint",
+      "size_bytes": 983915,
+      "sha256": "eb0eb7a035c6940e098096940d164b5db32414c8597af39a3a95baa3d51b5d56"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_800.pt",
+      "role": "checkpoint",
+      "size_bytes": 983915,
+      "sha256": "edf0b23a89ce731b013eba676ad2054552718e37edb59c6437d069317567d2f1"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/model_900.pt",
+      "role": "checkpoint",
+      "size_bytes": 983915,
+      "sha256": "318ff0002ee72477330098bc90f7be72d24a2c3d2377f6c5c71f5a1dee7cd2f8"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/params/agent.yaml",
+      "role": "configuration",
+      "size_bytes": 1135,
+      "sha256": "3c3870b7114667256efcc7f8d22a370db65362bf54a804ba9c7657762bcb960d"
+    },
+    {
+      "path": "logs/rsl_rl/unitree_go2_flat/2026-07-27_05-32-14/params/env.yaml",
+      "role": "configuration",
+      "size_bytes": 25676,
+      "sha256": "8fd834635700def6958a8df5d5cde7b38a7813b5ed6b37148aaa7d6e0b707479"
+    },
+    {
+      "path": "scripts/reinforcement_learning/rsl_rl/live_demo.py",
+      "role": "support",
+      "size_bytes": 20323,
+      "sha256": "e8e52a40af6e22413dce2a37884ec85f5482381e4969021e88a78ddebc92e4ca"
+    },
+    {
+      "path": "serve_videos/go2_iter0.mp4",
+      "role": "rollout",
+      "size_bytes": 178825,
+      "sha256": "57f4dc21dbc731b0febd129258de444be2069a0ffb75f80e3139f74a9b4a4d81"
+    },
+    {
+      "path": "serve_videos/go2_iter20.mp4",
+      "role": "rollout",
+      "size_bytes": 177251,
+      "sha256": "e648d82678454656eee02e8fb1cb0cbe1e12c3f12860c1a93f76e7b77ac1a808"
+    },
+    {
+      "path": "serve_videos/go2_iter49.mp4",
+      "role": "rollout",
+      "size_bytes": 177894,
+      "sha256": "bc61a7761865e5e3025952ac09b9c4842accea236749e59242f5aeb390a822e2"
+    },
+    {
+      "path": "serve_videos/go2_walk_iter0.mp4",
+      "role": "rollout",
+      "size_bytes": 214134,
+      "sha256": "4ab571560c03f64397fb19324aee4956647a19fa1fc9db08f18b21990d7f1eef"
+    },
+    {
+      "path": "serve_videos/go2_walk_iter100.mp4",
+      "role": "rollout",
+      "size_bytes": 210519,
+      "sha256": "553f5ab6fe57bf7e29f3d5b17e2a12284b7e48d808aa61bba72111e89d327893"
+    },
+    {
+      "path": "serve_videos/go2_walk_iter1000.mp4",
+      "role": "rollout",
+      "size_bytes": 198498,
+      "sha256": "0aaa0ba64eaa930ef26e2c0adc57447caa75d5228ca5a7ddd8de4797259e8df5"
+    },
+    {
+      "path": "serve_videos/go2_walk_iter1999.mp4",
+      "role": "rollout",
+      "size_bytes": 223412,
+      "sha256": "9f51810f77f802f5d32d3f9672b264d5bed3af8ed63a5acfa859d8b938b9051f"
+    },
+    {
+      "path": "serve_videos/go2_walk_iter200.mp4",
+      "role": "rollout",
+      "size_bytes": 198530,
+      "sha256": "541eac9935bcd6797939c504e5e2e444a6c71c1a49c5b97466c50ccdf540daa8"
+    },
+    {
+      "path": "serve_videos/go2_walk_iter300.mp4",
+      "role": "rollout",
+      "size_bytes": 198138,
+      "sha256": "14e71cc1b2e65f62f12d01d434ba6a116fb37573ab70d89680b7181a41fe45a4"
+    },
+    {
+      "path": "serve_videos/go2_walk_iter400.mp4",
+      "role": "rollout",
+      "size_bytes": 199494,
+      "sha256": "43534165caa468b45f10682c41177cbc2fa14503523871eaf7e6490ccb833b75"
+    },
+    {
+      "path": "serve_videos/go2_walk_iter500.mp4",
+      "role": "rollout",
+      "size_bytes": 223737,
+      "sha256": "1032f710617bd9f89263d5ae03112bfebc410ccf26355f3d4f8ab2a0956d9204"
+    },
+    {
+      "path": "serve_videos/go2_walk_iter600.mp4",
+      "role": "rollout",
+      "size_bytes": 199812,
+      "sha256": "c594eee25cb22d9e8f0a84650939356f710d7e7532fc41a924072906d0ed77ca"
+    },
+    {
+      "path": "serve_videos/go2_walk_iter700.mp4",
+      "role": "rollout",
+      "size_bytes": 199374,
+      "sha256": "6f0815fe97baf152098453e86b8ce371552cb1b3b1325163fb0a08cd4a7fb0c2"
+    },
+    {
+      "path": "serve_videos/go2_walk_iter800.mp4",
+      "role": "rollout",
+      "size_bytes": 199696,
+      "sha256": "808db8f43f9994f98f1d99c00b2c13c8d04984d8d78ce941080ef1329340b3bb"
+    },
+    {
+      "path": "serve_videos/go2_walk_iter900.mp4",
+      "role": "rollout",
+      "size_bytes": 199179,
+      "sha256": "689b66399c4a0e3eb0ddefd55e325e9f4b19a338f86ba1a1be1096c836e429a8"
+    }
+  ]
+}

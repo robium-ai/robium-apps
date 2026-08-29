@@ -3,7 +3,7 @@
 A plain-language walkthrough of what this app actually does. Written for learning —
 this app's primary goal is understanding Isaac Lab RL by doing. Exact per-task
 numbers (observation size, reward terms) are confirmed against the live env config
-on the pod and updated here as we go.
+from the selected installation when they matter to a result.
 
 ## 1. It trains from scratch — no pretrained policy
 
@@ -32,7 +32,7 @@ passing smoke test.
 
 ```
         ┌─────────────────────────────────────────────────┐
-        │  Isaac Lab spins up ~4096 Go2s in parallel on    │
+        │  Isaac Lab spins up many Go2s in parallel on     │
         │  the GPU  (this parallelism is the speed trick)  │
         └─────────────────────────────────────────────────┘
                               │
@@ -48,8 +48,7 @@ passing smoke test.
    │  4. REWARD    + for matching the commanded velocity        │
    │               − for falling, energy use, jerky motion …    │
    │  5. LEARN     PPO nudges the network toward higher-reward  │
-   │               actions, using experience from ALL 4096      │
-   │               robots at once                               │
+   │               actions, using experience from all workers   │
    │                                                            │
    └────────────── reward climbs → a gait emerges ──────────────┘
                               │
@@ -64,47 +63,47 @@ passing smoke test.
 **Algorithm: PPO** (Proximal Policy Optimization) via the **`rsl_rl`** library
 (Isaac Lab's default). It is actor-critic:
 
-- **Actor** = the policy network (an MLP, ~3 hidden layers). Input = the observation
+- **Actor** = the policy network. Input = the observation
   vector; output = 12 target joint positions fed to PD controllers. *This is the
   artifact that ships* (exported to TorchScript + ONNX by `play.py`).
 - **Critic** = a value network estimating "how good is this state," used to compute
   PPO's advantage for stable updates. Used only during training, then discarded.
 
-Exact observation vector, action scaling, and the full reward-term list live in the
-Isaac Lab env config for this task — we read them on the pod and pin the specifics
-here. _(pending: confirmed values from the live config.)_
+Exact observation fields, action scaling, network shape, and reward terms belong
+to the installed Isaac Lab task and agent configs. The wrapper leaves them
+upstream and the evidence bundle preserves the versions and resolved configs used
+for a result.
 
 ## 5. Why thousands of robots in parallel
 
-That is Isaac Lab's whole reason to exist. ~4096 Go2s collecting experience
-simultaneously on one GPU is how a walking policy trains in **~20–40 minutes**
-instead of days — the "walk in minutes" result (Rudin et al., §7). Fewer envs =
-less experience per iteration = slower and noisier learning.
+That is Isaac Lab's core advantage for this workload: many Go2 instances collect
+experience while one policy learns from the combined batch. The useful parallel
+count depends on the selected host and installed task, so the application lets the
+task choose its default unless `GO2_FULL_NUM_ENVS` is set after a real probe.
 
 ## 6. Our two run profiles (`config.py`)
 
 | Profile | envs / iters | Purpose |
 | --- | --- | --- |
 | **smoke** (`make smoke`) | 32 / 10 | The pass bar. Proves the loop *runs* and writes a checkpoint (mechanics). Will **not** walk — that is the correct result, same as vla-trial's pipe-test. |
-| **full** (`make train-full`) | 4096 / task-default | The real ~20–40 min walking policy, with video capture. |
+| **full** (`make train-full`) | host-adjustable / installed task default | The useful walking-policy run. Measure the selected host first, then record the values that worked. |
 
-Both invocations are built from the same `config.py` constants, so the smoke run and
-a hand-run stage cannot drift apart.
+Both invocations are built from the same `config.py` profiles. Environment
+variables can adjust them after the smoke establishes the target host's useful
+scale; the evidence manifest records the values used for the resulting run.
 
 ## 7. How you watch it (there is no local GUI)
 
-Everything runs headless on the cloud GPU pod (Isaac Lab has no macOS path). You
+Simulation runs on the GPU host (Isaac Lab has no macOS path). You
 observe it three ways:
 
 - **Recorded MP4 clips — the main way.** `--video --video_interval N` records a
   rollout clip every N training iterations → a **progression** from flailing → walking.
   `play.py` on any saved `model_<iter>.pt` renders a clean per-checkpoint video. Clips
-  land in `logs/rsl_rl/<task>/<run>/videos/` on the pod and are `scp`'d back to the Mac.
-- **TensorBoard reward curves** — over an SSH tunnel; watch reward climb live.
-- **Live Isaac Sim GUI (optional, fiddly)** — Isaac Sim can livestream its viewport
-  over WebRTC to a browser, but it's awkward through RunPod's port mapping and costs
-  training throughput. Practical only for a short `play.py` livestream on a finished
-  checkpoint, not for watching the training run. Not relied upon.
+  land in the run directory for later review.
+- **TensorBoard reward curves** — use the access method supported by the selected host.
+- **Live playback (optional)** — the recovered MJPEG controller is the known working
+  seam. A fresh host probe can keep it or replace only the stream adapter.
 
 ## 8. Reading (best → supporting)
 
@@ -116,4 +115,4 @@ observe it three ways:
 3. **`rsl_rl`** — the PPO implementation we run: https://github.com/leggedrobotics/rsl_rl
 4. **PPO** — Schulman et al. 2017 (https://arxiv.org/abs/1707.06347), or Karpathy's
    "Deep RL: Pong from Pixels" for a gentler intro.
-5. **`docs/architecture-brief.md`** — this app's decisions, compute, and phased plan.
+5. **`docs/architecture-brief.md`** — this app's outcome, current decisions, and risks.

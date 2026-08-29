@@ -1,126 +1,120 @@
-"""Single source of truth for go2-locomotion run parameters.
+"""Runtime configuration and Isaac Lab command construction.
 
-The Makefile targets and the tests both build their Isaac Lab invocations from
-these values, so a hand-run stage and the pass-bar run can never drift apart.
-(Pattern lifted from apps/vla-trial and apps/manip-trial.)
-
-WHERE THIS RUNS: everything here executes ON the RunPod GPU pod, not on the Mac.
-Isaac Lab has no macOS path at all (see docs/architecture-brief.md §1). The one
-thing that IS Mac-testable is the pure-Python command construction below — it
-imports nothing from Isaac Lab, so tests/test_config.py can assert the command
-shapes on any host without a GPU.
-
-PROVENANCE / TRUST: task ids, script paths, and flags are sourced from the robium
-`isaac-lab` skill + a ctx7 fetch (2026-07-26), NOT typed from memory. But per that
-skill's standing directive — *never trust an Isaac Lab task id or script path
-across releases* — RE-VERIFY at Phase 0:
-  * task ids  -> `make list-envs` (list_envs.py) on the pod,
-  * script paths -> against the actually-installed IsaacLab tree.
-The scripts directory was reorganized into reinforcement_learning/ +
-imitation_learning/ subdirs in a past release; assume it can move again.
+The application runs on a Linux NVIDIA GPU host. The wrapper remains pure
+Python so its command and evidence paths can be checked on any development
+machine before paid compute is involved.
 """
 
+from __future__ import annotations
+
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 APP_ROOT = Path(__file__).resolve().parents[2]
-
-# --- Isaac Lab location on the pod -----------------------------------------
-# Where IsaacLab was cloned + installed in Phase 0. Overridable per pod layout.
-# All train/play/list scripts are resolved relative to this root, and Isaac Lab
-# is normally launched with this as the CWD (so logs/ lands under it).
 ISAACLAB_ROOT = Path(os.environ.get("ISAACLAB_ROOT", "/workspace/IsaacLab"))
+ISAACLAB_LAUNCHER = os.environ.get(
+    "ISAACLAB_LAUNCHER", str(ISAACLAB_ROOT / "isaaclab.sh")
+)
+CLI_STYLE = os.environ.get("ISAACLAB_CLI_STYLE", "unified")
 
-# Script paths, relative to ISAACLAB_ROOT (RE-VERIFY against the installed tree).
-TRAIN_SCRIPT = "scripts/reinforcement_learning/rsl_rl/train.py"
-PLAY_SCRIPT = "scripts/reinforcement_learning/rsl_rl/play.py"
+TASK = os.environ.get("GO2_TASK", "Isaac-Velocity-Flat-Unitree-Go2-v0")
+RL_LIBRARY = "rsl_rl"
+SEED = int(os.environ.get("GO2_SEED", "42"))
+
 LIST_ENVS_SCRIPT = "scripts/environments/list_envs.py"
+LEGACY_TRAIN_SCRIPT = "scripts/reinforcement_learning/rsl_rl/train.py"
+LEGACY_PLAY_SCRIPT = "scripts/reinforcement_learning/rsl_rl/play.py"
 
-# The python interpreter that has Isaac Sim / Isaac Lab importable. Inside the
-# Isaac Sim container this is the image's own python on PATH; override via env if
-# the pod exposes it under a different name (e.g. isaaclab.sh's wrapped python).
-PYTHON = os.environ.get("ISAACLAB_PYTHON", "python")
-
-# --- task ------------------------------------------------------------------
-# Confirmed in the supported-task list via ctx7 2026-07-26; RE-VERIFY with
-# `make list-envs`. Flat first (fastest to a walking policy); rough terrain is a
-# Phase-3 follow-on and its exact id must be verified, not assumed.
-TASK = "Isaac-Velocity-Flat-Unitree-Go2-v0"
-TASK_ROUGH = "Isaac-Velocity-Rough-Unitree-Go2-v0"  # Phase 3; verify name at runtime.
-
-RL_LIBRARY = "rsl_rl"  # Isaac Lab default (PPO); play.py also auto-exports
-#                        the policy to TorchScript + ONNX under exported/.
-
-# Shared seed for train + play so runs reproduce.
-SEED = 42
-
-# --- run profiles ----------------------------------------------------------
-# Two profiles, the vla-trial pattern:
-#   SMOKE — the pass-bar run. Proves the training loop assembles and writes a
-#           checkpoint (MECHANICS, not policy quality). A run this small will NOT
-#           produce a walking Go2, and that is the CORRECT result — same posture
-#           as vla-trial's "pipe-test proves the loop, not the score".
-#   FULL  — the real ~20-40 min walking policy (thousands of parallel envs,
-#           the task's own default iteration count).
-#
-# The numbers below are STARTING GUESSES. Pin them against MEASURED L4 throughput
-# in Phase 0/2 (brief §5), then rewrite this comment with the measured basis.
-SMOKE_NUM_ENVS = 32
-SMOKE_MAX_ITERATIONS = 10  # override the task default down to a few iters.
-
-FULL_NUM_ENVS = 4096  # locomotion wants thousands of parallel envs on the GPU.
-# FULL deliberately does NOT override --max_iterations: it uses the task's own
-# rsl_rl default training length (the skill's small-scale-first guidance — only
-# the smoke run overrides it). If the full run needs a cap, add it here explicitly.
-
-# --- video / logging -------------------------------------------------------
-VIDEO_LENGTH = 200
-VIDEO_INTERVAL = 2000
-# Isaac Lab writes runs to <cwd>/logs/<library>/<task>/<timestamp>/. Launched
-# from ISAACLAB_ROOT, that is:
 LOG_ROOT = ISAACLAB_ROOT / "logs" / RL_LIBRARY
+VIDEO_LENGTH = int(os.environ.get("GO2_VIDEO_LENGTH", "200"))
+VIDEO_INTERVAL = int(os.environ.get("GO2_VIDEO_INTERVAL", "100"))
 
 
-# --- command builders ------------------------------------------------------
-# Pure string construction — no Isaac Lab import — so these are unit-testable on
-# the Mac (tests/test_config.py) even though they only RUN on the pod.
+@dataclass(frozen=True)
+class RunProfile:
+    name: str
+    num_envs: int | None
+    max_iterations: int | None
 
-def train_cmd(full: bool = False, video: bool = False) -> list[str]:
-    """Build the rsl_rl train.py invocation.
 
-    full=False -> SMOKE profile (the pass-bar run: tiny, mechanics-only).
-    full=True  -> FULL profile (the real walking-policy run).
-    """
-    num_envs = FULL_NUM_ENVS if full else SMOKE_NUM_ENVS
-    cmd = [
-        PYTHON, TRAIN_SCRIPT,
-        "--task", TASK,
-        "--headless",
-        "--num_envs", str(num_envs),
-        "--seed", str(SEED),
+SMOKE = RunProfile(
+    "smoke",
+    int(os.environ.get("GO2_SMOKE_NUM_ENVS", "32")),
+    int(os.environ.get("GO2_SMOKE_MAX_ITERATIONS", "10")),
+)
+FULL = RunProfile(
+    "full",
+    int(value) if (value := os.environ.get("GO2_FULL_NUM_ENVS")) else None,
+    int(value) if (value := os.environ.get("GO2_FULL_MAX_ITERATIONS")) else None,
+)
+PROFILES = {profile.name: profile for profile in (SMOKE, FULL)}
+
+
+def _launcher() -> list[str]:
+    return [ISAACLAB_LAUNCHER]
+
+
+def _workflow(kind: str) -> list[str]:
+    """Return a current unified workflow, with an explicit legacy escape hatch."""
+    if CLI_STYLE == "unified":
+        return _launcher() + [kind, "--rl_library", RL_LIBRARY]
+    if CLI_STYLE == "legacy":
+        script = LEGACY_TRAIN_SCRIPT if kind == "train" else LEGACY_PLAY_SCRIPT
+        return _launcher() + ["-p", script]
+    raise ValueError("ISAACLAB_CLI_STYLE must be 'unified' or 'legacy'")
+
+
+def train_cmd(profile: str = "smoke", video: bool = False) -> list[str]:
+    selected = PROFILES[profile]
+    cmd = _workflow("train") + [
+        "--task",
+        TASK,
+        "--seed",
+        str(SEED),
     ]
-    if not full:
-        # Smoke overrides the task's default iteration count down to a few.
-        cmd += ["--max_iterations", str(SMOKE_MAX_ITERATIONS)]
+    if selected.num_envs is not None:
+        cmd += ["--num_envs", str(selected.num_envs)]
+    cmd += ["--viz", "none"] if CLI_STYLE == "unified" else ["--headless"]
+    if selected.max_iterations is not None:
+        cmd += ["--max_iterations", str(selected.max_iterations)]
     if video:
-        # Off-screen video capture also needs --enable_cameras.
         cmd += [
             "--video",
-            "--video_length", str(VIDEO_LENGTH),
-            "--video_interval", str(VIDEO_INTERVAL),
+            "--video_length",
+            str(VIDEO_LENGTH),
+            "--video_interval",
+            str(VIDEO_INTERVAL),
             "--enable_cameras",
         ]
     return cmd
 
 
-def play_cmd(num_envs: int = 32, video: bool = False) -> list[str]:
-    """Build the rsl_rl play.py invocation (loads latest checkpoint, rolls out)."""
-    cmd = [PYTHON, PLAY_SCRIPT, "--task", TASK, "--num_envs", str(num_envs)]
+def play_cmd(
+    checkpoint: str = "latest", num_envs: int = 1, video: bool = False
+) -> list[str]:
+    cmd = _workflow("play") + [
+        "--task",
+        TASK,
+        "--num_envs",
+        str(num_envs),
+        "--checkpoint",
+        checkpoint,
+    ]
+    if CLI_STYLE == "unified" and video:
+        cmd += ["--viz", "none"]
+    elif CLI_STYLE == "legacy" and video:
+        cmd += ["--headless"]
     if video:
         cmd += ["--video", "--video_length", str(VIDEO_LENGTH), "--enable_cameras"]
     return cmd
 
 
 def list_envs_cmd() -> list[str]:
-    """List the currently-registered Isaac Lab tasks (source of truth for TASK)."""
-    return [PYTHON, LIST_ENVS_SCRIPT]
+    return _launcher() + ["-p", LIST_ENVS_SCRIPT]
+
+
+def checkpoints() -> set[Path]:
+    if not LOG_ROOT.exists():
+        return set()
+    return {path.resolve() for path in LOG_ROOT.rglob("model_*.pt") if path.is_file()}

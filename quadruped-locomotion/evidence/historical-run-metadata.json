@@ -1,0 +1,45 @@
+{
+  "status": "historical-baseline",
+  "recorded_at": "2026-07-27",
+  "run_id": "2026-07-27_05-32-14",
+  "task": "Isaac-Velocity-Flat-Unitree-Go2-v0",
+  "training": {
+    "library": "rsl_rl",
+    "algorithm": "PPO",
+    "seed": 42,
+    "parallel_environments": 4096,
+    "iterations": 2000,
+    "training_seconds": 1937.53,
+    "checkpoints": 21
+  },
+  "environment": {
+    "provider": "RunPod",
+    "gpu": "NVIDIA L4",
+    "container": "nvcr.io/nvidia/isaac-lab:3.0.0-beta2-post1",
+    "driver": "580.159.04",
+    "python": "3.12"
+  },
+  "final_training_metrics": {
+    "mean_reward": 34.97,
+    "mean_episode_length": 1000.0,
+    "success_rate": 1.0,
+    "velocity_error_xy": 0.0946,
+    "velocity_error_yaw": 0.1612
+  },
+  "curated_checkpoints": [
+    { "iteration": 0, "preview": "go2_walk_iter0.mp4" },
+    { "iteration": 100, "preview": "go2_walk_iter100.mp4" },
+    { "iteration": 300, "preview": "go2_walk_iter300.mp4" },
+    { "iteration": 1000, "preview": "go2_walk_iter1000.mp4" },
+    { "iteration": 1999, "preview": "go2_walk_iter1999.mp4" }
+  ],
+  "cost": {
+    "scope": "training, rendering, live-demo iteration, and setup",
+    "gpu_hours_estimate": "4-5",
+    "usd_estimate": "1.50-2.00"
+  },
+  "evaluation": {
+    "status": "fresh-evaluation-required",
+    "note": "The recorded archive contains real training metrics and rollouts, but not the new current-stack evaluation required to close issue #70."
+  }
+}

@@ -1,21 +1,22 @@
 schema_version: "1"
 id: quadruped-locomotion
 name: Quadruped locomotion (Go2 + Isaac Lab RL)
-summary: Train a Unitree Go2 to walk from scratch with rsl_rl PPO on a cloud NVIDIA GPU, then pilot the trained policy live in the browser.
-version: 1.0.0
-status: stable
+summary: Train a Unitree Go2 walking policy in Isaac Lab, compare real checkpoints, and optionally pilot it in a private browser session.
+version: 1.1.0
+status: experimental
 license: MIT
 tags: [reinforcement-learning, isaac-lab, isaac-sim, go2, gpu-cloud]
 
 runtime:
-  kind: remote-gpu         # RunPod L4 pod; the Mac is a thin SSH/browser client
-  entrypoint: make smoke   # runs ON the pod; Mac-side guards are `make test`
+  kind: remote-gpu         # compatible Linux NVIDIA host; local development stays lightweight
+  entrypoint: make smoke
 
 verbs:
   build: make sync
-  smoke: make smoke        # pod-side; must not fake-pass off-GPU
+  smoke: make smoke        # GPU-host side; must not fake-pass off-GPU
   check: make check
-  test: make test          # Mac-side pure-Python config guards only
+  test: make test          # local pure-Python config guards only
+  doctor: make doctor      # GPU host: verify Isaac Lab launcher and NVIDIA runtime
 
 modes:
   list-envs:
@@ -26,7 +27,7 @@ modes:
     summary: SMOKE-profile training by hand (mechanics, not a walking policy)
   train-full:
     command: make train-full
-    summary: the real ~20-40 min walking policy with rollout video capture
+    summary: full training using the installed task defaults or GO2_* overrides
   play:
     command: make play
     summary: roll out the latest checkpoint and capture a walking-Go2 MP4
@@ -34,13 +35,14 @@ modes:
 requirements:
   hardware: []
   gpu: remote              # NVIDIA required; no macOS path for Isaac Lab
-  network: required        # RunPod SSH + NGC image pulls
+  network: required        # remote access and dependency pulls when the host needs them
 
 demo:
   default_mode: play
-  hosted: false            # live panel ran from the pod; no orchestrator config yet
+  hosted: false            # recorded explorer is ready; paid live capacity is not enabled
+  recorded_id: quadruped-locomotion
   estimated_startup_seconds: 300
 
 artifacts:
-  thumbnail: null
-  case_study: null
+  thumbnail: evidence/previews/go2-hero.png
+  case_study: docs/case-study.md

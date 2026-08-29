@@ -1,9 +1,24 @@
 #!/usr/bin/env python3
-# Patches rsl_rl/play.py into live_demo.py: live-settable velocity command, keyboard control,
-# hot-swappable checkpoints, and a frame-poll server on port 8888.
-PLAY = "/workspace/isaaclab/scripts/reinforcement_learning/rsl_rl/play.py"
-LIVE = "/workspace/isaaclab/scripts/reinforcement_learning/rsl_rl/live_demo.py"
-src = open(PLAY).read()
+"""Patch Isaac Lab's compatibility play script into the Go2 live controller."""
+
+import argparse
+import os
+from pathlib import Path
+
+root = Path(os.environ.get("ISAACLAB_ROOT", "/workspace/IsaacLab"))
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument(
+    "--play",
+    type=Path,
+    default=root / "scripts/reinforcement_learning/rsl_rl/play.py",
+)
+parser.add_argument(
+    "--output",
+    type=Path,
+    default=root / "scripts/reinforcement_learning/rsl_rl/live_demo.py",
+)
+args = parser.parse_args()
+src = args.play.read_text()
 
 src = src.replace('render_mode="rgb_array" if args_cli.video else None', 'render_mode="rgb_array"')
 
@@ -37,7 +52,7 @@ button:hover{border-color:#6f9bff}
 .ck{color:#6f9bff;font-size:13px}</style></head>
 <body>
 <h2>🐕 Go2 — live velocity control</h2>
-<img id=v src=\"/stream\" alt=\"live sim\"><br>
+<img id=v src=\"__BASE__/stream\" alt=\"live sim\"><br>
 <div class=row>
   <div class=sl><b>checkpoint</b><select id=ckpt></select></div>
   <span id=curckpt class=ck></span>
@@ -53,16 +68,19 @@ button:hover{border-color:#6f9bff}
   <button onclick=\"preset(0,0,1.0)\">↻ spin</button>
   <button onclick=\"preset(0,0.6,0)\">⇄ strafe</button>
   <button onclick=\"preset(-0.6,0,0)\">◀ back</button>
+  <button onclick=\"resetSim()\">reset</button>
 </div>
 <div class=note>Keyboard: <span class=kbd>W</span>/<span class=kbd>↑</span> forward · <span class=kbd>S</span>/<span class=kbd>↓</span> back · <span class=kbd>A</span>/<span class=kbd>←</span> turn left · <span class=kbd>D</span>/<span class=kbd>→</span> turn right · <span class=kbd>Q</span>/<span class=kbd>E</span> strafe. Hold to move; release to stop. (Click the video once so the page has keyboard focus.)</div>
 <div class=note>~10 fps via RunPod proxy · policy trained on ~[-1,1] m/s, extremes may wobble.</div>
 <script>
 const g=id=>document.getElementById(id);
-function post(url,obj){return fetch(url,{method:'POST',body:JSON.stringify(obj)}).catch(()=>{});}
+const BASE='__BASE__';
+function post(url,obj){return fetch(BASE+url,{method:'POST',body:JSON.stringify(obj)}).catch(()=>{});}
 function send(){const b={vx:+g('vx').value,vy:+g('vy').value,yaw:+g('yaw').value};
  g('lvx').textContent=b.vx.toFixed(2);g('lvy').textContent=b.vy.toFixed(2);g('lyaw').textContent=b.yaw.toFixed(2);post('/cmd',b);}
 ['vx','vy','yaw'].forEach(id=>g(id).addEventListener('input',send));
 function preset(x,y,w){g('vx').value=x;g('vy').value=y;g('yaw').value=w;send();}
+function resetSim(){post('/reset',{});}
 // keyboard
 const keys={};
 function kc(){let vx=0,vy=0,yaw=0;
@@ -74,7 +92,7 @@ const KK=['w','a','s','d','q','e','arrowup','arrowdown','arrowleft','arrowright'
 window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(KK.includes(k)){if(!keys[k]){keys[k]=1;kc();}e.preventDefault();}});
 window.addEventListener('keyup',e=>{const k=e.key.toLowerCase();if(keys[k]){delete keys[k];kc();e.preventDefault();}});
 // checkpoints
-fetch('/ckpts').then(r=>r.json()).then(d=>{const s=g('ckpt');
+fetch(BASE+'/ckpts').then(r=>r.json()).then(d=>{const s=g('ckpt');
  d.ckpts.forEach(it=>{const o=document.createElement('option');o.value=it;o.textContent='iter '+it;if(it==d.current)o.selected=true;s.appendChild(o);});
  g('curckpt').textContent='loaded: iter '+d.current;});
 g('ckpt').addEventListener('change',e=>{const it=e.target.value;g('curckpt').textContent='loading iter '+it+'…';
@@ -91,7 +109,7 @@ LIVE_BLOCK = '''        # ===== LIVE INTERACTIVE DEMO =====
 
         CMD = {"vx": 0.5, "vy": 0.0, "yaw": 0.0}
         LATEST = {"jpg": b""}
-        PENDING = {"load": None}
+        PENDING = {"load": None, "reset": False}
         POLICY = {"fn": policy}
         _run_dir = os.path.dirname(resume_path)
         _ckpts = sorted(int(_re.search(r"model_(\\d+)\\.pt", _f).group(1)) for _f in glob.glob(os.path.join(_run_dir, "model_*.pt")) if _re.search(r"model_(\\d+)\\.pt", _f))
@@ -106,7 +124,9 @@ LIVE_BLOCK = '''        # ===== LIVE INTERACTIVE DEMO =====
             _vterm.vel_command_b[:, 1] = CMD["vy"]
             _vterm.vel_command_b[:, 2] = CMD["yaw"]
 
-        _PAGE = __PAGE_BYTES__
+        _capability = os.environ.get("DEMO_CAPABILITY", "").strip()
+        _BASE = "/c/" + _capability if _capability else ""
+        _PAGE = __PAGE_BYTES__.replace(b"__BASE__", _BASE.encode())
 
         class _H(BaseHTTPRequestHandler):
             def log_message(self, *a):
@@ -116,13 +136,22 @@ LIVE_BLOCK = '''        # ===== LIVE INTERACTIVE DEMO =====
                 self.send_header("Content-Type", ctype)
                 self.send_header("Cache-Control", "no-store")
                 self.send_header("Content-Length", str(len(body)))
+                self.send_header("Connection", "close")
                 self.end_headers()
                 try:
                     self.wfile.write(body)
                 except Exception:
                     pass
+            def _route(self):
+                raw = self.path.split("?", 1)[0]
+                if _BASE and raw != _BASE and not raw.startswith(_BASE + "/"):
+                    return None
+                return raw[len(_BASE):] or "/"
             def do_GET(self):
-                if self.path.startswith("/stream"):
+                route = self._route()
+                if route is None:
+                    self._send(404, "text/plain", b"not found")
+                elif route.startswith("/stream"):
                     self.send_response(200)
                     self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
                     self.send_header("Cache-Control", "no-store")
@@ -136,24 +165,32 @@ LIVE_BLOCK = '''        # ===== LIVE INTERACTIVE DEMO =====
                             time.sleep(0.06)
                     except Exception:
                         pass
-                elif self.path.startswith("/frame"):
+                elif route.startswith("/frame"):
                     self._send(200, "image/jpeg", LATEST["jpg"])
-                elif self.path.startswith("/ckpts"):
+                elif route.startswith("/ckpts"):
                     self._send(200, "application/json", json.dumps({"ckpts": _ckpts, "current": CUR["ckpt"]}).encode())
+                elif route.startswith("/status"):
+                    self._send(200, "application/json", json.dumps({"phase": "ready", "ready": True, "checkpoint": CUR["ckpt"], "checkpoints": _ckpts}).encode())
                 else:
                     self._send(200, "text/html; charset=utf-8", _PAGE)
             def do_POST(self):
+                route = self._route()
+                if route is None:
+                    self._send(404, "text/plain", b"not found")
+                    return
                 n = int(self.headers.get("Content-Length", 0) or 0)
                 body = self.rfile.read(n)
                 try:
                     d = json.loads(body)
                 except Exception:
                     d = {}
-                if self.path.startswith("/load"):
+                if route.startswith("/load"):
                     try:
                         PENDING["load"] = int(d.get("ckpt"))
                     except Exception:
                         pass
+                elif route.startswith("/reset"):
+                    PENDING["reset"] = True
                 else:
                     for k in ("vx", "vy", "yaw"):
                         if k in d:
@@ -182,6 +219,11 @@ LIVE_BLOCK = '''        # ===== LIVE INTERACTIVE DEMO =====
                         print("LIVE: loaded checkpoint", _it, flush=True)
                     except Exception as _e:
                         print("LIVE: load failed:", _e, flush=True)
+                if PENDING["reset"]:
+                    PENDING["reset"] = False
+                    _reset = env.reset()
+                    obs = _reset[0] if isinstance(_reset, tuple) else _reset
+                    print("LIVE: environment reset", flush=True)
                 with torch.inference_mode():
                     _apply_cmd()
                     actions = POLICY["fn"](obs)
@@ -212,5 +254,5 @@ end = src.index("        except KeyboardInterrupt:")
 end = src.index("pass", end) + len("pass")
 src = src[:start] + LIVE_BLOCK + src[end:]
 
-open(LIVE, "w").write(src)
-print("WROTE", LIVE, "lines", src.count(chr(10)) + 1)
+args.output.write_text(src)
+print("WROTE", args.output, "lines", src.count(chr(10)) + 1)
