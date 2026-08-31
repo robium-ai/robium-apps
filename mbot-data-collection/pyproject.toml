@@ -1,0 +1,34 @@
+[project]
+name = "mbot-data-collection"
+version = "0.1.0"
+description = "Teleoperate a real Makeblock mBot and record camera-and-action episodes for VLA training"
+readme = "README.md"
+authors = [{ name = "robium", email = "admin@robium.ai" }]
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.1",
+    "pyserial>=3.5",
+    # The mBot's Bluetooth module is BLE, and macOS exposes no serial port
+    # for BLE devices, so the wireless path needs a real GATT client.
+    "bleak>=0.22",
+    # Enumerating cameras through AVFoundation instead of by opening each
+    # index: opening a Continuity camera starts the phone.
+    "pyobjc-framework-AVFoundation>=10.0 ; sys_platform == 'darwin'",
+    "pygame>=2.6",
+    # Headless on purpose, though not for the reason you might expect: it
+    # still vendors an SDL2 (via its bundled ffmpeg), so importing it alongside
+    # pygame still trips macOS's duplicate Objective-C class warning - measured,
+    # in both import orders. What headless does buy is that OpenCV can never
+    # open a window, so pygame is the only library that ever exercises those
+    # windowing classes, which is what makes the collision harmless here.
+    "opencv-python-headless>=4.10",
+]
+
+[project.optional-dependencies]
+# Recording pulls in LeRobot, which is a large install. Driving the robot must
+# not wait on it, so it stays out of the default environment.
+record = ["lerobot[dataset]>=0.6.1"]
+
+[build-system]
+requires = ["uv_build>=0.11.8,<0.12.0"]
+build-backend = "uv_build"
