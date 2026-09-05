@@ -1,0 +1,62 @@
+schema_version: "1"
+id: mbot-data-collection
+name: mBot Data Collection
+summary: Drive a real Makeblock mBot from the keyboard or a gamepad and record camera-and-action episodes in LeRobot format for VLA training.
+version: 0.1.0
+status: experimental
+license: MIT
+tags: [physical-ai, real-robot, teleoperation, data-collection, policy-rollout, smolvla, lerobot, differential-drive, mbot, arduino]
+
+runtime:
+  kind: uv
+  entrypoint: ./app drive
+
+verbs:
+  help:
+    command: ./app help
+    summary: Show commands and examples
+  build:
+    command: ./app build
+    summary: Prepare the uv environment
+  run:
+    command: ./app drive
+    summary: Drive the mBot from the keyboard or a gamepad
+  smoke:
+    command: make smoke
+    summary: Run the hardware-free test suite
+
+modes:
+  doctor:
+    command: ./app doctor
+    summary: Check serial port, firmware, camera and gamepad
+  flash:
+    command: ./app flash
+    summary: Compile and upload the bridge firmware to the mBot
+  calibrate:
+    command: ./app calibrate
+    summary: Learn which motor is which, and which way it turns
+  drive:
+    command: ./app drive
+    summary: Teleoperate with the live camera view
+  rollout:
+    command: ./app rollout
+    summary: Let a trained policy drive the robot, switching instruction live
+  record:
+    command: ./app record
+    summary: Record teleoperated episodes into a LeRobotDataset, under one or several language instructions
+
+requirements:
+  hardware:
+    - Makeblock mBot (mCore / ATmega328P) connected over USB
+    - Webcam (for recording)
+    - Game controller (optional; the keyboard drives without one)
+  gpu: none
+  network: optional
+
+demo:
+  default_mode: drive
+  hosted: false
+  estimated_startup_seconds: 8
+
+artifacts:
+  architecture_brief: docs/architecture-brief.md
