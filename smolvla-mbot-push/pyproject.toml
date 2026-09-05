@@ -1,0 +1,29 @@
+[project]
+name = "smolvla-mbot-push"
+version = "0.1.0"
+description = "Fine-tune SmolVLA to push a block to a goal from an overhead camera, in MuJoCo"
+readme = "README.md"
+authors = [{ name = "robium", email = "admin@robium.ai" }]
+requires-python = ">=3.12"
+dependencies = [
+    # LeRobot lands with recording, when the dataset format first matters;
+    # keeping it out now makes the environment install in seconds.
+    "numpy>=2.1",
+    # Pin MuJoCo explicitly: gym wrappers are known to pin it *down*
+    # transitively, which can silently drop below what a scene needs.
+    "mujoco>=3.1.3",
+    "pygame>=2.6",
+    "lerobot[dataset,smolvla,training]>=0.6.1",
+    "rerun-sdk>=0.36.3",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.8,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = ["pytest>=9.1.1"]
+
+[tool.pytest.ini_options]
+markers = ["gamepad: needs a game controller attached"]
+addopts = "-m 'not gamepad'"

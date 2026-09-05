@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Repository-local command surface. See robium-app.yaml for the contract.
+set -euo pipefail
+cd "$(dirname "$0")"
+
+case "${1:-help}" in
+  help|-h|--help)
+    cat <<'USAGE'
+smolvla-mbot-push - a differential-drive robot pushing a block, in MuJoCo
+
+  ./app build      create the uv environment
+  ./app check      headless: step and render the arena
+  ./app drive      drive it yourself (game controller or keyboard)
+  ./app record     record teleoperated episodes into a dataset
+  ./app push       upload a recorded dataset to the Hub
+  ./app rollout    run a trained checkpoint in the arena
+  ./app interactive  place things by hand, then run the policy
+  ./app smoke      run the test suite
+
+First run:
+  ./app build && ./app check
+  ./app drive
+USAGE
+    ;;
+  build) uv sync ;;
+  smoke) make smoke ;;
+  check|drive|record|push|rollout|interactive)
+    cmd="$1"; shift; uv run python -m smolvla_mbot_push.run "$cmd" "$@" ;;
+  *)
+    echo "Unknown command: $1" >&2
+    echo "Run './app help' for usage." >&2
+    exit 1 ;;
+esac

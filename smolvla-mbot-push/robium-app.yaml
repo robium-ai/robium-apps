@@ -1,0 +1,47 @@
+schema_version: "1"
+id: smolvla-mbot-push
+name: SmolVLA mBot Push
+summary: A differential-drive robot pushes a block to a goal in MuJoCo, seen only from overhead, driven by a fine-tuned SmolVLA policy.
+version: 0.1.0
+status: experimental
+license: MIT
+tags: [physical-ai, lerobot, smolvla, imitation-learning, mujoco, differential-drive, teleoperation]
+
+runtime:
+  kind: uv
+  entrypoint: ./app drive
+
+verbs:
+  help:
+    command: ./app help
+    summary: Show commands and examples
+  build:
+    command: ./app build
+    summary: Prepare the uv environment
+  run:
+    command: ./app drive
+    summary: Drive the arena from the keyboard or a game controller
+  smoke:
+    command: make smoke
+    summary: Run the test suite
+
+modes:
+  check:
+    command: ./app check
+    summary: Headless step-and-render self-check
+  drive:
+    command: ./app drive
+    summary: Keyboard or gamepad teleoperation with the live overhead view
+
+requirements:
+  hardware: []
+  gpu: remote
+  network: optional
+
+demo:
+  default_mode: drive
+  hosted: false
+  estimated_startup_seconds: 5
+
+artifacts:
+  architecture_brief: docs/architecture-brief.md
