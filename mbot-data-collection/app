@@ -3,6 +3,10 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Unbuffered, so per-episode progress still streams when the output is piped
+# into a log or a filter rather than straight to a terminal.
+export PYTHONUNBUFFERED=1
+
 # OpenCV and pygame each vendor their own SDL2, and macOS warns once per
 # duplicated Objective-C class when both load. It is unavoidable here (we need
 # OpenCV to capture and pygame to draw) and harmless, because headless OpenCV
@@ -18,6 +22,7 @@ mbot-data-collection - drive a real mBot and record episodes for VLA training
 
   ./app build       create the uv environment
   ./app build-record  ... and add LeRobot, needed only for recording
+  ./app build-rollout ... and add the VLA backbone, needed only to run a policy
   ./app doctor      check port, firmware, camera and gamepad
   ./app flash       compile and upload the bridge firmware to the mBot
   ./app ping        talk to the firmware and beep
@@ -27,7 +32,11 @@ mbot-data-collection - drive a real mBot and record episodes for VLA training
   ./app calibrate --floor   measure the lowest duty that moves the wheels
   ./app drive       drive with the arrow keys or a gamepad
   ./app record      record teleoperated episodes into a dataset
+  ./app rollout     let a trained policy drive the robot
   ./app push        upload a recorded dataset to the Hub
+  ./app drop-state  copy a dataset with observation.state zeroed
+  ./app crop-arena  copy a dataset cropped to the arena
+  ./app split-motion  copy a dataset cut at teleop pauses, order shuffled
   ./app config      show the saved calibration
   ./app smoke       check the robot, camera and controller
 
@@ -39,8 +48,9 @@ USAGE
     ;;
   build) uv sync ;;
   build-record) uv sync --extra record ;;
+  build-rollout) uv sync --extra rollout ;;
   smoke) make smoke ;;
-  doctor|flash|ping|cameras|gamepad|calibrate|drive|record|push|config)
+  doctor|flash|ping|cameras|gamepad|calibrate|drive|record|rollout|push|config|drop-state|crop-arena|split-motion)
     cmd="$1"; shift; uv run python -m mbot_data_collection.run "$cmd" "$@" ;;
   *)
     echo "Unknown command: $1" >&2

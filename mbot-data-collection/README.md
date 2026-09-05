@@ -118,6 +118,153 @@ The feature layout deliberately matches the simulated sibling app
 [smolvla-mbot-push](../smolvla-mbot-push/), so demonstrations collected here and
 there describe the same robot in the same terms.
 
+### More than one instruction
+
+Repeat `--task` and the session collects several instructions into one dataset:
+
+```bash
+./app record --repo-id <you>/mbot-push \
+  --task "push the blue block to the blue zone" \
+  --task "push the blue block to the red zone" \
+  --episodes 50
+```
+
+Between episodes the preview lists the instructions with their episode counts
+and marks the selected one; `1`-`9` changes it and space starts the episode. The
+selection is **sticky** - it stays where you put it until you move it, so a run
+of ten blue-zone episodes takes one keypress, not ten.
+
+Nothing picks an instruction for you, and the convenient-sounding version of
+this feature - pre-select whichever has fewer episodes, so pressing space
+alternates - is a trap worth naming, because it decides what you are about to
+drive before you drive it. Every time that guess disagrees with you, the episode
+is saved under the goal you did not demonstrate. An imbalance is visible in the
+counts and fixable; a mislabeled episode is indistinguishable from noise at
+training time.
+
+Both halves belong in **one** dataset, not two. A vision-language-action policy
+only learns that the words matter if the same scene appears under different
+words with different demonstrations; trained on the blue-goal episodes alone it
+would drive to the blue zone no matter what it was asked. Balance matters for
+the same reason - a lopsided pair teaches the policy to ignore the instruction
+and guess the more common goal - which is what the counts beside each
+instruction are there to let you watch.
+
+The instruction is fixed when the episode starts, so switching between episodes
+can never mislabel frames already driven. The set is written to `tasks.json`
+beside the episodes, and `--resume` reuses it, because a fifty-episode
+collection spread over several sittings should not depend on retyping two
+sentences identically - a typo would silently become a third instruction with a
+handful of episodes under it:
+
+```bash
+./app record --repo-id <you>/mbot-push --episodes 25 --resume
+```
+
+The robot beeps when an episode starts, when one is saved, and when one is
+discarded, which matters more than it sounds: during collection you are looking
+at the robot and the block, not at the laptop.
+
+## Running a trained policy
+
+```bash
+./app build-rollout   # adds the VLA backbone; not needed to drive or record
+./app rollout --policy <you>/<checkpoint> --repo-id <you>/mbot-push
+```
+
+The same control tick as `drive`, with the policy holding the sticks. It starts
+**stopped**; space engages and disengages it, `q` quits, and the number keys
+switch the instruction while it drives - which is the whole reason both goals
+were recorded. `--repo-id` must be the dataset it was trained on, because that
+metadata carries the normalization statistics. With no `--task`, the
+instructions come from the dataset's own `tasks.json`.
+
+Three things this had to get right, each of which otherwise looks like a broken
+policy rather than a broken harness:
+
+**Switching the instruction resets the policy.** SmolVLA predicts a *chunk* of
+50 actions per forward pass and serves them from a queue, so a new instruction
+would otherwise sit unused until the queue drained - two and a half seconds of
+the robot visibly ignoring you. The switch drops the queue.
+
+**The wire has its own thread, and so does the policy.** A forward pass costs
+419-442 ms measured on the robot - past the board's 400 ms watchdog and nine
+times the 50 ms control period. Two separate problems follow from that, and they
+need two separate fixes.
+
+The first is the wire going quiet. A daemon thread streams the current command
+at the control rate regardless of what the main loop is doing, so the watchdog
+keeps meaning "the host is gone" rather than "the host is thinking". It stays
+safe because a dead process stops feeding and the board still stops the wheels.
+Raising `watchdog_ms` instead would also stop the stutter, and is the worse fix:
+it buys smoothness by widening the window in which a crashed host keeps driving.
+
+The second is subtler and survived the first fix. A synchronous loop computes
+the chunk *before* updating the command, so the previous action stays on the
+wire for the whole pass - one action held nine times too long, every 2.5 s,
+dragging the effective rate to 17.4 Hz against the 20 Hz the demonstrations were
+recorded at. Shortening the chunk makes it worse, not better: the stall arrives
+more often.
+
+So the policy runs in its own thread while the control loop keeps consuming the
+chunk in hand, and Real-Time Chunking stitches the seam. Measured over 200 ticks
+driven from recorded frames at wall-clock 20 Hz:
+
+| | synchronous | worker thread + RTC |
+| --- | --- | --- |
+| median tick work | 11 ms | **0.57 ms** |
+| worst tick | ~480 ms | **45 ms** |
+| ticks over the 50 ms period | 1 in 50 | **0 of 200** |
+| re-plans every | 50 ticks (2.5 s) | **9.4 ticks (0.47 s)** |
+| effective control rate | 17.4 Hz | **20 Hz** |
+
+Two details carry that result. `prev_chunk_left_over` must be the policy's own
+normalized output rather than the unnormalized command, because RTC applies its
+guidance inside the denoiser; and the request goes out *early* by the measured
+inference delay, so the new chunk lands as the horizon runs out instead of a
+delay later - without that the cadence is `horizon + delay` and every plan is
+made from a staler frame than asked for.
+
+The seam is genuinely continuous: the median step-to-step action change across a
+chunk boundary is 0.0096, below the 0.0135 seen mid-chunk. Large jumps do occur
+in both places, and they are not artifacts - the recorded human demonstrations
+contain step changes up to 1.0, because that is what a hand on a stick does.
+
+**Nothing here scores the run.** The simulated sibling knew where the block was;
+a webcam does not. What a rollout is for is watching whether the same scene
+under two different instructions produces two different behaviours.
+
+### Does the policy actually read the instruction?
+
+Worth measuring before driving anything, because it is cheap and the answer
+decides whether a rollout is worth setting up. Predict actions for a frame under
+each instruction and compare:
+
+| | throttle | steer |
+| --- | --- | --- |
+| mean effect of swapping the instruction | 0.019 | 0.047 |
+| the dataset's own action spread (std) | 0.454 | 0.535 |
+| effect as a fraction of that | **4.2%** | **8.9%** |
+
+On the first policy trained here, swapping "blue" for "red" moved the action by
+under a tenth of the range the actions occupy - the policy had largely learned
+*what to do given this picture* and was mostly ignoring the words. The
+instruction really was reaching the model: the two prompts tokenize to 48 tokens
+differing in exactly one position, so this is a property of the policy, not a
+plumbing bug.
+
+The likely cause is in the collection, not the training. Twenty-five blue-goal
+episodes were driven, then twenty-five red-goal ones, each with its own scatter
+of starting layouts - so the picture alone predicts the intent almost perfectly
+and the words are redundant. **Interleave the goals from the same starting
+layout** if you want the words to carry information: place the block, drive it
+to blue, put it back where it was, drive it to red. Then no policy can do well
+by reading the picture alone.
+
+That is worth saying plainly because the sticky instruction selection makes
+collecting in blocks the path of least resistance, and blocks are exactly what
+teaches a policy to ignore the instruction.
+
 ## USB or Bluetooth
 
 Both, with the same firmware and the same protocol. Makeblock's Bluetooth module
@@ -174,92 +321,6 @@ Two things remain true regardless:
 - **Bluetooth still adds jitter**, and during recording that jitter lands in the
   dataset, because a policy learns the timing of what it is shown. Prefer USB
   for episodes that matter until you have measured the jitter and accepted it.
-
-## The game controller
-
-The controller connects to the **laptop**, not to the robot, so how it connects
-has nothing to do with how the robot connects. Two independent links:
-
-```
-controller --(USB or Bluetooth HID)--> laptop --(USB serial or Bluetooth)--> mBot
-```
-
-macOS presents a gamepad the same way over either transport, so no code or
-configuration changes between them - `./app drive` picks up whatever is attached.
-
-Because the controller plugs into the laptop, **a wired controller costs the
-robot no mobility at all**. Only the laptop-to-mBot link decides how far the
-robot can roam.
-
-Stick axes differ between controllers, and the defaults here (throttle on axis
-1, steer on axis 2) suit an Xbox-style layout. To find yours:
-
-```bash
-./app gamepad     # push the sticks; it shows which axis moves
-./app drive --throttle-axis 1 --steer-axis 2
-```
-
-A note specific to the **Stadia Controller**: it is USB-only out of the box. Its
-wireless was Stadia's own protocol, and Bluetooth HID is unlocked by a one-time
-Google firmware update that also permanently disables the Wi-Fi features. Stadia
-has shut down, so that tool may no longer be available - plan on USB unless the
-update was already applied.
-
-## Recording
-
-```bash
-./app build-record   # adds LeRobot; not needed just to drive
-./app record --repo-id <you>/mbot-drive --task "drive to the red cup" --episodes 10
-```
-
-Space starts and stops an episode, `r` discards one that went badly, `q` quits.
-Each frame stores the camera image, the action you commanded, and the action you
-commanded on the previous tick as `observation.state` - the mBot has no encoders,
-so the last command is the only proprioception there is.
-
-The feature layout deliberately matches the simulated sibling app
-[smolvla-mbot-push](../smolvla-mbot-push/), so demonstrations collected here and
-there describe the same robot in the same terms.
-
-## USB or Bluetooth
-
-Both, with the same firmware and the same protocol. The mBot's Bluetooth module
-sits on the same hardware UART (D0/D1) that the USB bridge uses, so the module
-is a pipe rather than a translator: the board cannot tell which one a command
-arrived through, and neither path needs its own code.
-
-**Over USB** (the default) the port is found automatically:
-
-```bash
-./app drive
-```
-
-**Over Bluetooth**, pair the module in System Settings, then point at the port
-macOS creates for it:
-
-```bash
-./app doctor                              # lists the ports it can see
-./app drive --port /dev/cu.Makeblock-XXXX
-```
-
-The port has to be given explicitly, because a paired module is indistinguishable
-by name from any other Bluetooth device. If the module was configured at a rate
-other than 115200, match it with `--baud`: the module and the ATmega talk to each
-other over that UART, so the module's rate sets the rate for the whole link no
-matter what the sketch requests.
-
-Three things are worth knowing before choosing:
-
-- **Flashing is USB-only, with the module unplugged.** A Bluetooth module cannot
-  reset the AVR, so it cannot start an upload, and while it is attached it
-  contends for the same RX pin the uploader needs. Flash first, then go wireless.
-- **Do not expect both at once.** With the module attached, both it and the USB
-  bridge drive the board's RX line. That contention is what breaks flashing, and
-  there is no reason to think it is harmless during driving.
-- **Bluetooth adds latency and jitter.** For teleoperation that is merely
-  annoying; for recording it lands in the dataset, because a policy learns the
-  timing of what it is shown. Prefer the USB tether for episodes that matter and
-  Bluetooth for exploring, unless you have measured the jitter and accepted it.
 
 ## What a policy predicts
 

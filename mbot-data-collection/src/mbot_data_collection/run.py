@@ -268,7 +268,7 @@ def cmd_record(args: argparse.Namespace) -> int:
         RecordConfig(
             repo_id=args.repo_id,
             root=root,
-            task=args.task,
+            tasks=list(args.task or []),
             episodes=args.episodes,
             window=args.window,
             push_to_hub=args.push_to_hub,
@@ -280,11 +280,80 @@ def cmd_record(args: argparse.Namespace) -> int:
     )
 
 
+def cmd_rollout(args: argparse.Namespace) -> int:
+    from .link import LinkError
+    from .record import _read_tasks
+    from .rollout import RolloutConfig, rollout
+
+    root = Path(args.dataset_root) if args.dataset_root else Path("outputs/datasets") / args.repo_id.split("/")[-1]
+    # Default to the instructions the dataset was recorded under, so the two
+    # goals a policy was trained to tell apart are both on hand without being
+    # retyped - and retyped identically, which is the part that matters.
+    tasks = list(args.task or []) or _read_tasks(root)
+
+    try:
+        return rollout(
+            RolloutConfig(
+                policy_path=args.policy,
+                dataset_repo_id=args.repo_id,
+                dataset_root=root if root.exists() else None,
+                tasks=tasks,
+                window=args.window,
+                device=args.device,
+                replay_episode=args.from_episode,
+                use_rtc=not args.no_rtc,
+                samples=args.samples,
+                stop_and_go=args.stop_and_go,
+                settle_seconds=args.settle,
+                execution_horizon=args.n_action_steps,
+            ),
+            _robot(args),
+        )
+    except LinkError as exc:
+        print(f"{exc}")
+        return 1
+
+
 def cmd_push(args: argparse.Namespace) -> int:
     from .record import push
 
     root = Path(args.root) if args.root else Path("outputs/datasets") / args.repo_id.split("/")[-1]
     return push(args.repo_id, root, private=args.private)
+
+
+def cmd_drop_state(args: argparse.Namespace) -> int:
+    from .record import drop_state
+
+    root = Path(args.root) if args.root else Path("outputs/datasets") / args.repo_id.split("/")[-1]
+    out_repo_id = args.out_repo_id or f"{args.repo_id}-nostate"
+    out_root = Path(args.out_root) if args.out_root else Path("outputs/datasets") / out_repo_id.split("/")[-1]
+    return drop_state(args.repo_id, root, out_repo_id, out_root)
+
+
+def cmd_split_motion(args: argparse.Namespace) -> int:
+    from .record import split_motion
+
+    root = Path(args.root) if args.root else Path("outputs/datasets") / args.repo_id.split("/")[-1]
+    out_repo_id = args.out_repo_id or f"{args.repo_id}-motion"
+    out_root = Path(args.out_root) if args.out_root else Path("outputs/datasets") / out_repo_id.split("/")[-1]
+    return split_motion(args.repo_id, root, out_repo_id, out_root, args.seed)
+
+
+def cmd_crop_arena(args: argparse.Namespace) -> int:
+    from .record import ARENA_QUAD, crop_arena
+
+    root = Path(args.root) if args.root else Path("outputs/datasets") / args.repo_id.split("/")[-1]
+    out_repo_id = args.out_repo_id or f"{args.repo_id}-arena"
+    out_root = Path(args.out_root) if args.out_root else Path("outputs/datasets") / out_repo_id.split("/")[-1]
+
+    quad = ARENA_QUAD
+    if args.corners:
+        values = [int(v) for v in args.corners.replace(" ", "").split(",")]
+        if len(values) != 8:
+            print("--corners needs eight numbers: x1,y1,x2,y2,x3,y3,x4,y4")
+            return 1
+        quad = tuple((values[i], values[i + 1]) for i in range(0, 8, 2))
+    return crop_arena(args.repo_id, root, out_repo_id, out_root, quad)
 
 
 def cmd_config(args: argparse.Namespace) -> int:
@@ -328,8 +397,9 @@ def build_parser() -> argparse.ArgumentParser:
     def hardware(p: argparse.ArgumentParser) -> None:
         p.add_argument(
             "--port",
-            help="Serial port. Autodetected over USB; required for Bluetooth, "
-            "where it is the paired module's port (e.g. /dev/cu.Makeblock-XXXX)",
+            help="Where the robot is. Autodetected over USB; 'ble' (or "
+            "'ble:<address>') to reach the Makeblock module over Bluetooth "
+            "Low Energy, which macOS gives no serial port for",
         )
         p.add_argument("--baud", type=int, help="Wire rate (default 115200)")
         p.add_argument(
@@ -410,7 +480,14 @@ def build_parser() -> argparse.ArgumentParser:
     rec = sub.add_parser("record", help="Record teleoperated episodes to a dataset")
     hardware(rec)
     rec.add_argument("--repo-id", required=True, help="Hub dataset id, e.g. you/mbot-drive")
-    rec.add_argument("--task", default="drive the robot to the goal", help="Language instruction")
+    rec.add_argument(
+        "--task",
+        action="append",
+        help="Language instruction. Repeat it to collect several instructions "
+        "into one dataset; the loop then asks which one each episode "
+        "demonstrates and pre-selects whichever has fewer so far. Omitted on "
+        "--resume, the instructions the dataset already uses are reused",
+    )
     rec.add_argument("--episodes", type=int, default=5)
     rec.add_argument("--root", help="Local dataset directory (default: outputs/datasets/<name>)")
     rec.add_argument("--window", type=int, default=720)
@@ -420,11 +497,122 @@ def build_parser() -> argparse.ArgumentParser:
     rec.add_argument("--resume", action="store_true", help="Append to an existing dataset")
     rec.set_defaults(func=cmd_record)
 
+    roll = sub.add_parser("rollout", help="Let a trained policy drive the robot")
+    hardware(roll)
+    roll.add_argument("--policy", required=True, help="Checkpoint: a Hub id or a local directory")
+    roll.add_argument(
+        "--repo-id",
+        required=True,
+        help="Dataset the policy was trained on. Its metadata supplies the "
+        "normalization statistics, so it must be the training dataset",
+    )
+    roll.add_argument("--dataset-root", help="Local dataset directory (default: outputs/datasets/<name>)")
+    roll.add_argument(
+        "--task",
+        action="append",
+        help="Instruction to drive under. Repeat it to switch between several "
+        "with the number keys. Defaults to the instructions the dataset was "
+        "recorded under",
+    )
+    roll.add_argument(
+        "--from-episode",
+        type=int,
+        metavar="N",
+        help="Drive from a recorded episode's frames instead of the camera. The "
+        "robot still moves; only its eyes are replaced. Separates a policy that "
+        "never learned the task from one being fed a scene unlike its training "
+        "data, and prints how closely the commands matched the demonstration",
+    )
+    roll.add_argument(
+        "--no-rtc",
+        action="store_true",
+        help="Disable Real-Time Chunking. Each chunk becomes an independent "
+        "prediction rather than one stitched onto the actions already "
+        "committed - the way the simulator runs its policies",
+    )
+    roll.add_argument(
+        "--n-action-steps",
+        type=int,
+        default=10,
+        metavar="N",
+        help="Actions to commit per chunk before replanning (default 10, the "
+        "value both policies trained with). Raising it gives a slow policy more "
+        "time to think between plans, at the cost of a staler frame",
+    )
+    roll.add_argument(
+        "--samples",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Draw N action chunks in one batched pass and command their "
+        "median. Flow-matching policies answer differently every call; this "
+        "averages that away. No effect on ACT, which is deterministic",
+    )
+    roll.add_argument(
+        "--stop-and-go",
+        action="store_true",
+        help="Drive a chunk, halt, let the robot come to rest, then look and "
+        "plan again. Trades smooth motion for a frame that is still true when "
+        "the chunk built from it executes - the simulator's regime, on hardware",
+    )
+    roll.add_argument(
+        "--settle",
+        type=float,
+        default=0.5,
+        metavar="S",
+        help="Seconds to hold the wheels at zero before looking (default 0.5)",
+    )
+    roll.add_argument("--device", default="mps", help="Inference device (default mps; cpu or cuda also work)")
+    roll.add_argument("--window", type=int, default=720)
+    roll.set_defaults(func=cmd_rollout)
+
     push_p = sub.add_parser("push", help="Upload a recorded dataset to the Hub")
     push_p.add_argument("--repo-id", required=True)
     push_p.add_argument("--root")
     push_p.add_argument("--private", action="store_true")
     push_p.set_defaults(func=cmd_push)
+
+    blank = sub.add_parser(
+        "drop-state",
+        help="Copy a dataset with observation.state zeroed, so a policy cannot "
+        "copy its previous action instead of looking at the camera",
+    )
+    blank.add_argument("--repo-id", required=True, help="Dataset to copy from")
+    blank.add_argument("--root", help="Local source directory (default: outputs/datasets/<name>)")
+    blank.add_argument("--out-repo-id", help="New dataset id (default: <repo-id>-nostate)")
+    blank.add_argument("--out-root", help="Local destination directory")
+    blank.set_defaults(func=cmd_drop_state)
+
+    motion = sub.add_parser(
+        "split-motion",
+        help="Copy a dataset cut at teleop pauses, episode order shuffled. "
+        "Removes the frames that teach a policy to stand still, and makes "
+        "--dataset.eval_split hold out a random 20% rather than the last 20%",
+    )
+    motion.add_argument("--repo-id", required=True, help="Dataset to copy from")
+    motion.add_argument("--root", help="Local source directory (default: outputs/datasets/<name>)")
+    motion.add_argument("--out-repo-id", help="New dataset id (default: <repo-id>-motion)")
+    motion.add_argument("--out-root", help="Local destination directory")
+    motion.add_argument("--seed", type=int, default=0, help="Shuffle seed (default 0)")
+    motion.set_defaults(func=cmd_split_motion)
+
+    crop = sub.add_parser(
+        "crop-arena",
+        help="Copy a dataset rectified to the arena: the board warped square. "
+        "Removes background that changes between sessions, makes the floor-to-"
+        "image mapping uniform, and roughly doubles the pixels the block gets",
+    )
+    crop.add_argument("--repo-id", required=True, help="Dataset to copy from")
+    crop.add_argument("--root", help="Local source directory (default: outputs/datasets/<name>)")
+    crop.add_argument("--out-repo-id", help="New dataset id (default: <repo-id>-arena)")
+    crop.add_argument("--out-root", help="Local destination directory")
+    crop.add_argument(
+        "--corners",
+        help="Arena corners as x1,y1,x2,y2,x3,y3,x4,y4 in TL,TR,BR,BL order in "
+        "the 640x480 frame. Defaults to the measured quadrilateral; change it if "
+        "the camera moved, or to trim the wooden frame from view",
+    )
+    crop.set_defaults(func=cmd_crop_arena)
 
     cfg = sub.add_parser("config", help="Show or change the saved settings")
     hardware(cfg)
