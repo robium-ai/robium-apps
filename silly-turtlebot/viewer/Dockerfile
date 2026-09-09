@@ -13,6 +13,8 @@ RUN npm run package
 
 FROM python:3.12-slim-bookworm
 COPY --from=lichtblick /src /opt/lichtblick
+COPY silly-turtlebot/viewer/patch_lichtblick_publish.py /patch_lichtblick_publish.py
+RUN python3 /patch_lichtblick_publish.py
 COPY silly-turtlebot/lichtblick/layout.json /opt/lichtblick/layout.json
 COPY --from=controls /extension/robium.silly-turtlebot-controls-0.1.0.foxe /opt/lichtblick/robium/dashboard.foxe
 COPY silly-turtlebot/lichtblick-extension/package.json /opt/lichtblick/robium/package.json
