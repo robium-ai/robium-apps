@@ -68,8 +68,9 @@ Gemini mission service. The simulation contains Gazebo Harmonic, a standard
 TurtleBot 4, localization, Nav2, an OAK-D JPEG stream, and the same semantic
 bridge used by the physical robot.
 It also bundles the same Lichtblick/Foxglove visualization path proven in
-`robot-navigation`. Open <http://localhost:8091> for the OAK-D view, map,
-laser scan, Nav2 plans, robot model, TF, and ROS logs. The semantic robot API
+`robot-navigation`. Open <http://localhost:8091> for the control panel's OAK-D
+view plus the 3D map, laser scan, Nav2 plans, robot model, TF, and ROS logs. A
+second raw-image panel is intentionally omitted. The semantic robot API
 remains on <http://127.0.0.1:8088/v1/health>; port 8088 is not a web console.
 The Gemini key stays in the agent service and is never sent to the browser.
 
