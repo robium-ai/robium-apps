@@ -18,6 +18,7 @@ class RestRobot:
     base_url: str
     camera_source: str = "primary"
     camera_url: str | None = None
+    tts_url: str | None = None
     timeout_s: float = 190.0
     _pending_frames: list[bytes] = field(default_factory=list, init=False)
 
@@ -31,6 +32,18 @@ class RestRobot:
             self.camera_url = self.camera_url.rstrip("/")
             if not self.camera_url.startswith(("http://", "https://")):
                 raise ValueError("camera URL must start with http:// or https://")
+        if self.tts_url:
+            self.tts_url = self.tts_url.rstrip("/")
+            if not self.tts_url.startswith(("http://", "https://")):
+                raise ValueError("TTS URL must start with http:// or https://")
+        elif self.camera_url:
+            camera = parse.urlsplit(self.camera_url)
+            hostname = camera.hostname or ""
+            if ":" in hostname:
+                hostname = f"[{hostname}]"
+            self.tts_url = parse.urlunsplit(
+                (camera.scheme, f"{hostname}:8082", "", "", "")
+            )
 
     def _json(self, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         data = None if payload is None else json.dumps(payload).encode("utf-8")
@@ -65,16 +78,17 @@ class RestRobot:
 
     def health(self) -> dict[str, Any]:
         health = self._json("/v1/health")
-        if not self.camera_url:
-            return health
-        camera_health = self._external_camera_health()
-        cameras = health.setdefault("cameras", {})
-        cameras[self.camera_source] = {
-            "topic": self.camera_url,
-            "fresh": camera_health.get("fresh") is True,
-            "age_s": camera_health.get("age_s"),
-            "error": camera_health.get("error", ""),
-        }
+        if self.camera_url:
+            camera_health = self._external_camera_health()
+            cameras = health.setdefault("cameras", {})
+            cameras[self.camera_source] = {
+                "topic": self.camera_url,
+                "fresh": camera_health.get("fresh") is True,
+                "age_s": camera_health.get("age_s"),
+                "error": camera_health.get("error", ""),
+            }
+        if self.tts_url:
+            health["speech"] = self._external_tts_health()
         return health
 
     def _external_camera_health(self) -> dict[str, Any]:
@@ -88,6 +102,18 @@ class RestRobot:
                 return json.loads(response.read().decode("utf-8"))
         except (error.HTTPError, error.URLError, TimeoutError, json.JSONDecodeError):
             return {"status": "failed", "fresh": False, "error": "unavailable"}
+
+    def _external_tts_health(self) -> dict[str, Any]:
+        if not self.tts_url:
+            return {}
+        req = request.Request(
+            self.tts_url + "/health", headers={"Accept": "application/json"}
+        )
+        try:
+            with request.urlopen(req, timeout=min(self.timeout_s, 5.0)) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except (error.HTTPError, error.URLError, TimeoutError, json.JSONDecodeError):
+            return {"status": "failed", "error": "unavailable"}
 
     def capture_camera_frame(self) -> bytes | None:
         return self._camera()
@@ -136,6 +162,26 @@ class RestRobot:
         return self._json("/v1/undock", {})
 
     def speak(self, message: str) -> dict[str, Any]:
+        if self.tts_url:
+            data = json.dumps({"message": message}).encode("utf-8")
+            req = request.Request(
+                self.tts_url + "/speak",
+                data=data,
+                headers={
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                },
+            )
+            try:
+                with request.urlopen(req, timeout=min(self.timeout_s, 45.0)) as response:
+                    return json.loads(response.read().decode("utf-8"))
+            except error.HTTPError as exc:
+                try:
+                    return json.loads(exc.read().decode("utf-8"))
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    return {"status": "failed", "reason": f"TTS HTTP {exc.code}"}
+            except (error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+                return {"status": "failed", "reason": f"TTS unavailable: {exc}"}
         return self._json("/v1/speak", {"message": message})
 
     def stop(self, reason: str) -> dict[str, Any]:

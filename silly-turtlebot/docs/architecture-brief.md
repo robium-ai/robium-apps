@@ -33,13 +33,14 @@ contract does not change.
 | First working slice | Spoken/text mission shape, optional JPEG/raw PCM input, fake semantic robot tools, and one deterministic sock routine | Exercises the unfamiliar ER 2 streaming boundary without risking physical motion | validated locally including one live ER 2 tool-call turn |
 | Embodied model | `gemini-robotics-er-2-streaming-preview` | It accepts audio, images, and text in one persistent session and supports blocking function calls | live OAK-D-to-speech turn succeeded |
 | Motion authority | Nav2 behind a mission guard; Gemini never receives `/cmd_vel` or unchecked coordinates | Keeps localization, planning, obstacle avoidance, and recovery in the deterministic robot layer | validated architecture |
-| Speech output | A bounded `speak(message)` tool backed by `espeak-ng` and the Pi headphone device | ER 2 returns text only, and speech is independently replaceable/testable | deployed; guarded HTTP speech call succeeded |
+| Speech output | A bounded `speak(message)` tool backed by Kokoro-82M ONNX on the Orin, with Pi `espeak-ng` retained only as a no-Orin fallback | Neural speech is smoother, and its separate HTTP/container boundary cannot disturb Nav2 or camera capture | ARM64 deployment and model inference pass; audible output awaits a connected speaker |
 | Agent environment | Locked uv package in a small Docker image | Keeps the cloud client reproducible and independent from the Pi's ROS Python | deployed on the operator host |
 | ROS environment | Native Humble TurtleBot underlay plus an app overlay on the Pi | Reuses stock hardware drivers and keeps all DDS/Nav2 traffic on one host | deployed; actions, scan, odom, map and lifecycle verified |
 | Simulation | ROS 2 Jazzy + Gazebo Harmonic + official TurtleBot 4 simulator in one Docker container | Jazzy/Harmonic is the supported current pairing; one container avoids Docker Desktop DDS discovery failures | fresh-container smoke passed; Nav2 forward and spin actions succeeded |
 | Simulation world | Pinned AWS RoboMaker Small House asset and matching map/waypoints reused from `robot-navigation` | Gives scene commentary and navigation a furnished, repeatable environment without a second unverified map | TurtleBot 4, localization, Nav2, and OAK-D stream validated together |
 | Agent-to-robot boundary | Narrow HTTP bridge on the robot LAN; native ROS 2 actions/topics behind it | Separates cloud/API failure from motion and avoids cross-host DDS | deployed and healthy; SSH/tunnel remains appropriate off-LAN |
 | Cameras | OAK-D via pinned DepthAI 2.33 container on Orin; optional top-camera ROS topic later | Keeps vision/Gemini compute on Orin and avoids cross-host image DDS | fresh 640×360 JPEG verified end-to-end |
+| Neural TTS | Separate Kokoro-82M v1.0 int8 ONNX container on Orin; `am_puck` voice; ALSA USB auto-selection | Keeps model inference off the navigation Pi and isolates camera/TTS failure domains | ARM64 container and model inference pass; audible playback awaits a USB speaker |
 | Physical navigation mode | SLAM + Nav2 on the Pi until a contest map and named poses are surveyed | Enables collision-checked relative motion now without inventing a map | active; named waypoints intentionally disabled |
 | Humor | Deterministic comedy beats with short model-generated variations | A staged routine is more repeatable than unrestricted improvisation | validated in mock slice |
 
@@ -51,7 +52,8 @@ contract does not change.
 | `mission_guard` | Tool allowlist, argument validation, named locations, stand-off limits, event log | Motion authority must remain enforceable if the model misbehaves |
 | `fake_robot` | Hardware-free implementation and deterministic sock fixture | Enables unit and smoke tests without ROS, a robot, or API spend |
 | `rest_robot` | Operator-side semantic HTTP client and camera-frame handoff to Gemini | Keeps ROS imports out of the uv agent and makes network failures explicit |
-| `silly_turtlebot_ros` | Nav2 actions, camera subscriptions, health, goal cancellation, and TTS | ROS-specific process on the robot; native actions/topics internally |
+| `silly_turtlebot_ros` | Nav2 actions, camera subscriptions, health, goal cancellation, and fallback TTS | ROS-specific process on the robot; native actions/topics internally |
+| `orin/tts_server` | Load Kokoro once, serialize short speech requests, and play WAV through ALSA | Model and audio failures restart independently from OAK-D and navigation |
 | `silly_turtlebot_sim` | Modern-Gazebo world repair, official TurtleBot 4 spawn/bridges, localization, Nav2, and camera compression | Simulation-only composition; preserves the physical robot's semantic HTTP contract |
 
 Gemini calls only these semantic operations:

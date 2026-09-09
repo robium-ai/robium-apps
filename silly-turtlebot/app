@@ -43,10 +43,12 @@ start_simulation() {
 run_real() {
   robot_url=${SILLY_ROBOT_URL:-}
   camera_url=${SILLY_CAMERA_URL:-}
+  tts_url=${SILLY_TTS_URL:-}
   foxglove_url=${SILLY_FOXGLOVE_URL:-}
   expect_robot_url=0
   expect_camera_url=0
   expect_foxglove_url=0
+  expect_tts_url=0
   while [ "$#" -gt 0 ]; do
     argument=$1
     shift
@@ -59,6 +61,9 @@ run_real() {
     elif [ "$expect_foxglove_url" -eq 1 ]; then
       foxglove_url=$argument
       expect_foxglove_url=0
+    elif [ "$expect_tts_url" -eq 1 ]; then
+      tts_url=$argument
+      expect_tts_url=0
     else
       case "$argument" in
         --robot-url) expect_robot_url=1 ;;
@@ -67,6 +72,8 @@ run_real() {
         --camera-url=*) camera_url=${argument#--camera-url=} ;;
         --foxglove-url) expect_foxglove_url=1 ;;
         --foxglove-url=*) foxglove_url=${argument#--foxglove-url=} ;;
+        --tts-url) expect_tts_url=1 ;;
+        --tts-url=*) tts_url=${argument#--tts-url=} ;;
         *)
           echo "Unknown real-mode argument: $argument" >&2
           return 2
@@ -75,9 +82,15 @@ run_real() {
     fi
   done
   if [ "$expect_robot_url" -eq 1 ] || [ "$expect_camera_url" -eq 1 ] \
-    || [ "$expect_foxglove_url" -eq 1 ]; then
+    || [ "$expect_foxglove_url" -eq 1 ] || [ "$expect_tts_url" -eq 1 ]; then
     echo "A real-mode URL option is missing its value." >&2
     return 2
+  fi
+  if [ -n "$tts_url" ]; then
+    case "$tts_url" in
+      http://*|https://*) ;;
+      *) echo "TTS URL must start with http:// or https://." >&2; return 2 ;;
+    esac
   fi
   if [ -z "$robot_url" ]; then
     echo "Real mode requires --robot-url http://ROBOT_IP:8088." >&2
@@ -95,6 +108,7 @@ run_real() {
   fi
   export SILLY_ROBOT_URL=$robot_url
   export SILLY_CAMERA_URL=$camera_url
+  export SILLY_TTS_URL=$tts_url
   export SILLY_FOXGLOVE_URL=$foxglove_url
   docker compose -f simulation/compose.yaml down --remove-orphans >/dev/null 2>&1 || true
   if ! docker image inspect silly-turtlebot-agent:latest >/dev/null 2>&1 \
@@ -112,6 +126,13 @@ run_real() {
   else
     echo "OAK-D camera: robot ROS camera topic"
   fi
+  if [ -n "$tts_url" ]; then
+    echo "Neural TTS: ${tts_url}"
+  elif [ -n "$camera_url" ]; then
+    echo "Neural TTS: camera host on port 8082"
+  else
+    echo "TTS: robot bridge fallback"
+  fi
   echo "ROS visualization: ${foxglove_url}"
 }
 
@@ -124,7 +145,7 @@ silly-turtlebot - guarded Gemini Robotics ER 2 agent for TurtleBot 4
   ./app doctor      check local and optional live prerequisites
   ./app run          start the simulated robot and Lichtblick (safe default)
   ./app run --sim    explicitly run the Gazebo simulation
-  ./app run --real --robot-url URL [--camera-url URL]
+  ./app run --real --robot-url URL [--camera-url URL] [--tts-url URL]
   ./app demo        run the deterministic fake sock mission
   ./app live ...    connect ER 2 Streaming to fake or ROS robot
   ./app tools       print the model-visible semantic tools

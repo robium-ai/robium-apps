@@ -145,7 +145,8 @@ be raw signed 16-bit little-endian mono PCM at 16 kHz; image files must be JPEG.
 
 ## Real TurtleBot 4 + Orin OAK-D
 
-Deploy the ROS/Nav2 service to the Pi and the USB camera service to the Orin:
+Deploy the ROS/Nav2 service to the Pi and the OAK-D plus neural-speech services
+to the Orin:
 
 ```bash
 ./app robot-deploy ubuntu@ROBOT_IP
@@ -154,10 +155,16 @@ Deploy the ROS/Nav2 service to the Pi and the USB camera service to the Orin:
 
 The Pi service starts SLAM, Nav2, the guarded bridge, and Foxglove after the
 stock TurtleBot service. It also adds a retry policy for the robot's Wi-Fi boot
-race and installs offline TTS. The Orin image contains its own pinned DepthAI
-userspace driver, so it needs no host Python or ROS installation. This OAK-D is
-held at USB High Speed because SuperSpeed firmware boot is unreliable with the
-current Jetson; that still easily carries 640×360 at 12 fps.
+race. The Orin runs two independent containers: the pinned DepthAI OAK-D server
+on port 8081 and Kokoro-82M neural TTS on port 8082. This OAK-D is held at USB
+High Speed because SuperSpeed firmware boot is unreliable with the current
+Jetson; that still easily carries 640×360 at 12 fps.
+
+Connect the contest speaker to the **Orin**, preferably over USB. The TTS
+service automatically selects an ALSA USB speaker. HDMI/DisplayPort and unusual
+devices should be set explicitly as `plughw:CARD,DEVICE` in `orin/.env`. The
+default voice is the playful American-English `am_puck` at 1.03× speed;
+`KOKORO_VOICE` and `KOKORO_SPEED` are deployment overrides.
 
 Start the real control plane from the app directory:
 
@@ -171,6 +178,15 @@ This switches off any local simulator, starts the Gemini agent and Lichtblick,
 and prints the console URL (normally <http://127.0.0.1:8091>). No second shell
 or manual `doppler run` command is required. Use `./app real-down` to stop the
 local control plane; the Pi and Orin services remain available for the next run.
+When `--camera-url` is present, the agent automatically uses the same Orin host
+on port 8082 for speech. Pass `--tts-url` only when speech is hosted elsewhere.
+
+Check both Orin services without speaking:
+
+```bash
+curl http://ORIN_IP:8081/health
+curl http://ORIN_IP:8082/health
+```
 
 The live system currently builds a SLAM map. Survey the real poses and edit
 `robot/ros_ws/src/silly_turtlebot_ros/config/waypoints.yaml`. Every location is
@@ -191,8 +207,8 @@ ros2 topic list -t | grep 'sensor_msgs/msg/CompressedImage'
 ```
 
 Real mode never falls back to the fake robot. `--robot-url` is required, while
-`--camera-url` selects the Orin OAK-D. `./app live` remains the lower-level
-one-turn diagnostic command.
+`--camera-url` selects the Orin OAK-D and, by default, its Kokoro TTS service.
+`./app live` remains the lower-level one-turn diagnostic command.
 
 ## Safety and current limits
 
@@ -215,3 +231,5 @@ Nav2, scan, odometry, map, bridge, and OAK-D without commanding motion.
 - [TurtleBot 4 OAK-D topic in the simulator bridge](https://github.com/turtlebot/turtlebot4_simulator/blob/jazzy/turtlebot4_gz_bringup/launch/ros_gz_bridge.launch.py)
 - [Nav2 Humble `NavigateToPose`](https://api.nav2.org/actions/humble/navigatetopose.html)
 - [Gemini Robotics streaming](https://ai.google.dev/gemini-api/docs/robotics-streaming)
+- [Kokoro-82M model card](https://huggingface.co/hexgrad/Kokoro-82M)
+- [Kokoro ONNX runtime](https://github.com/thewh1teagle/kokoro-onnx)

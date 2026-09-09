@@ -9,6 +9,7 @@ services:
       GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
       SILLY_ROBOT_URL: "${SILLY_ROBOT_URL:-}"
       SILLY_CAMERA_URL: "${SILLY_CAMERA_URL:-}"
+      SILLY_TTS_URL: "${SILLY_TTS_URL:-}"
     expose:
       - "8090"
 

@@ -17,3 +17,23 @@ services:
     ports:
       - "8081:8081"
     restart: unless-stopped
+
+  tts:
+    build:
+      context: .
+      dockerfile: Dockerfile.tts
+    image: silly-turtlebot-tts:latest
+    environment:
+      KOKORO_VOICE: "${KOKORO_VOICE:-am_puck}"
+      KOKORO_SPEED: "${KOKORO_SPEED:-1.03}"
+      TTS_AUDIO_DEVICE: "${TTS_AUDIO_DEVICE:-auto}"
+    volumes:
+      - /dev/snd:/dev/snd
+    # USB audio devices can appear after the container starts. The ALSA
+    # character-device rule keeps hot-plugged speakers usable without making
+    # the TTS container privileged.
+    device_cgroup_rules:
+      - "c 116:* rmw"
+    ports:
+      - "8082:8082"
+    restart: unless-stopped

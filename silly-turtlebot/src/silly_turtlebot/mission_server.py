@@ -20,16 +20,27 @@ MAX_INSTRUCTION_CHARS = 2000
 
 
 class MissionService:
-    def __init__(self, api_key: str, robot_url: str, camera_url: str | None = None):
+    def __init__(
+        self,
+        api_key: str,
+        robot_url: str,
+        camera_url: str | None = None,
+        tts_url: str | None = None,
+    ):
         if not api_key:
             raise ValueError("GEMINI_API_KEY is required by the mission service")
         self.api_key = api_key
         self.robot_url = robot_url
         self.camera_url = camera_url
+        self.tts_url = tts_url
         self._mission_lock = threading.Lock()
 
     def health(self) -> dict[str, Any]:
-        robot = RestRobot(self.robot_url, camera_url=self.camera_url)
+        robot = RestRobot(
+            self.robot_url,
+            camera_url=self.camera_url,
+            tts_url=self.tts_url,
+        )
         health = robot.health()
         return {
             "status": "ok" if health.get("status") == "ok" else "starting",
@@ -53,6 +64,7 @@ class MissionService:
                 self.robot_url,
                 camera_source=camera_source,
                 camera_url=self.camera_url,
+                tts_url=self.tts_url,
             )
             frame = robot.capture_camera_frame()
             guard = MissionGuard(robot)
@@ -206,10 +218,12 @@ def serve_missions(host: str = "127.0.0.1", port: int = 8090) -> int:
     api_key = os.environ.get("GEMINI_API_KEY", "")
     robot_url = os.environ.get("SILLY_ROBOT_URL", "http://127.0.0.1:8088")
     camera_url = os.environ.get("SILLY_CAMERA_URL")
+    tts_url = os.environ.get("SILLY_TTS_URL")
     service = MissionService(
         api_key=api_key,
         robot_url=robot_url,
         camera_url=camera_url,
+        tts_url=tts_url,
     )
     server = ThreadingHTTPServer((host, port), make_handler(service))
     print(f"Mission API: http://{host}:{port}", flush=True)

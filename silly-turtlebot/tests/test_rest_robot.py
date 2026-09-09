@@ -48,13 +48,22 @@ def test_ros_adapter_posts_semantic_action_and_queues_camera(monkeypatch) -> Non
     )
     monkeypatch.setattr(
         "silly_turtlebot.rest_robot.request.urlopen",
-        lambda req, timeout: Response(b"jpeg-from-orin")
-        if req.full_url.endswith("/frame.jpg")
-        else Response(
-            json.dumps({"status": "ok", "cameras": {}}).encode()
-            if req.full_url.endswith("/v1/health")
-            else json.dumps({"status": "ok", "fresh": True, "age_s": 0.1}).encode()
+        lambda req, timeout: (
+            Response(b"jpeg-from-orin")
+            if req.full_url.endswith("/frame.jpg")
+            else Response(
+                json.dumps(
+                    {"status": "succeeded", "voice": "am_puck"}
+                    if req.full_url.endswith(":8082/speak")
+                    else {"status": "ok", "cameras": {}}
+                    if req.full_url.endswith("/v1/health")
+                    else {"status": "ok", "fresh": True, "age_s": 0.1}
+                ).encode()
+            )
         ),
     )
     assert external.capture_camera_frame() == b"jpeg-from-orin"
-    assert external.health()["cameras"]["primary"]["fresh"] is True
+    health = external.health()
+    assert health["cameras"]["primary"]["fresh"] is True
+    assert health["speech"]["status"] == "ok"
+    assert external.speak("Testing the better voice.")["voice"] == "am_puck"
