@@ -69,7 +69,6 @@
       },
       "transforms": {},
       "topics": {
-        "/map": {"visible": false, "colorMode": "map"},
         "/scan": {
           "visible": true,
           "colorField": "intensity",
@@ -79,20 +78,27 @@
         },
         "/plan": {
           "visible": true,
-          "lineWidth": 0.12,
-          "gradient": ["#00c8ff", "#00c8ff"]
+          "lineWidth": 0.18,
+          "gradient": ["#00e676", "#00e676"]
         },
         "/local_plan": {
           "visible": true,
-          "lineWidth": 0.08,
+          "lineWidth": 0.12,
           "gradient": ["#ff9f1c", "#ff9f1c"]
+        },
+        "/plan_smoothed": {
+          "visible": true,
+          "lineWidth": 0.14,
+          "gradient": ["#00c8ff", "#00c8ff"]
         },
         "/global_costmap/costmap": {
           "visible": true,
           "colorMode": "costmap",
-          "alpha": 0.35
+          "alpha": 0.55
         },
         "/local_costmap/costmap": {"visible": false},
+        "/global_costmap/published_footprint": {"visible": true},
+        "/local_costmap/published_footprint": {"visible": true},
         "/robot_description": {
           "visible": true,
           "displayMode": "visual",

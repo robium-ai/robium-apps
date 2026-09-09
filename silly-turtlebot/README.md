@@ -86,6 +86,9 @@ the running Nav2 `bt_navigator` subscribes to directly. This is direct operator
 control: it bypasses Gemini's named-location guard, while Nav2 still plans and
 checks the route against its lidar-fed costmaps. On the real robot, keep goals
 within about 3 m so the complete route begins inside its 8 m rolling window.
+The physical robot must be undocked first; the mission panel shows the live
+dock state. In the 3D view, the rolling costmap and all plans are displayed in
+`odom`: the global path is green, the smoothed path cyan, and local plan orange.
 
 Forward requests use a dedicated `move_forward(distance_m)` tool backed by
 Nav2 `DriveOnHeading`. It accepts only 0.10–1.00 m and uses a fixed conservative

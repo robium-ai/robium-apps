@@ -19,7 +19,14 @@ type MissionResult = {
   status: string;
   response?: string;
   reason?: string;
+  is_docked?: boolean;
   tool_calls?: ToolCall[];
+};
+
+type HealthResult = MissionResult & {
+  robot?: {
+    is_docked?: boolean;
+  };
 };
 
 type PanelConfig = {
@@ -79,6 +86,7 @@ function MissionPanel({
   );
   const [running, setRunning] = useState(false);
   const [serviceReady, setServiceReady] = useState(false);
+  const [isDocked, setIsDocked] = useState<boolean>();
   const [cameraTick, setCameraTick] = useState(0);
   const [message, setMessage] = useState("Checking Gemini mission service…");
   const [result, setResult] = useState<MissionResult>();
@@ -100,17 +108,29 @@ function MissionPanel({
   useEffect(() => {
     let active = true;
     let retry: ReturnType<typeof setTimeout> | undefined;
+    let readyAnnounced = false;
     const checkHealth = async () => {
       try {
-        await jsonRequest(`${endpoint}/health`);
+        const health = (await jsonRequest(
+          `${endpoint}/health`,
+        )) as HealthResult;
         if (active) {
           setServiceReady(true);
-          setMessage("Ready for instructions");
+          setIsDocked(health.robot?.is_docked);
+          if (!readyAnnounced) {
+            setMessage("Ready for instructions");
+          }
+          readyAnnounced = true;
         }
       } catch (error) {
         if (active) {
           setServiceReady(false);
+          setIsDocked(undefined);
           setMessage(error instanceof Error ? error.message : String(error));
+          readyAnnounced = false;
+        }
+      } finally {
+        if (active) {
           retry = setTimeout(() => void checkHealth(), 2000);
         }
       }
@@ -182,6 +202,7 @@ function MissionPanel({
           body: "{}",
         });
         setResult(next);
+        setIsDocked(next.is_docked);
         setMessage(action === "dock" ? "Dock complete" : "Undock complete");
       } catch (error) {
         setMessage(error instanceof Error ? error.message : String(error));
@@ -200,7 +221,13 @@ function MissionPanel({
           <p>Gemini mission control</p>
         </div>
         <span className={serviceReady ? "ready" : "waiting"}>
-          {serviceReady ? "Ready" : "Starting"}
+          {serviceReady
+            ? isDocked == undefined
+              ? "Ready"
+              : isDocked
+                ? "Ready · Docked"
+                : "Ready · Undocked"
+            : "Starting"}
         </span>
       </header>
 
@@ -247,14 +274,14 @@ function MissionPanel({
         <div className="dock-row">
           <button
             type="button"
-            disabled={!serviceReady || running}
+            disabled={!serviceReady || running || isDocked === false}
             onClick={() => void runRobotAction("undock")}
           >
             Undock
           </button>
           <button
             type="button"
-            disabled={!serviceReady || running}
+            disabled={!serviceReady || running || isDocked === true}
             onClick={() => void runRobotAction("dock")}
           >
             Dock
@@ -262,8 +289,9 @@ function MissionPanel({
         </div>
         <p className="hint">⌘/Ctrl + Enter runs the instruction</p>
         <p className="hint">
-          Local goal: in the 3D panel choose Publish pose; it sends an odom
-          /goal_pose directly to Nav2 (keep it within about 3 m).
+          {isDocked === true
+            ? "Robot is docked. Undock before publishing a navigation goal."
+            : "3D frame: odom. Publish pose sends /goal_pose directly to Nav2; keep it within about 3 m."}
         </p>
       </section>
 
