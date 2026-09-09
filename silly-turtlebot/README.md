@@ -207,7 +207,10 @@ curl http://ORIN_IP:8082/health
 The live system intentionally has no persistent room map. Its `odom` origin is
 created at boot and drifts over time, which is acceptable for local goals but
 not for reusable room coordinates. Named locations therefore remain disabled;
-use the 3D panel for a short-lived goal. To inspect the current local pose:
+use the 3D panel for a short-lived goal. The physical controller uses a
+turn-aware progress check and a reduced differential-drive trajectory sample
+set so a long initial turn is not mistaken for a stalled robot on the Pi. To
+inspect the current local pose:
 
 ```bash
 ros2 run tf2_ros tf2_echo odom base_link
@@ -231,7 +234,8 @@ Real mode never falls back to the fake robot. `--robot-url` is required, while
 Gemini can request named navigation, bounded collision-checked forward motion,
 Nav2 spins, explicit dock/undock, speech, and stop. It never receives raw
 velocity, motor, map-coordinate, or arbitrary-pose tools. The ROS bridge also
-refuses concurrent motions and cancels the active Nav2 goal on `stop`.
+refuses concurrent motions. `Stop robot` cancels both bridge-owned motions and
+any active Nav2 pose goal published directly from Lichtblick.
 
 Object approach and person-facing are deliberately rejected on the real bridge
 until RGB-depth grounding is implemented. The fake mission exercises those

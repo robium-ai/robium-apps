@@ -15,6 +15,7 @@ from typing import Any
 import rclpy
 import yaml
 from action_msgs.msg import GoalStatus
+from action_msgs.srv import CancelGoal
 from geometry_msgs.msg import PoseStamped
 from irobot_create_msgs.action import Dock, Undock
 from irobot_create_msgs.msg import DockStatus
@@ -64,24 +65,29 @@ class SillyTurtleBotBridge(Node):
         self.frame_id, self.waypoints = self._load_waypoints(
             Path(str(self.get_parameter("waypoints_file").value))
         )
+        navigate_action = str(self.get_parameter("navigate_action").value)
+        drive_action = str(self.get_parameter("drive_on_heading_action").value)
+        spin_action = str(self.get_parameter("spin_action").value)
+        dock_action = str(self.get_parameter("dock_action").value)
+        undock_action = str(self.get_parameter("undock_action").value)
         self.navigate_client = ActionClient(
             self,
             NavigateToPose,
-            str(self.get_parameter("navigate_action").value),
+            navigate_action,
         )
         self.drive_client = ActionClient(
             self,
             DriveOnHeading,
-            str(self.get_parameter("drive_on_heading_action").value),
+            drive_action,
         )
-        self.spin_client = ActionClient(
-            self, Spin, str(self.get_parameter("spin_action").value)
-        )
-        self.dock_client = ActionClient(
-            self, Dock, str(self.get_parameter("dock_action").value)
-        )
-        self.undock_client = ActionClient(
-            self, Undock, str(self.get_parameter("undock_action").value)
+        self.spin_client = ActionClient(self, Spin, spin_action)
+        self.dock_client = ActionClient(self, Dock, dock_action)
+        self.undock_client = ActionClient(self, Undock, undock_action)
+        # ActionClient can cancel only goals it created. Lichtblick publishes
+        # PoseStamped goals directly, so operator stop also calls Nav2's
+        # server-side cancellation service to cover those external goals.
+        self._navigate_cancel_client = self.create_client(
+            CancelGoal, f"{navigate_action}/_action/cancel_goal"
         )
 
         self._motion_lock = threading.Lock()
@@ -327,16 +333,40 @@ class SillyTurtleBotBridge(Node):
         if not isinstance(reason, str) or not reason.strip():
             return {"status": "rejected", "reason": "stop reason must be non-empty"}
         reason = reason.strip()[:240]
+        pending = []
+        # Cancel every NavigateToPose goal, including one published directly
+        # by Lichtblick rather than created by this bridge.
+        client = self._navigate_cancel_client
+        if client.service_is_ready() or client.wait_for_service(timeout_sec=0.5):
+            pending.append(client.call_async(CancelGoal.Request()))
+        # Non-navigation motions are always created by this bridge, so their
+        # goal handle is sufficient and avoids waiting on four idle services.
         with self._active_lock:
             handle = self._active_goal
-        if handle is None:
-            return {"status": "succeeded", "reason": reason, "active_goal": False}
-        cancel_done = threading.Event()
-        cancel_future = handle.cancel_goal_async()
-        cancel_future.add_done_callback(lambda _future: cancel_done.set())
-        if not cancel_done.wait(5.0):
+        if handle is not None:
+            pending.append(handle.cancel_goal_async())
+
+        deadline = time.monotonic() + 5.0
+        while pending and time.monotonic() < deadline:
+            if all(future.done() for future in pending):
+                break
+            time.sleep(0.02)
+        if any(not future.done() for future in pending):
             return {"status": "failed", "reason": "goal cancellation timed out"}
-        return {"status": "succeeded", "reason": reason, "active_goal": True}
+
+        canceled_goals = 0
+        for future in pending:
+            try:
+                response = future.result()
+                canceled_goals += len(response.goals_canceling) if response else 0
+            except Exception as exc:  # noqa: BLE001 - report cancellation failures.
+                self.get_logger().warning(f"action cancellation failed: {exc}")
+        return {
+            "status": "succeeded",
+            "reason": reason,
+            "active_goal": canceled_goals > 0,
+            "canceled_goals": canceled_goals,
+        }
 
     def speak(self, message: Any) -> dict[str, Any]:
         if not isinstance(message, str) or not message.strip():
