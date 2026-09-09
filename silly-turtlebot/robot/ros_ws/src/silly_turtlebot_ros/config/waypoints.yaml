@@ -1,0 +1,9 @@
+# Survey these poses on the robot's real map, then set configured: true.
+# The bridge intentionally refuses navigation until a location is configured.
+frame_id: map
+locations:
+  dock: {configured: false, x: 0.0, y: 0.0, yaw: 0.0}
+  hallway: {configured: false, x: 0.0, y: 0.0, yaw: 0.0}
+  kitchen: {configured: false, x: 0.0, y: 0.0, yaw: 0.0}
+  living_room: {configured: false, x: 0.0, y: 0.0, yaw: 0.0}
+  contest_stage: {configured: false, x: 0.0, y: 0.0, yaw: 0.0}

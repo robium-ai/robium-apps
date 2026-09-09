@@ -1,0 +1,14 @@
+FROM python:3.11-slim-bookworm
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libusb-1.0-0 \
+ && rm -rf /var/lib/apt/lists/* \
+ && pip install --no-cache-dir \
+      depthai==2.33.0.0 \
+      opencv-python-headless==4.12.0.88
+
+WORKDIR /app
+COPY camera_server.py /app/camera_server.py
+
+EXPOSE 8081
+CMD ["python", "/app/camera_server.py"]

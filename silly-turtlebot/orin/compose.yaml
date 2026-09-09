@@ -1,0 +1,19 @@
+services:
+  oakd:
+    build:
+      context: .
+      dockerfile: Dockerfile.oakd
+    image: silly-turtlebot-oakd:latest
+    volumes:
+      - /dev/bus/usb:/dev/bus/usb
+    # OAK-D changes its USB device number after firmware boot. Keep the whole
+    # USB character-device major available across that hot re-enumeration.
+    device_cgroup_rules:
+      - "c 189:* rmw"
+    # DepthAI boots MyriadX firmware over USB and the device re-enumerates.
+    # Jetson's Docker runtime otherwise reports X_LINK_DEVICE_NOT_FOUND even
+    # when the bus is mounted and the USB character major is allowed.
+    privileged: true
+    ports:
+      - "8081:8081"
+    restart: unless-stopped

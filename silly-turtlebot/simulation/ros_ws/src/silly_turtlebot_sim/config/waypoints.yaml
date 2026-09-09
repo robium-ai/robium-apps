@@ -1,0 +1,10 @@
+# These poses come from robot-navigation's map of this exact pinned world.
+# The TurtleBot 4 spawns at the same world pose used when that map was made,
+# therefore its initial pose is map (0, 0, 0).
+frame_id: map
+locations:
+  dock: {configured: true, x: 0.0, y: 0.0, yaw: 0.0}
+  hallway: {configured: false, x: 0.0, y: 0.0, yaw: 0.0}
+  kitchen: {configured: true, x: 4.1533655220, y: -4.4684168578, yaw: -0.0345358522}
+  living_room: {configured: true, x: -2.5967007564, y: -1.4466469114, yaw: -0.0642968046}
+  contest_stage: {configured: false, x: 0.0, y: 0.0, yaw: 0.0}

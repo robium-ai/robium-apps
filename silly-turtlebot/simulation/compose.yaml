@@ -1,0 +1,40 @@
+# ROS 2, Gazebo, TurtleBot 4, Nav2, the camera compressor, and the HTTP bridge
+# intentionally live in one container. Docker Desktop does not provide a real
+# host network, and DDS multicast is unreliable across its bridge boundary.
+services:
+  sim:
+    build:
+      context: ../..
+      dockerfile: silly-turtlebot/simulation/Dockerfile
+    image: silly-turtlebot-sim:latest
+    init: true
+    environment:
+      ROS_DOMAIN_ID: "43"
+    ports:
+      - "127.0.0.1:${SILLY_VIZ_PORT:-8091}:8080"
+      - "127.0.0.1:${SILLY_SIM_PORT:-8088}:8088"
+      - "127.0.0.1:${SILLY_FOXGLOVE_PORT:-8765}:8765"
+    volumes:
+      - gazebo-fuel:/root/.gz/fuel
+    command:
+      - ros2
+      - launch
+      - silly_turtlebot_sim
+      - home.launch.py
+
+  agent:
+    build:
+      context: ../..
+      dockerfile: silly-turtlebot/agent/Dockerfile
+    image: silly-turtlebot-agent:latest
+    init: true
+    environment:
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      SILLY_ROBOT_URL: http://sim:8088
+    depends_on:
+      - sim
+    expose:
+      - "8090"
+
+volumes:
+  gazebo-fuel:

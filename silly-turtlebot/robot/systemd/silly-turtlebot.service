@@ -1,0 +1,16 @@
+[Unit]
+Description=Silly TurtleBot SLAM, Nav2, and guarded semantic bridge
+After=network-online.target turtlebot4.service
+Wants=network-online.target
+Requires=turtlebot4.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/silly-turtlebot/robot
+ExecStart=/bin/bash -lc 'source /opt/ros/humble/setup.bash; source /etc/turtlebot4/setup.bash; source /home/ubuntu/silly-turtlebot/robot/ros_ws/install/setup.bash; exec ros2 launch silly_turtlebot_ros real.launch.py'
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

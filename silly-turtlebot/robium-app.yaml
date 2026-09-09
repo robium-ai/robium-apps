@@ -1,0 +1,71 @@
+schema_version: "1"
+id: silly-turtlebot
+name: Silly TurtleBot
+summary: A TurtleBot 4 listens, navigates with Nav2, inspects scenes with Gemini Robotics ER 2, and performs a guarded comedy routine.
+version: 0.3.0
+status: experimental
+license: MIT
+tags: [turtlebot4, ros2, nav2, gemini-robotics, voice, scene-understanding, real-robot]
+
+runtime:
+  kind: uv
+  entrypoint: ./app run
+
+verbs:
+  help:
+    command: ./app help
+    summary: Show commands and examples
+  build:
+    command: ./app build
+    summary: Prepare the locked Python environment
+  doctor:
+    command: ./app doctor
+    summary: Check the package, API-key presence, and live-model configuration
+  robot-doctor:
+    command: ./app robot-doctor
+    summary: Check the robot bridge, Nav2 actions, named locations, and cameras
+  sim-doctor:
+    command: ./app sim-doctor
+    summary: Check Docker prerequisites for the Gazebo runtime
+  sim-up:
+    command: ./app sim-up
+    summary: Start Gazebo, Nav2, OAK-D, Lichtblick, and guarded Gemini mission controls
+  sim-smoke:
+    command: ./app sim-smoke
+    summary: Verify the running Gazebo, Nav2, bridge, and simulated camera path
+  run:
+    command: ./app run
+    summary: Start the safe-default Gazebo simulation and Lichtblick mission controls
+  smoke:
+    command: ./app smoke
+    summary: Run seven critical tests and the mock end-to-end smoke
+
+modes:
+  demo:
+    command: ./app demo
+    summary: Run the transparent hardware-free sock routine
+  live:
+    command: ./app live
+    summary: Connect Gemini Robotics ER 2 Streaming to the fake or ROS robot guard
+  robot:
+    command: ./app robot-doctor
+    summary: Inspect the live ROS 2, Nav2, and camera connection
+  simulation:
+    command: ./app sim-up
+    summary: Run TurtleBot 4 in the headless Gazebo furnished-home environment
+  tools:
+    command: ./app tools
+    summary: Print the semantic tools exposed to the model
+
+requirements:
+  hardware: [TurtleBot 4 with OAK-D for real mode; optional second ROS camera; Docker for simulation; mock mode is hardware-free]
+  gpu: none
+  network: optional
+
+demo:
+  default_mode: simulation
+  hosted: false
+  estimated_startup_seconds: 90
+
+artifacts:
+  architecture_brief: docs/architecture-brief.md

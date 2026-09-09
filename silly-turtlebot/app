@@ -1,0 +1,269 @@
+#!/usr/bin/env bash
+# Repository-local command surface. See robium-app.yaml for the contract.
+set -euo pipefail
+cd "$(dirname "$0")"
+export PYTHONUNBUFFERED=1
+
+run_with_gemini_key() {
+  if [ -n "${GEMINI_API_KEY:-}" ]; then
+    "$@"
+    return
+  fi
+  if ! command -v doppler >/dev/null 2>&1; then
+    echo "GEMINI_API_KEY is unset and the Doppler CLI is not installed." >&2
+    echo "Install/login to Doppler, or export GEMINI_API_KEY." >&2
+    return 1
+  fi
+  doppler_project=${DOPPLER_PROJECT:-robium}
+  doppler_config=${DOPPLER_CONFIG:-}
+  if [ -z "$doppler_config" ]; then
+    doppler_config=$(doppler configs --project "$doppler_project" --json 2>/dev/null | \
+      python3 -c 'import json,sys; names={item["name"] for item in json.load(sys.stdin)}; print("test" if "test" in names else "dev")')
+  fi
+  doppler run \
+    --project "$doppler_project" \
+    --config "$doppler_config" \
+    -- "$@"
+}
+
+start_simulation() {
+  docker compose -f real/compose.yaml down --remove-orphans >/dev/null 2>&1 || true
+  if ! docker image inspect silly-turtlebot-sim:latest >/dev/null 2>&1 \
+    || ! docker image inspect silly-turtlebot-agent:latest >/dev/null 2>&1; then
+    echo "Demo image missing; building it first..."
+    docker compose -f simulation/compose.yaml build sim agent
+  fi
+  run_with_gemini_key \
+    docker compose -f simulation/compose.yaml up -d --no-build sim agent
+  echo "MODE: SIMULATION (Gazebo + simulated TurtleBot 4)"
+  echo "Lichtblick console: http://127.0.0.1:${SILLY_VIZ_PORT:-8091}"
+  echo "Robot API: http://127.0.0.1:${SILLY_SIM_PORT:-8088}/v1/health"
+}
+
+run_real() {
+  robot_url=${SILLY_ROBOT_URL:-}
+  camera_url=${SILLY_CAMERA_URL:-}
+  foxglove_url=${SILLY_FOXGLOVE_URL:-}
+  expect_robot_url=0
+  expect_camera_url=0
+  expect_foxglove_url=0
+  while [ "$#" -gt 0 ]; do
+    argument=$1
+    shift
+    if [ "$expect_robot_url" -eq 1 ]; then
+      robot_url=$argument
+      expect_robot_url=0
+    elif [ "$expect_camera_url" -eq 1 ]; then
+      camera_url=$argument
+      expect_camera_url=0
+    elif [ "$expect_foxglove_url" -eq 1 ]; then
+      foxglove_url=$argument
+      expect_foxglove_url=0
+    else
+      case "$argument" in
+        --robot-url) expect_robot_url=1 ;;
+        --robot-url=*) robot_url=${argument#--robot-url=} ;;
+        --camera-url) expect_camera_url=1 ;;
+        --camera-url=*) camera_url=${argument#--camera-url=} ;;
+        --foxglove-url) expect_foxglove_url=1 ;;
+        --foxglove-url=*) foxglove_url=${argument#--foxglove-url=} ;;
+        *)
+          echo "Unknown real-mode argument: $argument" >&2
+          return 2
+          ;;
+      esac
+    fi
+  done
+  if [ "$expect_robot_url" -eq 1 ] || [ "$expect_camera_url" -eq 1 ] \
+    || [ "$expect_foxglove_url" -eq 1 ]; then
+    echo "A real-mode URL option is missing its value." >&2
+    return 2
+  fi
+  if [ -z "$robot_url" ]; then
+    echo "Real mode requires --robot-url http://ROBOT_IP:8088." >&2
+    return 2
+  fi
+  case "$robot_url" in
+    http://*|https://*) ;;
+    *) echo "Robot URL must start with http:// or https://." >&2; return 2 ;;
+  esac
+  if [ -z "$foxglove_url" ]; then
+    robot_address=${robot_url#*://}
+    robot_address=${robot_address%%/*}
+    robot_host=${robot_address%%:*}
+    foxglove_url="ws://${robot_host}:8765"
+  fi
+  export SILLY_ROBOT_URL=$robot_url
+  export SILLY_CAMERA_URL=$camera_url
+  export SILLY_FOXGLOVE_URL=$foxglove_url
+  docker compose -f simulation/compose.yaml down --remove-orphans >/dev/null 2>&1 || true
+  if ! docker image inspect silly-turtlebot-agent:latest >/dev/null 2>&1 \
+    || ! docker image inspect silly-turtlebot-viewer:latest >/dev/null 2>&1; then
+    echo "Real console image missing; building it first..."
+    docker compose -f real/compose.yaml build agent viewer
+  fi
+  run_with_gemini_key \
+    docker compose -f real/compose.yaml up -d --no-build --force-recreate agent viewer
+  echo "MODE: REAL ROBOT"
+  echo "Lichtblick console: http://127.0.0.1:${SILLY_VIZ_PORT:-8091}"
+  echo "Robot API: ${robot_url}/v1/health"
+  if [ -n "$camera_url" ]; then
+    echo "OAK-D camera: ${camera_url}/stream"
+  else
+    echo "OAK-D camera: robot ROS camera topic"
+  fi
+  echo "ROS visualization: ${foxglove_url}"
+}
+
+case "${1:-help}" in
+  help|-h|--help)
+    cat <<'USAGE'
+silly-turtlebot - guarded Gemini Robotics ER 2 agent for TurtleBot 4
+
+  ./app build       create/update the locked uv environment
+  ./app doctor      check local and optional live prerequisites
+  ./app run          start the simulated robot and Lichtblick (safe default)
+  ./app run --sim    explicitly run the Gazebo simulation
+  ./app run --real --robot-url URL [--camera-url URL]
+  ./app demo        run the deterministic fake sock mission
+  ./app live ...    connect ER 2 Streaming to fake or ROS robot
+  ./app tools       print the model-visible semantic tools
+  ./app smoke       run seven critical tests and the mock end-to-end smoke
+  ./app sim-doctor  check Docker prerequisites for Gazebo
+  ./app sim-build   build TurtleBot 4 + Gazebo Harmonic
+  ./app sim-up      start the simulator and browser mission backend
+  ./app sim-smoke   verify Gazebo, Nav2, and the simulated OAK-D
+  ./app sim-live ... connect Gemini to the running simulator
+  ./app sim-logs    follow simulator logs
+  ./app sim-down    stop the simulator
+  ./app real-logs   follow the real agent and console logs
+  ./app real-down   stop the local real agent and console
+  ./app robot-deploy ubuntu@ROBOT_IP
+  ./app orin-camera-deploy USER@ORIN_IP
+  ./app robot-build  build the ROS overlay locally on the robot
+  ./app robot-bridge [ROS launch arguments]
+  ./app robot-doctor --robot-url http://127.0.0.1:8088
+  ./app camera --robot-url http://127.0.0.1:8088 --output scene.jpg
+  ./app robot-smoke run the real ROS/Nav2/OAK-D smoke on the robot
+
+Live examples:
+  ./app run
+  ./app run --sim
+  ./app run --real --robot-url http://192.168.0.50:8088 --camera-url http://192.168.0.51:8081
+  ./app live --text "Patrol the living room and report any mess."
+  ./app live --text "What do you see?" --image frame.jpg
+  ./app live --audio command.pcm
+  SILLY_ROBOT_URL=http://127.0.0.1:8088 ./app live --text "Inspect the room."
+  ./app sim-live --text "Go to the living room, look around, and comment."
+USAGE
+    ;;
+  run)
+    shift
+    mode=${1:---sim}
+    case "$mode" in
+      --sim|sim)
+        [ "$#" -eq 0 ] || shift
+        if [ "$#" -ne 0 ]; then
+          echo "Simulation mode does not accept additional arguments." >&2
+          exit 2
+        fi
+        start_simulation
+        ;;
+      --real|real)
+        shift
+        run_real "$@"
+        ;;
+      *)
+        echo "Unknown run mode: $mode (use --sim or --real)" >&2
+        exit 2
+        ;;
+    esac
+    ;;
+  build)
+    uv sync --locked
+    ;;
+  smoke)
+    uv run --locked pytest
+    output="$(uv run --locked silly-turtlebot demo)"
+    printf '%s\n' "$output"
+    grep -q '^SILLY TURTLEBOT MOCK PASS$' <<<"$output"
+    ;;
+  doctor|demo|tools|robot-doctor|camera)
+    command="$1"
+    shift
+    uv run --locked silly-turtlebot "$command" "$@"
+    ;;
+  live)
+    shift
+    run_with_gemini_key uv run --locked silly-turtlebot live "$@"
+    ;;
+  robot-deploy)
+    shift
+    scripts/deploy_robot.sh "$@"
+    ;;
+  orin-camera-deploy)
+    shift
+    scripts/deploy_orin_camera.sh "$@"
+    ;;
+  robot-build)
+    shift
+    robot/build.sh "$@"
+    ;;
+  robot-bridge)
+    shift
+    robot/run_bridge.sh "$@"
+    ;;
+  robot-smoke)
+    shift
+    robot/smoke.sh "$@"
+    ;;
+  sim-doctor)
+    ok=1
+    command -v docker >/dev/null 2>&1 || {
+      echo "FAIL docker is not installed"
+      ok=0
+    }
+    if [ "$ok" -eq 1 ] && ! docker info >/dev/null 2>&1; then
+      echo "FAIL Docker daemon is not running"
+      ok=0
+    fi
+    if [ "$ok" -eq 1 ] && ! docker compose version >/dev/null 2>&1; then
+      echo "FAIL Docker Compose v2 is unavailable"
+      ok=0
+    fi
+    [ "$ok" -eq 1 ] && echo "SILLY TURTLEBOT SIM DOCTOR PASS"
+    [ "$ok" -eq 1 ]
+    ;;
+  sim-build)
+    docker compose -f simulation/compose.yaml build sim agent
+    ;;
+  sim-up)
+    start_simulation
+    ;;
+  sim-smoke)
+    SILLY_ROBOT_URL="${SILLY_ROBOT_URL:-http://127.0.0.1:${SILLY_SIM_PORT:-8088}}" \
+      simulation/smoke.sh
+    ;;
+  sim-live)
+    shift
+    export SILLY_ROBOT_URL="${SILLY_ROBOT_URL:-http://127.0.0.1:${SILLY_SIM_PORT:-8088}}"
+    run_with_gemini_key uv run --locked silly-turtlebot live "$@"
+    ;;
+  sim-logs)
+    docker compose -f simulation/compose.yaml logs --tail=150 -f
+    ;;
+  sim-down)
+    docker compose -f simulation/compose.yaml down --remove-orphans
+    ;;
+  real-logs)
+    docker compose -f real/compose.yaml logs --tail=150 -f
+    ;;
+  real-down)
+    docker compose -f real/compose.yaml down --remove-orphans
+    ;;
+  *)
+    echo "Unknown command: $1" >&2
+    echo "Run './app help' for usage." >&2
+    exit 1
+    ;;
+esac

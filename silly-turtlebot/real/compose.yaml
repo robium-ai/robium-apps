@@ -1,0 +1,29 @@
+services:
+  agent:
+    build:
+      context: ../..
+      dockerfile: silly-turtlebot/agent/Dockerfile
+    image: silly-turtlebot-agent:latest
+    init: true
+    environment:
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      SILLY_ROBOT_URL: "${SILLY_ROBOT_URL:-}"
+      SILLY_CAMERA_URL: "${SILLY_CAMERA_URL:-}"
+    expose:
+      - "8090"
+
+  viewer:
+    build:
+      context: ../..
+      dockerfile: silly-turtlebot/viewer/Dockerfile
+    image: silly-turtlebot-viewer:latest
+    init: true
+    ports:
+      - "127.0.0.1:${SILLY_VIZ_PORT:-8091}:8080"
+    depends_on:
+      - agent
+    command:
+      - --bridge-url
+      - "${SILLY_FOXGLOVE_URL:-ws://127.0.0.1:8765}"
+      - --agent-url
+      - http://agent:8090
