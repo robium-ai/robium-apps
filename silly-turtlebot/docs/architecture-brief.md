@@ -41,6 +41,7 @@ contract does not change.
 | Agent-to-robot boundary | Narrow HTTP bridge on the robot LAN; native ROS 2 actions/topics behind it | Separates cloud/API failure from motion and avoids cross-host DDS | deployed and healthy; SSH/tunnel remains appropriate off-LAN |
 | Cameras | OAK-D via pinned DepthAI 2.33 container on Orin; optional top-camera ROS topic later | Keeps vision/Gemini compute on Orin and avoids cross-host image DDS | fresh 640×360 JPEG verified end-to-end |
 | Neural TTS | Separate Kokoro-82M v1.0 int8 ONNX container on Orin; `am_puck` voice; ALSA USB auto-selection | Keeps model inference off the navigation Pi and isolates camera/TTS failure domains | hot-plugged USB speaker resolved as `plughw:2,0`; speech completed and was confirmed clear |
+| Manual motion | Native Lichtblick Teleop panel publishing `/cmd_vel` at 5 Hz, capped at 0.15 m/s and 0.4 rad/s | Reuses the real-hardware-proven `robot-teleoperation` control surface while keeping manual authority visibly separate from Gemini | panel rendered against the live bridge; no physical motion commanded during UI smoke |
 | Physical navigation mode | SLAM + Nav2 on the Pi until a contest map and named poses are surveyed | Enables collision-checked relative motion now without inventing a map | active; named waypoints intentionally disabled |
 | Humor | Deterministic comedy beats with short model-generated variations | A staged routine is more repeatable than unrestricted improvisation | validated in mock slice |
 

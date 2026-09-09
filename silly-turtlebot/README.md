@@ -68,13 +68,13 @@ Gemini mission service. The simulation contains Gazebo Harmonic, a standard
 TurtleBot 4, localization, Nav2, an OAK-D JPEG stream, and the same semantic
 bridge used by the physical robot.
 It also bundles the same Lichtblick/Foxglove visualization path proven in
-`robot-navigation`. Open <http://127.0.0.1:8091> for the OAK-D view, map,
+`robot-navigation`. Open <http://localhost:8091> for the OAK-D view, map,
 laser scan, Nav2 plans, robot model, TF, and ROS logs. The semantic robot API
 remains on <http://127.0.0.1:8088/v1/health>; port 8088 is not a web console.
 The Gemini key stays in the agent service and is never sent to the browser.
 
 The bundled map has three enabled names: `dock`, `kitchen`, and `living_room`.
-After `run` (or `sim-up`), open <http://127.0.0.1:8091>, enter an instruction in **Silly
+After `run` (or `sim-up`), open <http://localhost:8091>, enter an instruction in **Silly
 TurtleBot Mission Control**, and press **Run mission**. The panel includes
 contest presets, a guarded-action transcript, **Dock**, **Undock**, and
 **Stop robot**. No second terminal command is required.
@@ -175,11 +175,17 @@ Start the real control plane from the app directory:
 ```
 
 This switches off any local simulator, starts the Gemini agent and Lichtblick,
-and prints the console URL (normally <http://127.0.0.1:8091>). No second shell
+and prints the console URL (normally <http://localhost:8091>). No second shell
 or manual `doppler run` command is required. Use `./app real-down` to stop the
 local control plane; the Pi and Orin services remain available for the next run.
 When `--camera-url` is present, the agent automatically uses the same Orin host
 on port 8082 for speech. Pass `--tts-url` only when speech is hosted elsewhere.
+
+The console includes the same hold-to-drive motion pad as the TurtleBot 4
+teleoperation reference app. It publishes `/cmd_vel` at 5 Hz with 0.15 m/s
+linear and 0.4 rad/s angular limits; releasing the button publishes a stop.
+This is a supervised manual override and is separate from Gemini's guarded
+Nav2 tools. Keep the robot in sight and the floor clear while using it.
 
 Check both Orin services without speaking:
 

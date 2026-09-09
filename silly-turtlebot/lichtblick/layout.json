@@ -120,6 +120,14 @@
     },
     "Silly TurtleBot Controls.mission-control!demo": {
       "missionEndpoint": "/api"
+    },
+    "Teleop!drive": {
+      "topic": "/cmd_vel",
+      "publishRate": 5,
+      "upButton": {"field": "linear-x", "value": 0.15},
+      "downButton": {"field": "linear-x", "value": -0.15},
+      "leftButton": {"field": "angular-z", "value": 0.4},
+      "rightButton": {"field": "angular-z", "value": -0.4}
     }
   },
   "globalVariables": {},
@@ -127,7 +135,12 @@
   "playbackConfig": {"speed": 1},
   "layout": {
     "direction": "row",
-    "first": "Silly TurtleBot Controls.mission-control!demo",
+    "first": {
+      "direction": "column",
+      "first": "Silly TurtleBot Controls.mission-control!demo",
+      "second": "Teleop!drive",
+      "splitPercentage": 73
+    },
     "second": {
       "direction": "column",
       "first": {

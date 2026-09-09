@@ -36,7 +36,7 @@ start_simulation() {
   run_with_gemini_key \
     docker compose -f simulation/compose.yaml up -d --no-build sim agent
   echo "MODE: SIMULATION (Gazebo + simulated TurtleBot 4)"
-  echo "Lichtblick console: http://127.0.0.1:${SILLY_VIZ_PORT:-8091}"
+  echo "Lichtblick console: http://localhost:${SILLY_VIZ_PORT:-8091}"
   echo "Robot API: http://127.0.0.1:${SILLY_SIM_PORT:-8088}/v1/health"
 }
 
@@ -119,7 +119,7 @@ run_real() {
   run_with_gemini_key \
     docker compose -f real/compose.yaml up -d --no-build --force-recreate agent viewer
   echo "MODE: REAL ROBOT"
-  echo "Lichtblick console: http://127.0.0.1:${SILLY_VIZ_PORT:-8091}"
+  echo "Lichtblick console: http://localhost:${SILLY_VIZ_PORT:-8091}"
   echo "Robot API: ${robot_url}/v1/health"
   if [ -n "$camera_url" ]; then
     echo "OAK-D camera: ${camera_url}/stream"
