@@ -19,7 +19,17 @@ timeout 10 ros2 topic echo --once \
 timeout 10 ros2 topic echo --once \
   /odom --qos-reliability best_effort >/dev/null
 timeout 10 ros2 topic echo --once \
-  /map --qos-durability transient_local >/dev/null
+  /global_costmap/costmap >/dev/null
+ros2 param get /bt_navigator global_frame | grep -q 'odom'
+ros2 param get /global_costmap/global_costmap global_frame | grep -q 'odom'
+ros2 param get /global_costmap/global_costmap rolling_window | grep -q 'True'
+ros2 lifecycle get /bt_navigator | grep -q 'active'
+ros2 lifecycle get /planner_server | grep -q 'active'
+ros2 lifecycle get /controller_server | grep -q 'active'
+if ros2 node list | grep -Eq '^/(async_)?slam_toolbox$'; then
+  echo "SLAM must not run in odom navigation mode" >&2
+  exit 1
+fi
 curl --fail --silent http://127.0.0.1:8088/v1/health | \
   python3 -c 'import json,sys; h=json.load(sys.stdin); assert h["status"] == "ok"; assert h["navigate_to_pose"]; assert h["drive_on_heading"]; assert h["spin"]; assert h["dock"]; assert h["undock"]'
 if [ -n "${SILLY_CAMERA_URL:-}" ]; then

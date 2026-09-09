@@ -1,6 +1,6 @@
-# Survey these poses on the robot's real map, then set configured: true.
-# The bridge intentionally refuses navigation until a location is configured.
-frame_id: map
+# Odom coordinates reset when the robot restarts, so persistent room names are
+# intentionally disabled in mapless mode. Use short-lived 3D console goals.
+frame_id: odom
 locations:
   dock: {configured: false, x: 0.0, y: 0.0, yaw: 0.0}
   hallway: {configured: false, x: 0.0, y: 0.0, yaw: 0.0}

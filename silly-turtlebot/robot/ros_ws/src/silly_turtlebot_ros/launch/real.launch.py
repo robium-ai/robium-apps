@@ -1,4 +1,4 @@
-"""Physical TurtleBot 4 SLAM, Nav2, and guarded semantic bridge."""
+"""Physical TurtleBot 4 mapless Nav2 and guarded semantic bridge."""
 
 from pathlib import Path
 
@@ -14,17 +14,14 @@ def generate_launch_description():
     )
     silly_share = Path(get_package_share_directory("silly_turtlebot_ros"))
 
-    slam = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            str(turtlebot_navigation / "launch" / "slam.launch.py")
-        ),
-        launch_arguments={"use_sim_time": "false", "sync": "false"}.items(),
-    )
     nav2 = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             str(turtlebot_navigation / "launch" / "nav2.launch.py")
         ),
-        launch_arguments={"use_sim_time": "false"}.items(),
+        launch_arguments={
+            "use_sim_time": "false",
+            "params_file": str(silly_share / "config" / "nav2_odom.yaml"),
+        }.items(),
     )
     bridge = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -37,4 +34,4 @@ def generate_launch_description():
             "primary_camera_topic": "",
         }.items(),
     )
-    return LaunchDescription([slam, nav2, bridge])
+    return LaunchDescription([nav2, bridge])

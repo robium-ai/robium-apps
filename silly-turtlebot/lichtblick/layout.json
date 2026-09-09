@@ -61,7 +61,7 @@
         "far": 5000
       },
       "followMode": "follow-pose",
-      "followTf": "map",
+      "followTf": "odom",
       "scene": {
         "transforms": {"showLabel": false},
         "syncCamera": false,
@@ -69,7 +69,7 @@
       },
       "transforms": {},
       "topics": {
-        "/map": {"visible": true, "colorMode": "map"},
+        "/map": {"visible": false, "colorMode": "map"},
         "/scan": {
           "visible": true,
           "colorField": "intensity",
@@ -88,7 +88,7 @@
           "gradient": ["#ff9f1c", "#ff9f1c"]
         },
         "/global_costmap/costmap": {
-          "visible": false,
+          "visible": true,
           "colorMode": "costmap",
           "alpha": 0.35
         },

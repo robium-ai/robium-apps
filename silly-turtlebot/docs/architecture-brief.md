@@ -18,7 +18,7 @@ The third slice adds a reproducible TurtleBot 4 Gazebo Harmonic runtime in the
 same furnished home and map used by `robot-navigation`. The simulation now
 passes a fresh-container smoke covering all three Nav2 actions and a fresh OAK-D
 JPEG, plus real forward and quarter-turn actions through Nav2. The physical
-slice now runs SLAM/Nav2 on the Pi, DepthAI capture on the Orin, and the
+slice now runs mapless, odom-relative Nav2 on the Pi, DepthAI capture on the Orin, and the
 Gemini/Lichtblick control plane on the operator host.
 
 Provisional hardware target: the existing TurtleBot 4 running Ubuntu 22.04 and
@@ -35,14 +35,14 @@ contract does not change.
 | Motion authority | Nav2 behind a mission guard; Gemini never receives `/cmd_vel` or unchecked coordinates | Keeps localization, planning, obstacle avoidance, and recovery in the deterministic robot layer | validated architecture |
 | Speech output | A bounded `speak(message)` tool backed by Kokoro-82M ONNX on the Orin, with Pi `espeak-ng` retained only as a no-Orin fallback | Neural speech is smoother, and its separate HTTP/container boundary cannot disturb Nav2 or camera capture | ARM64 deployment, model inference, USB discovery, and clear audible output passed on hardware |
 | Agent environment | Locked uv package in a small Docker image | Keeps the cloud client reproducible and independent from the Pi's ROS Python | deployed on the operator host |
-| ROS environment | Native Humble TurtleBot underlay plus an app overlay on the Pi | Reuses stock hardware drivers and keeps all DDS/Nav2 traffic on one host | deployed; actions, scan, odom, map and lifecycle verified |
+| ROS environment | Native Humble TurtleBot underlay plus an app overlay on the Pi | Reuses stock hardware drivers and keeps all DDS/Nav2 traffic on one host | deployed; actions, scan, odom, rolling costmaps and lifecycle verified |
 | Simulation | ROS 2 Jazzy + Gazebo Harmonic + official TurtleBot 4 simulator in one Docker container | Jazzy/Harmonic is the supported current pairing; one container avoids Docker Desktop DDS discovery failures | fresh-container smoke passed; Nav2 forward and spin actions succeeded |
 | Simulation world | Pinned AWS RoboMaker Small House asset and matching map/waypoints reused from `robot-navigation` | Gives scene commentary and navigation a furnished, repeatable environment without a second unverified map | TurtleBot 4, localization, Nav2, and OAK-D stream validated together |
 | Agent-to-robot boundary | Narrow HTTP bridge on the robot LAN; native ROS 2 actions/topics behind it | Separates cloud/API failure from motion and avoids cross-host DDS | deployed and healthy; SSH/tunnel remains appropriate off-LAN |
 | Cameras | OAK-D via pinned DepthAI 2.33 container on Orin; optional top-camera ROS topic later | Keeps vision/Gemini compute on Orin and avoids cross-host image DDS | fresh 640×360 JPEG verified end-to-end |
 | Neural TTS | Separate Kokoro-82M v1.0 int8 ONNX container on Orin; `am_puck` voice; ALSA USB auto-selection | Keeps model inference off the navigation Pi and isolates camera/TTS failure domains | hot-plugged USB speaker resolved as `plughw:2,0`; speech completed and was confirmed clear |
 | Manual motion | Native Lichtblick Teleop panel publishing `/cmd_vel` at 5 Hz, capped at 0.15 m/s and 0.4 rad/s | Reuses the real-hardware-proven `robot-teleoperation` control surface while keeping manual authority visibly separate from Gemini | panel rendered against the live bridge; no physical motion commanded during UI smoke |
-| Physical navigation mode | SLAM + Nav2 on the Pi until a contest map and named poses are surveyed | Enables collision-checked relative motion now without inventing a map | active; named waypoints intentionally disabled |
+| Physical navigation mode | Nav2 in `odom` with 3 m local and 8 m rolling global lidar costmaps; no SLAM, AMCL, or static layer | Enables short collision-checked pose goals immediately, accepting odometry drift instead of requiring a map | active; persistent named waypoints intentionally disabled |
 | Humor | Deterministic comedy beats with short model-generated variations | A staged routine is more repeatable than unrestricted improvisation | validated in mock slice |
 
 ## Module boundaries and communications
@@ -87,7 +87,7 @@ Every declared Live API tool is blocking.
 2. Keep seven critical tests and `./app smoke` hardware-free.
 3. Run one live session where ER 2 calls only guarded fake tools.
 4. Deploy the ROS 2 overlay and pass `robot/smoke.sh` against the physical
-   Humble TurtleBot 4; survey named waypoints after the contest area is mapped.
+   Humble TurtleBot 4; validate short odom goals under supervision.
 5. Pass `./app sim-smoke` and a Nav2 motion command in the furnished home.
    Rehearse a full Gemini navigation turn when contest dialogue is ready.
 6. Add RGB-depth object/person grounding, then pass the staged sock mission
@@ -115,7 +115,7 @@ that skill.
 - `./app smoke` passes from the worktree with no robot, no API key, and no
   network request.
 - The robot slice requires `/navigate_to_pose`, `/drive_on_heading`, `/spin`,
-  scan, odometry, map, and a fresh Orin OAK-D JPEG to pass `robot/smoke.sh` on
+  scan, odometry, an odom-frame rolling costmap, and a fresh Orin OAK-D JPEG to pass `robot/smoke.sh` on
   hardware. This smoke passes and does not command motion.
 - The simulation slice is not accepted until `./app sim-smoke` observes both
   Nav2 actions and a fresh simulated OAK-D JPEG through the semantic bridge.

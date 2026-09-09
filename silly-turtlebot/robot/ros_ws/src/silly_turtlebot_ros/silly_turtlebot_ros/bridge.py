@@ -122,7 +122,7 @@ class SillyTurtleBotBridge(Node):
         if not path.is_file():
             raise RuntimeError(f"waypoints file does not exist: {path}")
         raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-        frame_id = str(raw.get("frame_id", "map"))
+        frame_id = str(raw.get("frame_id", "odom"))
         waypoints: dict[str, dict[str, float]] = {}
         for name, values in (raw.get("locations") or {}).items():
             if not isinstance(values, dict) or values.get("configured") is not True:
@@ -196,7 +196,7 @@ class SillyTurtleBotBridge(Node):
         if waypoint is None:
             return {
                 "status": "rejected",
-                "reason": f"location is not configured on this map: {location}",
+                "reason": f"location is not configured for this run: {location}",
             }
         goal = NavigateToPose.Goal()
         pose = PoseStamped()

@@ -262,8 +262,8 @@ function MissionPanel({
         </div>
         <p className="hint">⌘/Ctrl + Enter runs the instruction</p>
         <p className="hint">
-          Map goal: in the 3D panel choose Publish pose; it sends /goal_pose
-          directly to Nav2.
+          Local goal: in the 3D panel choose Publish pose; it sends an odom
+          /goal_pose directly to Nav2 (keep it within about 3 m).
         </p>
       </section>
 

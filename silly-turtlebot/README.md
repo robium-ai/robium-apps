@@ -8,8 +8,8 @@ The real app has three runtime parts:
 
 - The containerized Gemini agent and Lichtblick console run on the operator
   computer and expose only bounded semantic tools.
-- Native ROS 2 Humble, SLAM, Nav2, the laser, and the guarded motion/TTS bridge
-  run on the TurtleBot 4 Raspberry Pi.
+- Native ROS 2 Humble, mapless Nav2, the laser, and the guarded motion/TTS
+  bridge run on the TurtleBot 4 Raspberry Pi.
 - The contest OAK-D runs through a small DepthAI container on the NVIDIA Orin.
   Its JPEG goes to Gemini and the browser without crossing ROS/DDS.
 
@@ -21,7 +21,7 @@ MPPI navigation configuration.
 
 The mock, live-Gemini/fake-robot, and Gazebo/Nav2/OAK-D simulation paths pass
 locally. The real Humble robot is also deployed and verified without commanding
-motion: scan, odometry, map, Nav2 lifecycle nodes, guarded actions, OAK-D
+motion: scan, odometry, rolling costmaps, Nav2 lifecycle nodes, guarded actions, OAK-D
 capture, the browser proxy, and offline TTS are live.
 
 ## Local quick start
@@ -80,11 +80,12 @@ contest presets, a guarded-action transcript, **Dock**, **Undock**, and
 **Stop robot**. No second terminal command is required.
 
 To send an operator-selected Nav2 goal from Lichtblick, use the pose-publish
-tool in the 3D panel and place the arrow in known free map space. The bundled
-layout publishes a `geometry_msgs/PoseStamped` on `/goal_pose`, which the
-running Nav2 `bt_navigator` subscribes to directly. This is direct operator
+tool in the 3D panel and place the arrow in known free space. The bundled
+layout publishes a `geometry_msgs/PoseStamped` in `odom` on `/goal_pose`, which
+the running Nav2 `bt_navigator` subscribes to directly. This is direct operator
 control: it bypasses Gemini's named-location guard, while Nav2 still plans and
-checks the route against its costmaps.
+checks the route against its lidar-fed costmaps. On the real robot, keep goals
+within about 3 m so the complete route begins inside its 8 m rolling window.
 
 Forward requests use a dedicated `move_forward(distance_m)` tool backed by
 Nav2 `DriveOnHeading`. It accepts only 0.10–1.00 m and uses a fixed conservative
@@ -153,9 +154,11 @@ to the Orin:
 ./app orin-camera-deploy USER@ORIN_IP
 ```
 
-The Pi service starts SLAM, Nav2, the guarded bridge, and Foxglove after the
-stock TurtleBot service. It also adds a retry policy for the robot's Wi-Fi boot
-race. The Orin runs two independent containers: the pinned DepthAI OAK-D server
+The Pi service starts mapless Nav2, the guarded bridge, and Foxglove after the
+stock TurtleBot service. Nav2 plans in `odom` with rolling local and global
+costmaps fed by the lidar; no map server, AMCL, or SLAM process is required. It
+also adds a retry policy for the robot's Wi-Fi boot race. The Orin runs two
+independent containers: the pinned DepthAI OAK-D server
 on port 8081 and Kokoro-82M neural TTS on port 8082. This OAK-D is held at USB
 High Speed because SuperSpeed firmware boot is unreliable with the current
 Jetson; that still easily carries 640×360 at 12 fps.
@@ -194,13 +197,13 @@ curl http://ORIN_IP:8081/health
 curl http://ORIN_IP:8082/health
 ```
 
-The live system currently builds a SLAM map. Survey the real poses and edit
-`robot/ros_ws/src/silly_turtlebot_ros/config/waypoints.yaml`. Every location is
-disabled initially; the bridge refuses it until `configured: true` is set. A
-convenient way to inspect the current map pose is:
+The live system intentionally has no persistent room map. Its `odom` origin is
+created at boot and drifts over time, which is acceptable for local goals but
+not for reusable room coordinates. Named locations therefore remain disabled;
+use the 3D panel for a short-lived goal. To inspect the current local pose:
 
 ```bash
-ros2 run tf2_ros tf2_echo map base_link
+ros2 run tf2_ros tf2_echo odom base_link
 ```
 
 For a future second top camera, make its driver publish
@@ -228,7 +231,8 @@ until RGB-depth grounding is implemented. The fake mission exercises those
 beats, but the physical robot will currently navigate, look, comment, and stop.
 
 Run `SILLY_CAMERA_URL=http://ORIN_IP:8081 ./robot/smoke.sh` on the Pi to verify
-Nav2, scan, odometry, map, bridge, and OAK-D without commanding motion.
+mapless Nav2, scan, odometry, rolling costmap, bridge, and OAK-D without
+commanding motion.
 
 ## Upstream references
 

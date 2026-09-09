@@ -1,5 +1,5 @@
 [Unit]
-Description=Silly TurtleBot SLAM, Nav2, and guarded semantic bridge
+Description=Silly TurtleBot mapless Nav2 and guarded semantic bridge
 After=network-online.target turtlebot4.service
 Wants=network-online.target
 Requires=turtlebot4.service
