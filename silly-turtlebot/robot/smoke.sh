@@ -12,6 +12,8 @@ actions="$(ros2 action list -t)"
 grep -q '/navigate_to_pose.*nav2_msgs/action/NavigateToPose' <<<"$actions"
 grep -q '/drive_on_heading.*nav2_msgs/action/DriveOnHeading' <<<"$actions"
 grep -q '/spin.*nav2_msgs/action/Spin' <<<"$actions"
+grep -q '/dock.*irobot_create_msgs/action/Dock' <<<"$actions"
+grep -q '/undock.*irobot_create_msgs/action/Undock' <<<"$actions"
 timeout 10 ros2 topic echo --once \
   /scan >/dev/null
 timeout 10 ros2 topic echo --once \
@@ -19,7 +21,7 @@ timeout 10 ros2 topic echo --once \
 timeout 10 ros2 topic echo --once \
   /map --qos-durability transient_local >/dev/null
 curl --fail --silent http://127.0.0.1:8088/v1/health | \
-  python3 -c 'import json,sys; h=json.load(sys.stdin); assert h["status"] == "ok"; assert h["navigate_to_pose"]; assert h["drive_on_heading"]; assert h["spin"]'
+  python3 -c 'import json,sys; h=json.load(sys.stdin); assert h["status"] == "ok"; assert h["navigate_to_pose"]; assert h["drive_on_heading"]; assert h["spin"]; assert h["dock"]; assert h["undock"]'
 if [ -n "${SILLY_CAMERA_URL:-}" ]; then
   curl --fail --silent "${SILLY_CAMERA_URL%/}/health" | \
     python3 -c 'import json,sys; h=json.load(sys.stdin); assert h["status"] == "ok"; assert h["fresh"]'

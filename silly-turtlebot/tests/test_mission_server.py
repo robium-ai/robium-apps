@@ -20,6 +20,12 @@ class FakeMissionService:
     def stop(self):
         return {"status": "succeeded"}
 
+    def dock(self):
+        return {"status": "succeeded", "is_docked": True}
+
+    def undock(self):
+        return {"status": "succeeded", "is_docked": False}
+
     def camera(self):
         return b"fake-jpeg"
 
@@ -48,6 +54,12 @@ def test_mission_console_http_contract():
 
         stop_request = request.Request(base_url + "/v1/stop", data=b"{}")
         assert json.load(request.urlopen(stop_request))["status"] == "succeeded"
+
+        undock_request = request.Request(base_url + "/v1/undock", data=b"{}")
+        assert json.load(request.urlopen(undock_request))["is_docked"] is False
+
+        dock_request = request.Request(base_url + "/v1/dock", data=b"{}")
+        assert json.load(request.urlopen(dock_request))["is_docked"] is True
     finally:
         server.shutdown()
         server.server_close()

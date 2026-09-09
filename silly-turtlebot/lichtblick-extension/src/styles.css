@@ -124,7 +124,8 @@ textarea:focus {
 }
 
 .preset-row,
-.action-row {
+.action-row,
+.dock-row {
   display: flex;
   gap: 5px;
   margin-top: 7px;
@@ -152,6 +153,10 @@ button:disabled {
 }
 
 .action-row button {
+  flex: 1;
+}
+
+.dock-row button {
   flex: 1;
 }
 

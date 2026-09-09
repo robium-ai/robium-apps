@@ -22,6 +22,7 @@ ssh -o BatchMode=yes -o ConnectTimeout=12 "$target" \
    sudo -n install -m 0644 systemd/turtlebot4-restart.conf /etc/systemd/system/turtlebot4.service.d/restart.conf && \
    sudo -n install -m 0644 systemd/silly-turtlebot.service /etc/systemd/system/silly-turtlebot.service && \
    sudo -n systemctl daemon-reload && \
-   sudo -n systemctl enable --now silly-turtlebot.service"
+   sudo -n systemctl enable silly-turtlebot.service && \
+   sudo -n systemctl restart silly-turtlebot.service"
 
 echo "robot overlay deployed; TurtleBot retry + Silly Nav2 services enabled at ${target}:${remote_root}"

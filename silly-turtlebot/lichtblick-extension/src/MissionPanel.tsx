@@ -168,6 +168,30 @@ function MissionPanel({
     }
   }, [endpoint]);
 
+  const runRobotAction = useCallback(
+    async (action: "dock" | "undock") => {
+      if (running) {
+        return;
+      }
+      setRunning(true);
+      setResult(undefined);
+      setMessage(action === "dock" ? "Docking…" : "Undocking…");
+      try {
+        const next = await jsonRequest(`${endpoint}/${action}`, {
+          method: "POST",
+          body: "{}",
+        });
+        setResult(next);
+        setMessage(action === "dock" ? "Dock complete" : "Undock complete");
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : String(error));
+      } finally {
+        setRunning(false);
+      }
+    },
+    [endpoint, running],
+  );
+
   return (
     <main className={`mission-panel ${colorScheme}`}>
       <header>
@@ -220,7 +244,27 @@ function MissionPanel({
             Stop robot
           </button>
         </div>
+        <div className="dock-row">
+          <button
+            type="button"
+            disabled={!serviceReady || running}
+            onClick={() => void runRobotAction("undock")}
+          >
+            Undock
+          </button>
+          <button
+            type="button"
+            disabled={!serviceReady || running}
+            onClick={() => void runRobotAction("dock")}
+          >
+            Dock
+          </button>
+        </div>
         <p className="hint">⌘/Ctrl + Enter runs the instruction</p>
+        <p className="hint">
+          Map goal: in the 3D panel choose Publish pose; it sends /goal_pose
+          directly to Nav2.
+        </p>
       </section>
 
       <section className="camera-card">

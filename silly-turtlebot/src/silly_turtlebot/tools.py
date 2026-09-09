@@ -96,6 +96,24 @@ def function_declarations() -> list[dict[str, Any]]:
             "parameters": {"type": "OBJECT", "properties": {}},
         },
         {
+            "name": "dock",
+            "description": (
+                "Return to the TurtleBot charging dock. Use only when the person "
+                "explicitly asks the robot to dock or return to its charger."
+            ),
+            "behavior": blocking,
+            "parameters": {"type": "OBJECT", "properties": {}},
+        },
+        {
+            "name": "undock",
+            "description": (
+                "Leave the TurtleBot charging dock. Use only when the person "
+                "explicitly asks the robot to undock."
+            ),
+            "behavior": blocking,
+            "parameters": {"type": "OBJECT", "properties": {}},
+        },
+        {
             "name": "speak",
             "description": "Speak one short line through the robot's TTS adapter.",
             "behavior": blocking,

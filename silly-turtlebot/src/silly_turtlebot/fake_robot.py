@@ -21,6 +21,7 @@ class FakeRobot:
     spoken: list[str] = field(default_factory=list)
     forward_distance_m: float = 0.0
     stopped: bool = False
+    is_docked: bool = True
 
     def navigate_to_location(self, location: str) -> dict[str, Any]:
         self.location = location
@@ -66,6 +67,15 @@ class FakeRobot:
 
     def face_nearest_person(self) -> dict[str, Any]:
         return {"status": "succeeded", "person": "volunteer-1", "mode": "mock"}
+
+    def dock(self) -> dict[str, Any]:
+        self.is_docked = True
+        self.location = "dock"
+        return {"status": "succeeded", "is_docked": True, "mode": "mock"}
+
+    def undock(self) -> dict[str, Any]:
+        self.is_docked = False
+        return {"status": "succeeded", "is_docked": False, "mode": "mock"}
 
     def speak(self, message: str) -> dict[str, Any]:
         self.spoken.append(message)

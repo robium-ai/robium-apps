@@ -94,6 +94,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         routes = {
             "/api/missions": "/v1/missions",
             "/api/stop": "/v1/stop",
+            "/api/dock": "/v1/dock",
+            "/api/undock": "/v1/undock",
         }
         target = routes.get(self.path)
         if target is None:

@@ -16,6 +16,8 @@ import rclpy
 import yaml
 from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import PoseStamped
+from irobot_create_msgs.action import Dock, Undock
+from irobot_create_msgs.msg import DockStatus
 from nav2_msgs.action import DriveOnHeading, NavigateToPose, Spin
 from rclpy.action import ActionClient
 from rclpy.executors import MultiThreadedExecutor
@@ -33,6 +35,8 @@ class SillyTurtleBotBridge(Node):
         self.declare_parameter("navigate_action", "/navigate_to_pose")
         self.declare_parameter("drive_on_heading_action", "/drive_on_heading")
         self.declare_parameter("spin_action", "/spin")
+        self.declare_parameter("dock_action", "/dock")
+        self.declare_parameter("undock_action", "/undock")
         self.declare_parameter(
             "primary_camera_topic", "/oakd/rgb/preview/image_raw/compressed"
         )
@@ -42,6 +46,8 @@ class SillyTurtleBotBridge(Node):
         self.declare_parameter("drive_timeout_s", 45.0)
         self.declare_parameter("forward_speed_mps", 0.12)
         self.declare_parameter("spin_timeout_s", 45.0)
+        self.declare_parameter("dock_timeout_s", 180.0)
+        self.declare_parameter("undock_timeout_s", 60.0)
         self.declare_parameter("tts_command", "espeak-ng")
 
         self.bind_host = str(self.get_parameter("bind_host").value)
@@ -51,6 +57,8 @@ class SillyTurtleBotBridge(Node):
         self.drive_timeout_s = float(self.get_parameter("drive_timeout_s").value)
         self.forward_speed_mps = float(self.get_parameter("forward_speed_mps").value)
         self.spin_timeout_s = float(self.get_parameter("spin_timeout_s").value)
+        self.dock_timeout_s = float(self.get_parameter("dock_timeout_s").value)
+        self.undock_timeout_s = float(self.get_parameter("undock_timeout_s").value)
         self.tts_command = str(self.get_parameter("tts_command").value).strip()
 
         self.frame_id, self.waypoints = self._load_waypoints(
@@ -69,10 +77,24 @@ class SillyTurtleBotBridge(Node):
         self.spin_client = ActionClient(
             self, Spin, str(self.get_parameter("spin_action").value)
         )
+        self.dock_client = ActionClient(
+            self, Dock, str(self.get_parameter("dock_action").value)
+        )
+        self.undock_client = ActionClient(
+            self, Undock, str(self.get_parameter("undock_action").value)
+        )
 
         self._motion_lock = threading.Lock()
         self._active_lock = threading.Lock()
         self._active_goal = None
+        self._dock_status_lock = threading.Lock()
+        self._is_docked: bool | None = None
+        self._dock_status_subscription = self.create_subscription(
+            DockStatus,
+            "/dock_status",
+            self._on_dock_status,
+            qos_profile_sensor_data,
+        )
         self._camera_lock = threading.Lock()
         self._cameras: dict[str, tuple[bytes, float]] = {}
         self.camera_topics = {
@@ -118,6 +140,10 @@ class SillyTurtleBotBridge(Node):
         with self._camera_lock:
             self._cameras[source] = (image, time.monotonic())
 
+    def _on_dock_status(self, message: DockStatus) -> None:
+        with self._dock_status_lock:
+            self._is_docked = bool(message.is_docked)
+
     def camera(self, source: str) -> bytes | None:
         with self._camera_lock:
             item = self._cameras.get(source)
@@ -130,6 +156,10 @@ class SillyTurtleBotBridge(Node):
         navigate_ready = self.navigate_client.server_is_ready()
         drive_ready = self.drive_client.server_is_ready()
         spin_ready = self.spin_client.server_is_ready()
+        dock_ready = self.dock_client.server_is_ready()
+        undock_ready = self.undock_client.server_is_ready()
+        with self._dock_status_lock:
+            is_docked = self._is_docked
         cameras = {}
         with self._camera_lock:
             snapshots = dict(self._cameras)
@@ -142,10 +172,21 @@ class SillyTurtleBotBridge(Node):
                 "age_s": age_s,
             }
         return {
-            "status": "ok" if navigate_ready and drive_ready and spin_ready else "starting",
+            "status": (
+                "ok"
+                if navigate_ready
+                and drive_ready
+                and spin_ready
+                and dock_ready
+                and undock_ready
+                else "starting"
+            ),
             "navigate_to_pose": navigate_ready,
             "drive_on_heading": drive_ready,
             "spin": spin_ready,
+            "dock": dock_ready,
+            "undock": undock_ready,
+            "is_docked": is_docked,
             "locations": sorted(self.waypoints),
             "cameras": cameras,
         }
@@ -217,6 +258,16 @@ class SillyTurtleBotBridge(Node):
         )
         result["distance_m"] = distance_m
         return result
+
+    def dock(self) -> dict[str, Any]:
+        return self._run_action(
+            self.dock_client, Dock.Goal(), self.dock_timeout_s, "dock"
+        )
+
+    def undock(self) -> dict[str, Any]:
+        return self._run_action(
+            self.undock_client, Undock.Goal(), self.undock_timeout_s, "undock"
+        )
 
     def _run_action(self, client, goal, timeout_s: float, name: str) -> dict[str, Any]:
         if not self._motion_lock.acquire(blocking=False):
@@ -372,6 +423,10 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 result = bridge.move_forward(payload.get("distance_m"))
             elif self.path == "/v1/look-around":
                 result = bridge.look_around(payload.get("quarter_turns"))
+            elif self.path == "/v1/dock":
+                result = bridge.dock()
+            elif self.path == "/v1/undock":
+                result = bridge.undock()
             elif self.path == "/v1/stop":
                 result = bridge.stop(payload.get("reason", "operator request"))
             elif self.path == "/v1/speak":

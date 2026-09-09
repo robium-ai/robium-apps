@@ -31,6 +31,10 @@ class RobotAdapter(Protocol):
 
     def face_nearest_person(self) -> dict[str, Any]: ...
 
+    def dock(self) -> dict[str, Any]: ...
+
+    def undock(self) -> dict[str, Any]: ...
+
     def speak(self, message: str) -> dict[str, Any]: ...
 
     def stop(self, reason: str) -> dict[str, Any]: ...
@@ -57,6 +61,8 @@ class MissionGuard:
             "look_around",
             "approach_object",
             "face_nearest_person",
+            "dock",
+            "undock",
             "speak",
             "stop",
         )
@@ -71,7 +77,7 @@ class MissionGuard:
         validated = self._validate(name, args)
         method = getattr(self.adapter, name)
         result = method(**validated)
-        if name in {"navigate_to_location", "move_forward"}:
+        if name in {"navigate_to_location", "move_forward", "dock", "undock"}:
             self.grounded_object_ids.clear()
         elif name == "look_around" and result.get("status") == "succeeded":
             self.grounded_object_ids = {
@@ -92,6 +98,8 @@ class MissionGuard:
             "look_around": self._look_args,
             "approach_object": self._approach_args,
             "face_nearest_person": self._no_args,
+            "dock": self._no_args,
+            "undock": self._no_args,
             "speak": self._speech_args,
             "stop": self._stop_args,
         }

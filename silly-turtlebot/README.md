@@ -76,8 +76,15 @@ The Gemini key stays in the agent service and is never sent to the browser.
 The bundled map has three enabled names: `dock`, `kitchen`, and `living_room`.
 After `run` (or `sim-up`), open <http://127.0.0.1:8091>, enter an instruction in **Silly
 TurtleBot Mission Control**, and press **Run mission**. The panel includes
-contest presets, a guarded-action transcript, and **Stop robot**. No second
-terminal command is required.
+contest presets, a guarded-action transcript, **Dock**, **Undock**, and
+**Stop robot**. No second terminal command is required.
+
+To send an operator-selected Nav2 goal from Lichtblick, use the pose-publish
+tool in the 3D panel and place the arrow in known free map space. The bundled
+layout publishes a `geometry_msgs/PoseStamped` on `/goal_pose`, which the
+running Nav2 `bt_navigator` subscribes to directly. This is direct operator
+control: it bypasses Gemini's named-location guard, while Nav2 still plans and
+checks the route against its costmaps.
 
 Forward requests use a dedicated `move_forward(distance_m)` tool backed by
 Nav2 `DriveOnHeading`. It accepts only 0.10–1.00 m and uses a fixed conservative
@@ -190,9 +197,9 @@ one-turn diagnostic command.
 ## Safety and current limits
 
 Gemini can request named navigation, bounded collision-checked forward motion,
-Nav2 spins, speech, and stop. It never receives raw velocity, motor,
-map-coordinate, or arbitrary-pose tools. The ROS bridge also refuses concurrent
-motions and cancels the active Nav2 goal on `stop`.
+Nav2 spins, explicit dock/undock, speech, and stop. It never receives raw
+velocity, motor, map-coordinate, or arbitrary-pose tools. The ROS bridge also
+refuses concurrent motions and cancels the active Nav2 goal on `stop`.
 
 Object approach and person-facing are deliberately rejected on the real bridge
 until RGB-depth grounding is implemented. The fake mission exercises those

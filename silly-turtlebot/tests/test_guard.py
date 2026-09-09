@@ -17,6 +17,8 @@ def test_guard_allows_grounded_actions_and_rejects_unsafe_authority() -> None:
         ]
         == "succeeded"
     )
+    assert guard.execute("undock", {})["is_docked"] is False
+    assert guard.execute("dock", {})["is_docked"] is True
 
     rejected = [
         ("publish_cmd_vel", {"linear_x": 1.0}),
@@ -26,6 +28,7 @@ def test_guard_allows_grounded_actions_and_rejects_unsafe_authority() -> None:
         ("approach_object", {"object_id": "sock-1", "stand_off_m": 0.2}),
         ("approach_object", {"object_id": "invented-7", "stand_off_m": 1.0}),
         ("speak", {"message": "x" * (MAX_SPEECH_CHARS + 1)}),
+        ("dock", {"location": "dock"}),
     ]
     for name, arguments in rejected:
         with pytest.raises(GuardRejected):

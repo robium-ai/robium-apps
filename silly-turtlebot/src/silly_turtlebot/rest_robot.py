@@ -129,6 +129,12 @@ class RestRobot:
     def face_nearest_person(self) -> dict[str, Any]:
         return self._json("/v1/face-nearest-person", {})
 
+    def dock(self) -> dict[str, Any]:
+        return self._json("/v1/dock", {})
+
+    def undock(self) -> dict[str, Any]:
+        return self._json("/v1/undock", {})
+
     def speak(self, message: str) -> dict[str, Any]:
         return self._json("/v1/speak", {"message": message})
 

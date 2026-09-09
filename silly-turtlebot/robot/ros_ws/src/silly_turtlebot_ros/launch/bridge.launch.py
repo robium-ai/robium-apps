@@ -20,6 +20,8 @@ def generate_launch_description():
             "drive_on_heading_action", default_value="/drive_on_heading"
         ),
         DeclareLaunchArgument("spin_action", default_value="/spin"),
+        DeclareLaunchArgument("dock_action", default_value="/dock"),
+        DeclareLaunchArgument("undock_action", default_value="/undock"),
         DeclareLaunchArgument("forward_speed_mps", default_value="0.12"),
         DeclareLaunchArgument(
             "primary_camera_topic",
@@ -43,6 +45,8 @@ def generate_launch_description():
                     "drive_on_heading_action"
                 ),
                 "spin_action": LaunchConfiguration("spin_action"),
+                "dock_action": LaunchConfiguration("dock_action"),
+                "undock_action": LaunchConfiguration("undock_action"),
                 "forward_speed_mps": LaunchConfiguration("forward_speed_mps"),
                 "primary_camera_topic": LaunchConfiguration("primary_camera_topic"),
                 "secondary_camera_topic": LaunchConfiguration("secondary_camera_topic"),

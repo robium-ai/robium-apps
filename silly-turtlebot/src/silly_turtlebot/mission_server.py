@@ -97,6 +97,12 @@ class MissionService:
     def stop(self) -> dict[str, Any]:
         return RestRobot(self.robot_url).stop("Stopped from Lichtblick mission control")
 
+    def dock(self) -> dict[str, Any]:
+        return RestRobot(self.robot_url).dock()
+
+    def undock(self) -> dict[str, Any]:
+        return RestRobot(self.robot_url).undock()
+
 
 def make_handler(service: MissionService):
     class Handler(BaseHTTPRequestHandler):
@@ -166,6 +172,12 @@ def make_handler(service: MissionService):
                     return
                 if self.path == "/v1/stop":
                     self._json_response(HTTPStatus.OK, service.stop())
+                    return
+                if self.path == "/v1/dock":
+                    self._json_response(HTTPStatus.OK, service.dock())
+                    return
+                if self.path == "/v1/undock":
+                    self._json_response(HTTPStatus.OK, service.undock())
                     return
                 self._json_response(HTTPStatus.NOT_FOUND, {"status": "not_found"})
             except ValueError as error:
