@@ -89,6 +89,9 @@ within about 3 m so the complete route begins inside its 8 m rolling window.
 The physical robot must be undocked first; the mission panel shows the live
 dock state. In the 3D view, the rolling costmap and all plans are displayed in
 `odom`: the global path is green, the smoothed path cyan, and local plan orange.
+Lichtblick's Pose tool uses two clicks: click once for the goal position, move
+the pointer to choose its orientation, then click again to publish. A drag that
+leaves the toolbar saying **Click to cancel** has not sent a goal yet.
 
 Forward requests use a dedicated `move_forward(distance_m)` tool backed by
 Nav2 `DriveOnHeading`. It accepts only 0.10–1.00 m and uses a fixed conservative

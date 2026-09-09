@@ -291,7 +291,7 @@ function MissionPanel({
         <p className="hint">
           {isDocked === true
             ? "Robot is docked. Undock before publishing a navigation goal."
-            : "3D frame: odom. Publish pose sends /goal_pose directly to Nav2; keep it within about 3 m."}
+            : "Pose goal: click position once, move to aim, then click again to send. Frame: odom; keep within about 3 m."}
         </p>
       </section>
 
