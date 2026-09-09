@@ -15,6 +15,10 @@ FROM python:3.12-slim-bookworm
 COPY --from=lichtblick /src /opt/lichtblick
 COPY silly-turtlebot/lichtblick/layout.json /opt/lichtblick/layout.json
 COPY --from=controls /extension/robium.silly-turtlebot-controls-0.1.0.foxe /opt/lichtblick/robium/dashboard.foxe
+COPY silly-turtlebot/lichtblick-extension/package.json /opt/lichtblick/robium/package.json
+COPY silly-turtlebot/lichtblick-extension/README.md /opt/lichtblick/robium/README.md
+COPY silly-turtlebot/lichtblick-extension/CHANGELOG.md /opt/lichtblick/robium/CHANGELOG.md
+COPY shared/lichtblick-dashboard/deploy/preinstall-extension.mjs /opt/lichtblick/robium/preinstall-extension.mjs
 COPY silly-turtlebot/simulation/viz_server.py /viz_server.py
 COPY silly-turtlebot/simulation/bundle_extension.py /bundle_extension.py
 RUN python3 /bundle_extension.py \
