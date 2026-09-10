@@ -23,6 +23,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.agent_url = agent_url.rstrip("/")
         super().__init__(*args, **kwargs)
 
+    def end_headers(self):
+        # The viewer bundle is patched after its upstream content hash is
+        # generated. Never let a browser retain an older bundle under that
+        # unchanged filename after the container is rebuilt.
+        if not any(
+            header.lower().startswith(b"cache-control:")
+            for header in self._headers_buffer
+        ):
+            self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+
     def _proxy(self, target_path, body=None, accept="application/json"):
         headers = {"Accept": accept}
         if body is not None:

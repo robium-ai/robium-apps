@@ -93,6 +93,9 @@ dock state. In the 3D view, the rolling costmap and all plans are displayed in
 Lichtblick's Pose tool uses two clicks: click once for the goal position, move
 the pointer to choose its orientation, then click again to publish. A drag that
 leaves the toolbar saying **Click to cancel** has not sent a goal yet.
+If the viewer was already open while its container was rebuilt, reload that tab
+once before publishing; its patched JavaScript bundle is served with caching
+disabled so subsequent rebuilds cannot leave an obsolete publisher loaded.
 
 Forward requests use a dedicated `move_forward(distance_m)` tool backed by
 Nav2 `DriveOnHeading`. It accepts only 0.10–1.00 m and uses a fixed conservative

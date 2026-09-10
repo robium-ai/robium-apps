@@ -2,35 +2,44 @@
 """Keep Lichtblick's 3D click-to-publish topics registered.
 
 Lichtblick v1.28.0 makes the publisher effect depend on the entire panel context.
-That context changes identity during startup, so the effect cleanup unadvertises
-the pose topics without reliably advertising them again. Depend on the stable
-publish methods instead. The exact replacement intentionally fails closed when
+That context changes identity during startup, so the effect cleanup can remove
+the active pose channels while a later context cannot restore them correctly.
+Keep the advertisements for the WebSocket session, matching the proven
+robot-navigation viewer workaround. The regex intentionally fails closed when
 the pinned upstream bundle changes.
 """
 
+import re
 from pathlib import Path
 
 
-OLD = "},[lt,e,e.dataSourceProfile]);const On="
-NEW = "},[lt,e.advertise,e.unadvertise,e.dataSourceProfile]);const On="
+PUBLISH_CLEANUP = re.compile(
+    r"\(\)=>\{(\w+)\.unadvertise\?\.\((\w+)\.goal\),"
+    r"\1\.unadvertise\?\.\(\2\.point\),"
+    r"\1\.unadvertise\?\.\(\2\.pose\)\}"
+)
 
 
 def main() -> None:
-    matches: list[Path] = []
+    matches: list[tuple[Path, list[tuple[str, str]]]] = []
     for path in Path("/opt/lichtblick").glob("*.js"):
         source = path.read_text(encoding="utf-8")
-        count = source.count(OLD)
-        if count == 0:
-            continue
-        if count != 1:
-            raise RuntimeError(f"expected one publish effect in {path}, found {count}")
-        path.write_text(source.replace(OLD, NEW), encoding="utf-8")
-        matches.append(path)
+        found = PUBLISH_CLEANUP.findall(source)
+        if found:
+            matches.append((path, found))
 
     if len(matches) != 1:
         raise RuntimeError(
-            f"expected one Lichtblick 3D publish bundle, patched {len(matches)}"
+            "expected exactly one Lichtblick bundle with the publish-cleanup "
+            f"pattern, found {len(matches)}"
         )
+    path, found = matches[0]
+    if len(found) != 1:
+        raise RuntimeError(
+            f"expected one publish cleanup in {path.name}, found {len(found)}"
+        )
+    source = path.read_text(encoding="utf-8")
+    path.write_text(PUBLISH_CLEANUP.sub("()=>{}", source), encoding="utf-8")
 
 
 if __name__ == "__main__":
