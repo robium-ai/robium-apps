@@ -1,0 +1,53 @@
+schema_version: "1"
+id: lego-powered-up-teleop
+name: LEGO Powered Up Teleop
+summary: Drive a two-motor LEGO differential-drive robot from a Python control pad over Bluetooth LE.
+version: 0.1.0
+status: experimental
+license: MIT
+tags: [real-robot, teleoperation, differential-drive, lego, powered-up, pybricks, bluetooth]
+
+runtime:
+  kind: uv
+  entrypoint: ./app run
+
+verbs:
+  help:
+    command: ./app help
+    summary: Show setup and command examples
+  build:
+    command: ./app build
+    summary: Prepare the locked Python environment
+  check:
+    command: ./app check
+    summary: Run hardware-free lint and tests
+  doctor:
+    command: ./app doctor
+    summary: Check dependencies and discover the Pybricks hub
+  gamepad:
+    command: ./app gamepad
+    summary: Inspect a paired Stadia or compatible gamepad
+  run:
+    command: ./app run
+    summary: Open the directional control window
+  smoke:
+    command: make smoke
+    summary: Run tests and the stopped hardware-in-the-loop check
+
+modes:
+  hubs:
+    command: ./app hubs
+    summary: List nearby advertising Pybricks hubs
+
+requirements:
+  hardware: [LEGO Powered Up hub with Pybricks firmware, two Powered Up motors, Bluetooth LE host, optional Stadia or SDL-compatible gamepad]
+  gpu: none
+  network: setup-only
+
+demo:
+  default_mode: run
+  hosted: false
+  estimated_startup_seconds: 8
+
+artifacts:
+  architecture_brief: docs/architecture-brief.md

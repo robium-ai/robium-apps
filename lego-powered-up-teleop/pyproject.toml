@@ -1,0 +1,31 @@
+[project]
+name = "lego-powered-up-teleop"
+version = "0.1.0"
+description = "Drive a two-motor LEGO Powered Up robot from a Python UI over Bluetooth"
+readme = "README.md"
+authors = [{ name = "robium", email = "admin@robium.ai" }]
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "bleak>=2.0,<4",
+    "pygame>=2.6,<3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4,<10",
+    "ruff>=0.12,<1",
+]
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"
+
+[project.scripts]
+lego-powered-up-teleop = "lego_powered_up_teleop.run:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 96
+target-version = "py312"

@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Repository-local command surface. See robium-app.yaml for the contract.
+set -euo pipefail
+cd "$(dirname "$0")"
+
+case "${1:-help}" in
+  help|-h|--help)
+    cat <<'USAGE'
+lego-powered-up-teleop - drive a two-motor LEGO robot over Bluetooth
+
+  ./app build              create the locked Python environment
+  ./app check              run hardware-free lint and tests
+  ./app hubs               list nearby Pybricks hubs
+  ./app doctor             check dependencies and find the selected hub
+  ./app gamepad            inspect a paired Bluetooth gamepad
+  ./app run                open the directional control window
+  ./app smoke              stopped hardware-in-the-loop PING/PONG check
+
+Common options for hubs, doctor, run, and smoke:
+  --hub-name "Pybricks Hub"   choose one hub when several are nearby
+  --scan-timeout 10            seconds to scan for an advertising hub
+
+Run options:
+  --speed 35                   initial motor power percentage (10-60)
+  --gamepad-deadzone 0.10      ignored left-stick travel around center
+
+First run:
+  ./app build
+  # Install Pybricks and save hub/main.py with code.pybricks.com first.
+  ./app doctor
+  ./app run
+USAGE
+    ;;
+  build) uv sync ;;
+  check|test) make check ;;
+  hubs|doctor|gamepad|run|smoke)
+    command="$1"
+    shift
+    uv run python -m lego_powered_up_teleop.run "$command" "$@"
+    ;;
+  *)
+    echo "Unknown command: $1" >&2
+    echo "Run './app help' for usage." >&2
+    exit 1
+    ;;
+esac
