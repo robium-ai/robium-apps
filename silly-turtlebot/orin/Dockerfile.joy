@@ -1,0 +1,6 @@
+FROM python:3.11-slim-bookworm
+
+WORKDIR /app
+COPY gamepad_sender.py /app/gamepad_sender.py
+
+CMD ["python", "/app/gamepad_sender.py"]

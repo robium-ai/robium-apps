@@ -1,9 +1,47 @@
 services:
+  joy:
+    build:
+      context: .
+      dockerfile: Dockerfile.joy
+    image: silly-turtlebot-joy:latest
+    environment:
+      GAMEPAD_DEVICE: /dev/input/js0
+      # Prefer direct Ethernet; retain the robot Wi-Fi address as fallback.
+      GAMEPAD_ROBOT_HOSTS: "${GAMEPAD_ROBOT_HOSTS:-10.42.0.1,192.168.0.50}"
+      GAMEPAD_ROBOT_PORT: "8766"
+      # Stadia reports both left-stick axes opposite ROS teleop convention.
+      GAMEPAD_INVERT_AXES: "0,1"
+      # Rescaled deadzone removes center jitter while retaining full analog range.
+      GAMEPAD_DEADZONE: "0.08"
+    volumes:
+      # Mount the directory so hot-plugged/reconnected controllers appear
+      # without recreating the container.
+      - /dev/input:/dev/input:ro
+    device_cgroup_rules:
+      - "c 13:* r"
+    restart: unless-stopped
+
   oakd:
     build:
       context: .
       dockerfile: Dockerfile.oakd
     image: silly-turtlebot-oakd:latest
+    environment:
+      OAKD_WIDTH: "640"
+      OAKD_HEIGHT: "360"
+      OAKD_FPS: "12"
+      # The browser receives this native MJPEG stream independently of the
+      # Gemini scene loop, which remains at 1 fps.
+      OAKD_STREAM_FPS: "${OAKD_STREAM_FPS:-8}"
+      # Keep the operator stream usable on a variable robot Wi-Fi link while
+      # preserving the full 640x360 JPEG for Gemini.
+      OAKD_STREAM_WIDTH: "${OAKD_STREAM_WIDTH:-320}"
+      OAKD_STREAM_HEIGHT: "${OAKD_STREAM_HEIGHT:-180}"
+      OAKD_STREAM_QUALITY: "${OAKD_STREAM_QUALITY:-50}"
+      # Measure these once after mounting the camera; Gemini receives them
+      # with every state heartbeat.
+      OAKD_MOUNT_YAW_DEG: "${OAKD_MOUNT_YAW_DEG:-0}"
+      OAKD_MOUNT_PITCH_DEG: "${OAKD_MOUNT_PITCH_DEG:-0}"
     volumes:
       - /dev/bus/usb:/dev/bus/usb
     # OAK-D changes its USB device number after firmware boot. Keep the whole
@@ -27,6 +65,9 @@ services:
       KOKORO_VOICE: "${KOKORO_VOICE:-am_puck}"
       KOKORO_SPEED: "${KOKORO_SPEED:-1.03}"
       TTS_AUDIO_DEVICE: "${TTS_AUDIO_DEVICE:-auto}"
+      # Wake a sleeping USB speaker before the first spoken phoneme.
+      TTS_LEADING_SILENCE_MS: "${TTS_LEADING_SILENCE_MS:-500}"
+      TTS_TRAILING_SILENCE_MS: "${TTS_TRAILING_SILENCE_MS:-100}"
     volumes:
       - /dev/snd:/dev/snd
     # USB audio devices can appear after the container starts. The ALSA

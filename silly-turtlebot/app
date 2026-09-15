@@ -149,7 +149,7 @@ silly-turtlebot - guarded Gemini Robotics ER 2 agent for TurtleBot 4
   ./app demo        run the deterministic fake sock mission
   ./app live ...    connect ER 2 Streaming to fake or ROS robot
   ./app tools       print the model-visible semantic tools
-  ./app smoke       run seven critical tests and the mock end-to-end smoke
+  ./app smoke       run twelve fast tests and the mock end-to-end smoke
   ./app sim-doctor  check Docker prerequisites for Gazebo
   ./app sim-build   build TurtleBot 4 + Gazebo Harmonic
   ./app sim-up      start the simulator and browser mission backend
@@ -165,7 +165,8 @@ silly-turtlebot - guarded Gemini Robotics ER 2 agent for TurtleBot 4
   ./app robot-bridge [ROS launch arguments]
   ./app robot-doctor --robot-url http://127.0.0.1:8088
   ./app camera --robot-url http://127.0.0.1:8088 --output scene.jpg
-  ./app robot-smoke run the real ROS/Nav2/OAK-D smoke on the robot
+  ./app robot-smoke [ubuntu@ROBOT_IP]
+                    run the real ROS/Nav2/OAK-D smoke locally or over SSH
 
 Live examples:
   ./app run
@@ -236,7 +237,16 @@ USAGE
     ;;
   robot-smoke)
     shift
-    robot/smoke.sh "$@"
+    if [ "$#" -eq 1 ]; then
+      target="$1"
+      ssh -o BatchMode=yes -o ConnectTimeout=12 "$target" \
+        "cd silly-turtlebot && robot/smoke.sh"
+    elif [ "$#" -eq 0 ]; then
+      robot/smoke.sh
+    else
+      echo "usage: ./app robot-smoke [ubuntu@ROBOT_IP]" >&2
+      exit 2
+    fi
     ;;
   sim-doctor)
     ok=1

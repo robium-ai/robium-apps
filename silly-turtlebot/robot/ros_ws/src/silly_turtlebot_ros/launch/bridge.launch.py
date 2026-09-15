@@ -19,7 +19,12 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "drive_on_heading_action", default_value="/drive_on_heading"
         ),
+        DeclareLaunchArgument("backup_action", default_value="/backup"),
+        DeclareLaunchArgument("drive_distance_action", default_value="/drive_distance"),
         DeclareLaunchArgument("spin_action", default_value="/spin"),
+        DeclareLaunchArgument("assisted_teleop_action", default_value="/assisted_teleop"),
+        DeclareLaunchArgument("assisted_teleop_topic", default_value="/cmd_vel_teleop"),
+        DeclareLaunchArgument("preempt_teleop_service", default_value="/preempt_teleop"),
         DeclareLaunchArgument("dock_action", default_value="/dock"),
         DeclareLaunchArgument("undock_action", default_value="/undock"),
         DeclareLaunchArgument("forward_speed_mps", default_value="0.12"),
@@ -44,7 +49,12 @@ def generate_launch_description():
                 "drive_on_heading_action": LaunchConfiguration(
                     "drive_on_heading_action"
                 ),
+                "backup_action": LaunchConfiguration("backup_action"),
+                "drive_distance_action": LaunchConfiguration("drive_distance_action"),
                 "spin_action": LaunchConfiguration("spin_action"),
+                "assisted_teleop_action": LaunchConfiguration("assisted_teleop_action"),
+                "assisted_teleop_topic": LaunchConfiguration("assisted_teleop_topic"),
+                "preempt_teleop_service": LaunchConfiguration("preempt_teleop_service"),
                 "dock_action": LaunchConfiguration("dock_action"),
                 "undock_action": LaunchConfiguration("undock_action"),
                 "forward_speed_mps": LaunchConfiguration("forward_speed_mps"),

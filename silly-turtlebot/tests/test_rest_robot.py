@@ -66,4 +66,9 @@ def test_ros_adapter_posts_semantic_action_and_queues_camera(monkeypatch) -> Non
     health = external.health()
     assert health["cameras"]["primary"]["fresh"] is True
     assert health["speech"]["status"] == "ok"
+    runtime_state = external.runtime_state()
+    assert runtime_state["cameras"] == {
+        "primary": {"fresh": True, "age_s": 0.1}
+    }
+    assert "speech" not in runtime_state
     assert external.speak("Testing the better voice.")["voice"] == "am_puck"

@@ -1,7 +1,7 @@
 [project]
 name = "silly-turtlebot"
 version = "0.2.0"
-description = "A guarded Gemini Robotics ER 2 agent for a silly TurtleBot 4 contest routine"
+description = "A guarded proactive Gemini Robotics ER 2 navigation agent for TurtleBot 4"
 readme = "README.md"
 authors = [{ name = "robium", email = "admin@robium.ai" }]
 requires-python = ">=3.10,<3.13"

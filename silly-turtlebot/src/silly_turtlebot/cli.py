@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 
 from .config import MODEL
-from .demo import run_mock_sock_mission
+from .demo import run_mock_navigation_mission
 from .fake_robot import FakeRobot
 from .guard import MissionGuard
 from .live_agent import GeminiRoboticsLiveAgent
@@ -21,7 +21,7 @@ from .tools import function_declarations
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="silly-turtlebot")
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("demo", help="run the deterministic fake sock mission")
+    commands.add_parser("demo", help="run a deterministic fake navigation mission")
     commands.add_parser("doctor", help="check local and optional live prerequisites")
     commands.add_parser("tools", help="print model-visible tool names")
 
@@ -184,8 +184,8 @@ def _camera(args: argparse.Namespace) -> int:
 def main() -> int:
     args = _parser().parse_args()
     if args.command == "demo":
-        guard = run_mock_sock_mission()
-        if len(guard.events) != 6:
+        guard = run_mock_navigation_mission()
+        if len(guard.events) != 7:
             return 1
         print("SILLY TURTLEBOT MOCK PASS")
         return 0

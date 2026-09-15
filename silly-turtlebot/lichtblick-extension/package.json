@@ -1,7 +1,7 @@
 {
   "name": "silly-turtlebot-controls",
   "displayName": "Silly TurtleBot Controls",
-  "description": "Guarded Gemini mission controls for the Silly TurtleBot Lichtblick demo.",
+  "description": "Guarded proactive Gemini navigation controls for TurtleBot 4.",
   "publisher": "robium",
   "homepage": "https://github.com/robium-ai/robium-apps",
   "version": "0.1.0",

@@ -22,6 +22,25 @@ class FakeRobot:
     forward_distance_m: float = 0.0
     stopped: bool = False
     is_docked: bool = True
+    battery_percentage: float = 82.0
+
+    def health(self) -> dict[str, Any]:
+        return {
+            "status": "ok",
+            "is_docked": self.is_docked,
+            "battery_percentage": self.battery_percentage,
+            "motion": {"state": "idle"},
+            "odometry": {"frame_id": "odom", "x": self.forward_distance_m},
+            "cameras": {
+                "primary": {
+                    "fresh": True,
+                    "width": 640,
+                    "height": 360,
+                    "horizontal_fov_deg": 69.0,
+                    "vertical_fov_deg": 42.0,
+                }
+            },
+        }
 
     def navigate_to_location(self, location: str) -> dict[str, Any]:
         self.location = location
@@ -45,6 +64,30 @@ class FakeRobot:
         return {
             "status": "succeeded",
             "distance_m": distance_m,
+            "mode": "mock",
+        }
+
+    def move_distance(self, distance_m: float, speed_mps: float) -> dict[str, Any]:
+        self.forward_distance_m += distance_m
+        return {
+            "status": "succeeded",
+            "distance_m": distance_m,
+            "speed_mps": speed_mps,
+            "mode": "mock",
+        }
+
+    def rotate_by(self, angle_deg: float) -> dict[str, Any]:
+        return {"status": "succeeded", "angle_deg": angle_deg, "mode": "mock"}
+
+    def move_for_duration(
+        self, linear_mps: float, angular_rad_s: float, duration_s: float
+    ) -> dict[str, Any]:
+        self.forward_distance_m += linear_mps * duration_s
+        return {
+            "status": "succeeded",
+            "linear_mps": linear_mps,
+            "angular_rad_s": angular_rad_s,
+            "duration_s": duration_s,
             "mode": "mock",
         }
 

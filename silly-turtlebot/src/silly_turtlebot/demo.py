@@ -6,28 +6,27 @@ from .fake_robot import FakeRobot
 from .guard import MissionGuard
 
 
-def run_mock_sock_mission() -> MissionGuard:
+def run_mock_navigation_mission() -> MissionGuard:
     robot = FakeRobot()
     guard = MissionGuard(robot)
 
     script = (
-        ("navigate_to_location", {"location": "living_room"}),
-        ("look_around", {"quarter_turns": 4}),
-        ("approach_object", {"object_id": "sock-1", "stand_off_m": 0.9}),
+        ("get_robot_state", {}),
+        ("undock", {}),
+        ("rotate_by", {"angle_deg": 30.0}),
+        ("move_distance", {"distance_m": 0.4, "speed_mps": 0.15}),
         (
-            "speak",
-            {"message": "A rogue sock. Fascinating. Unfortunately, I'm in management."},
+            "move_for_duration",
+            {"linear_mps": 0.1, "angular_rad_s": 0.2, "duration_s": 1.0},
         ),
-        ("face_nearest_person", {}),
-        ("speak", {"message": "Was this your contribution? I decline custody."}),
+        ("ack", {"status": "Mock motion sequence finished."}),
+        ("complete_task", {"summary": "Mock navigation mission complete."}),
     )
 
     print("MODE: MOCK (no Gemini request, ROS node, Nav2 action, or motor command)")
-    print('Human: "Patrol the living room and report any mess."')
+    print('Human: "Undock, rotate 30 degrees, then move forward in a gentle arc."')
     for name, arguments in script:
         result = guard.execute(name, arguments)
         print(f"[tool] {name}({arguments}) -> {result['status']}")
-        if name == "speak":
-            print(f"Robot: {arguments['message']}")
     print(f"[mock] mission complete: {len(guard.events)} guarded actions")
     return guard

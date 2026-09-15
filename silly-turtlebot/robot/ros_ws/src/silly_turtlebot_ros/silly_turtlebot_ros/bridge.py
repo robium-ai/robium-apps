@@ -16,15 +16,18 @@ import rclpy
 import yaml
 from action_msgs.msg import GoalStatus
 from action_msgs.srv import CancelGoal
-from geometry_msgs.msg import PoseStamped
-from irobot_create_msgs.action import Dock, Undock
+from diagnostic_msgs.msg import DiagnosticArray
+from geometry_msgs.msg import PoseStamped, Twist
+from irobot_create_msgs.action import Dock, DriveDistance, Undock
 from irobot_create_msgs.msg import DockStatus
-from nav2_msgs.action import DriveOnHeading, NavigateToPose, Spin
+from nav2_msgs.action import AssistedTeleop, BackUp, DriveOnHeading, NavigateToPose, Spin
+from nav_msgs.msg import Odometry
 from rclpy.action import ActionClient
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
-from sensor_msgs.msg import CompressedImage
+from sensor_msgs.msg import BatteryState, CompressedImage
+from std_srvs.srv import Empty
 
 
 class SillyTurtleBotBridge(Node):
@@ -35,7 +38,12 @@ class SillyTurtleBotBridge(Node):
         self.declare_parameter("port", 8088)
         self.declare_parameter("navigate_action", "/navigate_to_pose")
         self.declare_parameter("drive_on_heading_action", "/drive_on_heading")
+        self.declare_parameter("backup_action", "/backup")
+        self.declare_parameter("drive_distance_action", "/drive_distance")
         self.declare_parameter("spin_action", "/spin")
+        self.declare_parameter("assisted_teleop_action", "/assisted_teleop")
+        self.declare_parameter("assisted_teleop_topic", "/cmd_vel_teleop")
+        self.declare_parameter("preempt_teleop_service", "/preempt_teleop")
         self.declare_parameter("dock_action", "/dock")
         self.declare_parameter("undock_action", "/undock")
         self.declare_parameter(
@@ -50,6 +58,12 @@ class SillyTurtleBotBridge(Node):
         self.declare_parameter("dock_timeout_s", 180.0)
         self.declare_parameter("undock_timeout_s", 60.0)
         self.declare_parameter("tts_command", "espeak-ng")
+        self.declare_parameter("camera_width", 640)
+        self.declare_parameter("camera_height", 360)
+        self.declare_parameter("camera_horizontal_fov_deg", 69.0)
+        self.declare_parameter("camera_vertical_fov_deg", 42.0)
+        self.declare_parameter("camera_mount_yaw_deg", 0.0)
+        self.declare_parameter("camera_mount_pitch_deg", 0.0)
 
         self.bind_host = str(self.get_parameter("bind_host").value)
         self.port = int(self.get_parameter("port").value)
@@ -67,7 +81,10 @@ class SillyTurtleBotBridge(Node):
         )
         navigate_action = str(self.get_parameter("navigate_action").value)
         drive_action = str(self.get_parameter("drive_on_heading_action").value)
+        backup_action = str(self.get_parameter("backup_action").value)
+        drive_distance_action = str(self.get_parameter("drive_distance_action").value)
         spin_action = str(self.get_parameter("spin_action").value)
+        assisted_action = str(self.get_parameter("assisted_teleop_action").value)
         dock_action = str(self.get_parameter("dock_action").value)
         undock_action = str(self.get_parameter("undock_action").value)
         self.navigate_client = ActionClient(
@@ -80,7 +97,16 @@ class SillyTurtleBotBridge(Node):
             DriveOnHeading,
             drive_action,
         )
+        self.backup_client = ActionClient(self, BackUp, backup_action)
+        self.drive_distance_client = ActionClient(
+            self, DriveDistance, drive_distance_action
+        )
         self.spin_client = ActionClient(self, Spin, spin_action)
+        self.assisted_client = ActionClient(self, AssistedTeleop, assisted_action)
+        assisted_topic = str(self.get_parameter("assisted_teleop_topic").value)
+        self._teleop_publisher = self.create_publisher(Twist, assisted_topic, 10)
+        preempt_service = str(self.get_parameter("preempt_teleop_service").value)
+        self._preempt_teleop_client = self.create_client(Empty, preempt_service)
         self.dock_client = ActionClient(self, Dock, dock_action)
         self.undock_client = ActionClient(self, Undock, undock_action)
         # ActionClient can cancel only goals it created. Lichtblick publishes
@@ -93,6 +119,13 @@ class SillyTurtleBotBridge(Node):
         self._motion_lock = threading.Lock()
         self._active_lock = threading.Lock()
         self._active_goal = None
+        self._active_name = ""
+        self._active_started_at = 0.0
+        self._odom_lock = threading.Lock()
+        self._odom: dict[str, Any] | None = None
+        self._odom_subscription = self.create_subscription(
+            Odometry, "/odom", self._on_odom, qos_profile_sensor_data
+        )
         self._dock_status_lock = threading.Lock()
         self._is_docked: bool | None = None
         self._dock_status_subscription = self.create_subscription(
@@ -101,11 +134,39 @@ class SillyTurtleBotBridge(Node):
             self._on_dock_status,
             qos_profile_sensor_data,
         )
+        self._battery_lock = threading.Lock()
+        self._battery_percentage: float | None = None
+        self._battery_subscription = self.create_subscription(
+            BatteryState,
+            "/battery_state",
+            self._on_battery_state,
+            qos_profile_sensor_data,
+        )
+        self._diagnostics_subscription = self.create_subscription(
+            DiagnosticArray,
+            "/diagnostics",
+            self._on_diagnostics,
+            10,
+        )
         self._camera_lock = threading.Lock()
         self._cameras: dict[str, tuple[bytes, float]] = {}
         self.camera_topics = {
             "primary": str(self.get_parameter("primary_camera_topic").value),
             "secondary": str(self.get_parameter("secondary_camera_topic").value),
+        }
+        self.camera_geometry = {
+            "width": int(self.get_parameter("camera_width").value),
+            "height": int(self.get_parameter("camera_height").value),
+            "horizontal_fov_deg": float(
+                self.get_parameter("camera_horizontal_fov_deg").value
+            ),
+            "vertical_fov_deg": float(
+                self.get_parameter("camera_vertical_fov_deg").value
+            ),
+            "mount_yaw_deg": float(self.get_parameter("camera_mount_yaw_deg").value),
+            "mount_pitch_deg": float(
+                self.get_parameter("camera_mount_pitch_deg").value
+            ),
         }
         self._camera_subscriptions = []
         for source, topic in self.camera_topics.items():
@@ -150,6 +211,44 @@ class SillyTurtleBotBridge(Node):
         with self._dock_status_lock:
             self._is_docked = bool(message.is_docked)
 
+    def _on_battery_state(self, message: BatteryState) -> None:
+        self._set_battery_fraction(float(message.percentage))
+
+    def _on_diagnostics(self, message: DiagnosticArray) -> None:
+        for status in message.status:
+            if not status.name.endswith("Battery Percentage"):
+                continue
+            for item in status.values:
+                if item.key != "Battery Percentage":
+                    continue
+                try:
+                    self._set_battery_fraction(float(item.value))
+                except ValueError:
+                    pass
+                return
+
+    def _set_battery_fraction(self, percentage: float) -> None:
+        if not math.isfinite(percentage) or not 0.0 <= percentage <= 1.0:
+            return
+        with self._battery_lock:
+            self._battery_percentage = round(percentage * 100.0, 1)
+
+    def _on_odom(self, message: Odometry) -> None:
+        orientation = message.pose.pose.orientation
+        yaw = math.atan2(
+            2.0 * (orientation.w * orientation.z + orientation.x * orientation.y),
+            1.0 - 2.0 * (orientation.y * orientation.y + orientation.z * orientation.z),
+        )
+        with self._odom_lock:
+            self._odom = {
+                "frame_id": message.header.frame_id or "odom",
+                "x": round(float(message.pose.pose.position.x), 3),
+                "y": round(float(message.pose.pose.position.y), 3),
+                "yaw_rad": round(yaw, 3),
+                "linear_mps": round(float(message.twist.twist.linear.x), 3),
+                "angular_rad_s": round(float(message.twist.twist.angular.z), 3),
+            }
+
     def camera(self, source: str) -> bytes | None:
         with self._camera_lock:
             item = self._cameras.get(source)
@@ -161,11 +260,21 @@ class SillyTurtleBotBridge(Node):
         now = time.monotonic()
         navigate_ready = self.navigate_client.server_is_ready()
         drive_ready = self.drive_client.server_is_ready()
+        backup_ready = self.backup_client.server_is_ready()
+        drive_distance_ready = self.drive_distance_client.server_is_ready()
         spin_ready = self.spin_client.server_is_ready()
+        assisted_ready = self.assisted_client.server_is_ready()
         dock_ready = self.dock_client.server_is_ready()
         undock_ready = self.undock_client.server_is_ready()
         with self._dock_status_lock:
             is_docked = self._is_docked
+        with self._battery_lock:
+            battery_percentage = self._battery_percentage
+        with self._active_lock:
+            active_name = self._active_name
+            active_started_at = self._active_started_at
+        with self._odom_lock:
+            odometry = None if self._odom is None else dict(self._odom)
         cameras = {}
         with self._camera_lock:
             snapshots = dict(self._cameras)
@@ -176,24 +285,42 @@ class SillyTurtleBotBridge(Node):
                 "topic": topic,
                 "fresh": age_s is not None and age_s <= self.camera_stale_s,
                 "age_s": age_s,
+                **self.camera_geometry,
             }
         return {
             "status": (
                 "ok"
                 if navigate_ready
                 and drive_ready
+                and backup_ready
+                and drive_distance_ready
                 and spin_ready
+                and assisted_ready
                 and dock_ready
                 and undock_ready
                 else "starting"
             ),
             "navigate_to_pose": navigate_ready,
             "drive_on_heading": drive_ready,
+            "backup": backup_ready,
+            "drive_distance": drive_distance_ready,
             "spin": spin_ready,
+            "assisted_teleop": assisted_ready,
             "dock": dock_ready,
             "undock": undock_ready,
             "is_docked": is_docked,
+            "battery_percentage": battery_percentage,
             "locations": sorted(self.waypoints),
+            "motion": {
+                "state": "running" if active_name else "idle",
+                "action": active_name or None,
+                "elapsed_s": (
+                    None
+                    if not active_name
+                    else round(max(0.0, now - active_started_at), 3)
+                ),
+            },
+            "odometry": odometry,
             "cameras": cameras,
         }
 
@@ -252,17 +379,81 @@ class SillyTurtleBotBridge(Node):
                 "status": "rejected",
                 "reason": "distance_m must be between 0.1 and 1.0",
             }
-        goal = DriveOnHeading.Goal()
-        goal.target.x = distance_m
-        goal.speed = self.forward_speed_mps
-        goal.time_allowance.sec = int(self.drive_timeout_s)
+        goal = DriveDistance.Goal()
+        goal.distance = distance_m
+        goal.max_translation_speed = self.forward_speed_mps
         result = self._run_action(
-            self.drive_client,
+            self.drive_distance_client,
             goal,
             self.drive_timeout_s + 5.0,
-            "drive_on_heading",
+            "drive_distance",
         )
         result["distance_m"] = distance_m
+        return result
+
+    def move_distance(self, distance_m: Any, speed_mps: Any) -> dict[str, Any]:
+        if any(
+            isinstance(value, bool) or not isinstance(value, (int, float))
+            for value in (distance_m, speed_mps)
+        ):
+            return {"status": "rejected", "reason": "distance and speed must be numeric"}
+        distance_m = float(distance_m)
+        speed_mps = float(speed_mps)
+        if not math.isfinite(distance_m) or not 0.1 <= abs(distance_m) <= 2.0:
+            return {"status": "rejected", "reason": "absolute distance_m must be 0.1..2.0"}
+        if not math.isfinite(speed_mps) or not 0.05 <= speed_mps <= 0.2:
+            return {"status": "rejected", "reason": "speed_mps must be 0.05..0.2"}
+        goal = DriveDistance.Goal()
+        goal.distance = distance_m
+        goal.max_translation_speed = speed_mps
+        result = self._run_action(
+            self.drive_distance_client,
+            goal,
+            self.drive_timeout_s + 5.0,
+            "drive_distance",
+        )
+        result.update(distance_m=distance_m, speed_mps=speed_mps)
+        return result
+
+    def rotate_by(self, angle_deg: Any) -> dict[str, Any]:
+        if isinstance(angle_deg, bool) or not isinstance(angle_deg, (int, float)):
+            return {"status": "rejected", "reason": "angle_deg must be numeric"}
+        angle_deg = float(angle_deg)
+        if not math.isfinite(angle_deg) or not 1.0 <= abs(angle_deg) <= 180.0:
+            return {"status": "rejected", "reason": "absolute angle_deg must be 1..180"}
+        goal = Spin.Goal()
+        goal.target_yaw = math.radians(angle_deg)
+        goal.time_allowance.sec = int(self.spin_timeout_s)
+        result = self._run_action(
+            self.spin_client, goal, self.spin_timeout_s + 5.0, "spin"
+        )
+        result["angle_deg"] = angle_deg
+        return result
+
+    def move_for_duration(
+        self, linear_mps: Any, angular_rad_s: Any, duration_s: Any
+    ) -> dict[str, Any]:
+        values = (linear_mps, angular_rad_s, duration_s)
+        if any(
+            isinstance(value, bool) or not isinstance(value, (int, float))
+            for value in values
+        ):
+            return {"status": "rejected", "reason": "velocity and duration must be numeric"}
+        linear_mps, angular_rad_s, duration_s = map(float, values)
+        if not all(math.isfinite(value) for value in values):
+            return {"status": "rejected", "reason": "velocity and duration must be finite"}
+        if abs(linear_mps) > 0.2 or abs(angular_rad_s) > 0.8:
+            return {"status": "rejected", "reason": "velocity exceeds guarded bounds"}
+        if linear_mps == 0.0 and angular_rad_s == 0.0:
+            return {"status": "rejected", "reason": "velocity cannot be zero"}
+        if not 0.1 <= duration_s <= 5.0:
+            return {"status": "rejected", "reason": "duration_s must be 0.1..5.0"}
+        result = self._run_assisted_teleop(linear_mps, angular_rad_s, duration_s)
+        result.update(
+            linear_mps=linear_mps,
+            angular_rad_s=angular_rad_s,
+            duration_s=duration_s,
+        )
         return result
 
     def dock(self) -> dict[str, Any]:
@@ -279,6 +470,9 @@ class SillyTurtleBotBridge(Node):
         if not self._motion_lock.acquire(blocking=False):
             return {"status": "rejected", "reason": "another motion is active"}
         try:
+            with self._active_lock:
+                self._active_name = name
+                self._active_started_at = time.monotonic()
             if not client.wait_for_server(timeout_sec=3.0):
                 return {"status": "failed", "reason": f"{name} server unavailable"}
 
@@ -289,11 +483,10 @@ class SillyTurtleBotBridge(Node):
                 try:
                     wrapped = future.result()
                     outcome["status_code"] = int(wrapped.status)
-                    outcome["status"] = (
-                        "succeeded"
-                        if wrapped.status == GoalStatus.STATUS_SUCCEEDED
-                        else "failed"
-                    )
+                    outcome["status"] = {
+                        GoalStatus.STATUS_SUCCEEDED: "succeeded",
+                        GoalStatus.STATUS_CANCELED: "cancelled",
+                    }.get(wrapped.status, "failed")
                     if outcome["status"] == "failed":
                         outcome["reason"] = f"{name} ended with status {wrapped.status}"
                 except Exception as exc:  # noqa: BLE001 - surface rclpy callback failures.
@@ -327,6 +520,91 @@ class SillyTurtleBotBridge(Node):
                 return {"status": "failed", "reason": f"{name} timed out"}
             return outcome
         finally:
+            with self._active_lock:
+                self._active_goal = None
+                self._active_name = ""
+                self._active_started_at = 0.0
+            self._motion_lock.release()
+
+    def _run_assisted_teleop(
+        self, linear_mps: float, angular_rad_s: float, duration_s: float
+    ) -> dict[str, Any]:
+        if not self._motion_lock.acquire(blocking=False):
+            return {"status": "rejected", "reason": "another motion is active"}
+        try:
+            if not self.assisted_client.wait_for_server(timeout_sec=3.0):
+                return {"status": "failed", "reason": "assisted_teleop server unavailable"}
+            with self._active_lock:
+                self._active_name = "assisted_teleop"
+                self._active_started_at = time.monotonic()
+            done = threading.Event()
+            accepted = threading.Event()
+            outcome: dict[str, Any] = {}
+
+            def on_result(future) -> None:
+                try:
+                    wrapped = future.result()
+                    outcome["status_code"] = int(wrapped.status)
+                    outcome["status"] = {
+                        GoalStatus.STATUS_SUCCEEDED: "succeeded",
+                        GoalStatus.STATUS_CANCELED: "cancelled",
+                    }.get(wrapped.status, "failed")
+                    if outcome["status"] == "failed":
+                        outcome["reason"] = (
+                            f"assisted_teleop ended with status {wrapped.status}"
+                        )
+                except Exception as exc:  # noqa: BLE001
+                    outcome.update(status="failed", reason=f"assisted_teleop result error: {exc}")
+                finally:
+                    done.set()
+
+            def on_goal(future) -> None:
+                try:
+                    handle = future.result()
+                    if handle is None or not handle.accepted:
+                        outcome.update(status="rejected", reason="assisted_teleop goal rejected")
+                        done.set()
+                        accepted.set()
+                        return
+                    with self._active_lock:
+                        self._active_goal = handle
+                    handle.get_result_async().add_done_callback(on_result)
+                except Exception as exc:  # noqa: BLE001
+                    outcome.update(status="failed", reason=f"assisted_teleop goal error: {exc}")
+                    done.set()
+                finally:
+                    accepted.set()
+
+            goal = AssistedTeleop.Goal()
+            allowance = duration_s + 2.0
+            goal.time_allowance.sec = int(allowance)
+            goal.time_allowance.nanosec = int((allowance % 1.0) * 1_000_000_000)
+            self.assisted_client.send_goal_async(goal).add_done_callback(on_goal)
+            if not accepted.wait(3.0) or done.is_set():
+                return outcome or {"status": "failed", "reason": "assisted_teleop goal timed out"}
+
+            command = Twist()
+            command.linear.x = linear_mps
+            command.angular.z = angular_rad_s
+            deadline = time.monotonic() + duration_s
+            while time.monotonic() < deadline and not done.is_set():
+                self._teleop_publisher.publish(command)
+                time.sleep(0.1)
+            self._teleop_publisher.publish(Twist())
+            if not done.is_set():
+                client = self._preempt_teleop_client
+                if client.service_is_ready() or client.wait_for_service(timeout_sec=1.0):
+                    client.call_async(Empty.Request())
+            if not done.wait(3.0):
+                self.stop("assisted teleop completion timeout")
+                return {"status": "failed", "reason": "assisted_teleop completion timed out"}
+            return outcome
+        finally:
+            self._teleop_publisher.publish(Twist())
+            with self._active_lock:
+                self._active_goal = None
+                self._active_name = ""
+                self._active_started_at = 0.0
             self._motion_lock.release()
 
     def stop(self, reason: Any) -> dict[str, Any]:
@@ -451,6 +729,18 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 result = bridge.navigate(str(payload.get("location", "")))
             elif self.path == "/v1/move-forward":
                 result = bridge.move_forward(payload.get("distance_m"))
+            elif self.path == "/v1/move-distance":
+                result = bridge.move_distance(
+                    payload.get("distance_m"), payload.get("speed_mps")
+                )
+            elif self.path == "/v1/rotate-by":
+                result = bridge.rotate_by(payload.get("angle_deg"))
+            elif self.path == "/v1/move-for-duration":
+                result = bridge.move_for_duration(
+                    payload.get("linear_mps"),
+                    payload.get("angular_rad_s"),
+                    payload.get("duration_s"),
+                )
             elif self.path == "/v1/look-around":
                 result = bridge.look_around(payload.get("quarter_turns"))
             elif self.path == "/v1/dock":

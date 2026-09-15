@@ -1,8 +1,8 @@
 # Continuous Gemini Robotics Session
 
-Status: approved implementation direction  
-Scope: `silly-turtlebot` Gemini control plane and Lichtblick mission panel  
-Last updated: 2026-09-09
+Status: implemented; robot deployment verification pending
+Scope: `silly-turtlebot` Gemini control plane and Lichtblick mission panel
+Last updated: 2026-09-14
 
 ## Objective
 
@@ -140,20 +140,60 @@ Use the OAK-D camera already exposed by `RestRobot` and follow these rules:
 - Count capture/send failures, but do not fail a navigation mission for one
   missing frame.
 
-Images alone update visual context but do not trigger a reasoning turn. Add a
-short text heartbeat when continuous scene evaluation is needed. Start
-conservatively: send a heartbeat only while a mission is active and no model or
-tool activity has occurred for about two seconds. A heartbeat is a user turn and
-can interrupt in-progress generation, so do not send it during model text
-generation and do not allow heartbeat backlog.
+The human-facing camera panel has an independent, bandwidth-reduced 320x180
+latest-frame path. It fetches at 1 FPS without cancelling an in-flight request,
+retains the last good frame during transient failures, and retries a stalled
+request after five seconds. Gemini independently retains the 640x360 scene
+frame at no more than 1 FPS.
+
+Images alone update visual context but do not trigger a reasoning turn. The
+session sends a compact state-bearing heartbeat while the mission is active and
+no model turn or blocking tool is unresolved. Camera frames and local
+`tool.progress` events continue while a blocking ROS/Nav2 action executes, but
+model-facing heartbeat text waits for the terminal function response and turn
+completion. Only one heartbeat reasoning turn may be pending at any time.
 
 Example heartbeat meaning, not required literal wording:
 
-> Continue the active instruction using the latest view. Report or act only if
-> something relevant changed.
+> [HEARTBEAT] Task active and no tool is running. Inspect the latest camera
+> image, then call `ack`, one next physical action, or `complete_task` as
+> appropriate.
 
-This allows sock/mess observations to continue without repeatedly opening a
-session or asking the operator to press the button again.
+The model-facing heartbeat is deliberately small: motion state and measured
+velocity, dock state, and exceptional robot or camera alerts. It omits call IDs,
+capability flags, odometry pose, normal camera freshness, camera geometry,
+configured locations, and TTS internals. Stable camera geometry is supplied once
+in the mission-start context. Full state remains available through
+`get_robot_state` between blocking actions.
+
+A Live API text heartbeat is a new reasoning input, not a transport keepalive.
+Sending one while a blocking tool is unresolved can cancel that tool as a
+barge-in. The local progress event therefore never crosses the model boundary.
+If Gemini independently cancels an active tool, the service stops the robot and
+fails the mission instead of allowing the model to retry an ambiguous partial
+motion.
+
+Terminal responses from motion, navigation, docking, stop, and visual-orientation
+tools include a compact authoritative post-action snapshot with motion, dock,
+and odometry state. This gives Gemini the state needed for its next decision
+without repeating it every second. The Orin derives effective horizontal and
+vertical FOV from OAK-D calibration intrinsics for the configured stream and
+reports configurable mount yaw/pitch offsets.
+
+## Blocking tool lifecycle
+
+The receive loop remains live while a robot worker waits for a ROS action. The
+original function response is sent exactly once, using the original call ID,
+only after the action reaches `succeeded`, `failed`, `rejected`, or `cancelled`.
+A second tool call received during that interval is rejected with active-call
+metadata, logged as `tool.rejected`, and receives its own error response. A
+duplicate delivery of the active call ID is logged but never executed or
+answered twice.
+
+`turn_complete` ends one Gemini reasoning turn, not the operator mission. The
+mission remains active until Gemini calls `complete_task(summary)`, the operator
+stops it, or a terminal failure occurs. The service sends the `complete_task`
+function response before emitting `mission.completed`.
 
 ## HTTP and SSE contract
 
@@ -163,7 +203,7 @@ Change mission creation to acknowledge immediately:
 POST /v1/missions
 Content-Type: application/json
 
-{"instruction":"Patrol and make a funny observation.","camera_source":"primary"}
+{"instruction":"Find the door and move toward it in short safe steps.","camera_source":"primary"}
 ```
 
 ```http
@@ -200,6 +240,7 @@ Initial event types:
 - `input.sent`
 - `model.text.delta`, `model.turn.completed`
 - `tool.started`, `tool.finished`, `tool.rejected`
+- `tool.response.sent`
 - `camera.status` for throttled diagnostics, not one UI event per frame
 
 Use the SSE `id` field for `seq` and the `event` field for `type`. Keep a bounded
@@ -230,10 +271,13 @@ Update `MissionPanel.tsx` to:
    `tool.finished` or `tool.rejected`.
 5. Show session/mission state separately from the robot health badge.
 6. Keep the instruction editable and let the operator submit an update.
-7. Close the event stream on a terminal event or component unmount.
+7. Append every event to a bounded timestamped rolling log and close the event
+   stream on a terminal event or component unmount.
 
 Do not send partial model text to TTS. Speech remains an explicit guarded
-`speak` tool call and uses the existing Orin neural TTS service.
+`speak` tool call and uses the existing Orin neural TTS service. The Orin adds
+a configurable silent pre-roll before playback so USB-speaker wake latency
+does not cut the first phonemes.
 
 ## Safety and failure rules
 

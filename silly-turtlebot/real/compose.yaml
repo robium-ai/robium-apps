@@ -28,3 +28,5 @@ services:
       - "${SILLY_FOXGLOVE_URL:-ws://127.0.0.1:8765}"
       - --agent-url
       - http://agent:8090
+      - --camera-url
+      - "${SILLY_CAMERA_URL:-}"

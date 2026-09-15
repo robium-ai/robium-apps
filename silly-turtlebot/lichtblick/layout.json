@@ -1,28 +1,19 @@
 {
   "configById": {
-    "RosOut!all": {
-      "topicToRender": "/rosout",
-      "searchTerms": [],
-      "minLogLevel": 2
-    },
-    "RosOut!navigation": {
-      "topicToRender": "/rosout",
-      "searchTerms": [
-        "amcl",
-        "controller_server",
-        "planner_server",
-        "bt_navigator",
-        "lifecycle_manager_navigation"
-      ],
-      "minLogLevel": 2
+    "Silly TurtleBot Controls.mission-control!demo": {
+      "missionEndpoint": "/api"
     },
     "3D!navigation": {
       "cameraState": {
         "perspective": false,
-        "distance": 9.3,
+        "distance": 9.299999999999804,
         "phi": 68.7,
-        "thetaOffset": 1.16,
-        "targetOffset": [0, -0.23, 0],
+        "thetaOffset": 1.1600000000000181,
+        "targetOffset": [
+          -1.6150251679687884,
+          1.1069231372184378,
+          -7.189385689019762e-19
+        ],
         "target": [0, 0, 0],
         "targetOrientation": [0, 0, 0, 1],
         "fovy": 46.7,
@@ -86,15 +77,36 @@
       "layers": {},
       "imageMode": {}
     },
-    "Tab!logs": {
-      "activeTabIdx": 0,
-      "tabs": [
-        {"title": "All ROS", "layout": "RosOut!all"},
-        {"title": "Navigation", "layout": "RosOut!navigation"}
-      ]
-    },
-    "Silly TurtleBot Controls.mission-control!demo": {
-      "missionEndpoint": "/api"
+    "Image!oakd": {
+      "imageMode": {
+        "imageTopic": "/orin/oakd/preview/image_raw/compressed"
+      },
+      "cameraState": {
+        "distance": 20,
+        "perspective": true,
+        "phi": 60,
+        "target": [0, 0, 0],
+        "targetOffset": [0, 0, 0],
+        "targetOrientation": [0, 0, 0, 1],
+        "thetaOffset": 45,
+        "fovy": 45,
+        "near": 0.5,
+        "far": 5000
+      },
+      "followMode": "follow-pose",
+      "scene": {},
+      "transforms": {},
+      "topics": {},
+      "layers": {},
+      "publish": {
+        "type": "point",
+        "poseTopic": "/move_base_simple/goal",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26179939
+      }
     },
     "Teleop!drive": {
       "topic": "/cmd_vel",
@@ -110,18 +122,18 @@
   "playbackConfig": {"speed": 1},
   "layout": {
     "direction": "row",
-    "first": {
-      "direction": "column",
-      "first": "Silly TurtleBot Controls.mission-control!demo",
-      "second": "Teleop!drive",
-      "splitPercentage": 73
-    },
+    "first": "Silly TurtleBot Controls.mission-control!demo",
     "second": {
-      "direction": "column",
       "first": "3D!navigation",
-      "second": "Tab!logs",
-      "splitPercentage": 78
+      "second": {
+        "first": "Image!oakd",
+        "second": "Teleop!drive",
+        "direction": "column",
+        "splitPercentage": 64.76462196861627
+      },
+      "direction": "row",
+      "splitPercentage": 54.0492957746479
     },
-    "splitPercentage": 29
+    "splitPercentage": 23.86058981233244
   }
 }

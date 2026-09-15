@@ -86,10 +86,35 @@ class RestRobot:
                 "fresh": camera_health.get("fresh") is True,
                 "age_s": camera_health.get("age_s"),
                 "error": camera_health.get("error", ""),
+                "width": camera_health.get("width"),
+                "height": camera_health.get("height"),
+                "horizontal_fov_deg": camera_health.get("horizontal_fov_deg"),
+                "vertical_fov_deg": camera_health.get("vertical_fov_deg"),
+                "mount_yaw_deg": camera_health.get("mount_yaw_deg"),
+                "mount_pitch_deg": camera_health.get("mount_pitch_deg"),
             }
         if self.tts_url:
             health["speech"] = self._external_tts_health()
         return health
+
+    def runtime_state(self) -> dict[str, Any]:
+        """Return only fast-changing state needed by heartbeats and action results."""
+        health = self._json("/v1/health")
+        state = {
+            key: health[key]
+            for key in ("status", "reason", "is_docked", "motion", "odometry")
+            if health.get(key) is not None
+        }
+        if self.camera_url:
+            camera = self._external_camera_health()
+            state["cameras"] = {
+                self.camera_source: {
+                    key: camera[key]
+                    for key in ("fresh", "age_s", "error")
+                    if camera.get(key) is not None
+                }
+            }
+        return state
 
     def _external_camera_health(self) -> dict[str, Any]:
         if not self.camera_url:
@@ -135,6 +160,27 @@ class RestRobot:
                 result["camera_source"] = self.camera_source
                 result["camera_frame"] = "sent_to_model"
         return result
+
+    def move_distance(self, distance_m: float, speed_mps: float) -> dict[str, Any]:
+        return self._json(
+            "/v1/move-distance",
+            {"distance_m": distance_m, "speed_mps": speed_mps},
+        )
+
+    def rotate_by(self, angle_deg: float) -> dict[str, Any]:
+        return self._json("/v1/rotate-by", {"angle_deg": angle_deg})
+
+    def move_for_duration(
+        self, linear_mps: float, angular_rad_s: float, duration_s: float
+    ) -> dict[str, Any]:
+        return self._json(
+            "/v1/move-for-duration",
+            {
+                "linear_mps": linear_mps,
+                "angular_rad_s": angular_rad_s,
+                "duration_s": duration_s,
+            },
+        )
 
     def look_around(self, quarter_turns: int) -> dict[str, Any]:
         result = self._json("/v1/look-around", {"quarter_turns": quarter_turns})

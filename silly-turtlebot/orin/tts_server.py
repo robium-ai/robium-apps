@@ -10,6 +10,7 @@ import re
 import subprocess
 import threading
 import time
+import wave
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
@@ -27,6 +28,31 @@ class SpeechBusy(RuntimeError):
     """Raised when another line is already being synthesized or played."""
 
 
+def pad_pcm16_wav(
+    wav_bytes: bytes,
+    leading_silence_ms: int,
+    trailing_silence_ms: int,
+) -> bytes:
+    """Add PCM silence so a sleeping USB speaker cannot eat speech phonemes."""
+    with wave.open(io.BytesIO(wav_bytes), "rb") as source:
+        params = source.getparams()
+        frames = source.readframes(params.nframes)
+    if params.sampwidth != 2:
+        raise ValueError("TTS pre-roll requires PCM 16-bit audio")
+    frame_width = params.nchannels * params.sampwidth
+    leading_frames = round(params.framerate * leading_silence_ms / 1000)
+    trailing_frames = round(params.framerate * trailing_silence_ms / 1000)
+    padded = io.BytesIO()
+    with wave.open(padded, "wb") as target:
+        target.setparams(params)
+        target.writeframes(
+            b"\x00" * (leading_frames * frame_width)
+            + frames
+            + b"\x00" * (trailing_frames * frame_width)
+        )
+    return padded.getvalue()
+
+
 class SpeechState:
     def __init__(self) -> None:
         self.model_path = os.environ.get(
@@ -38,6 +64,12 @@ class SpeechState:
         self.voice_name = os.environ.get("KOKORO_VOICE", "am_puck")
         self.speed = float(os.environ.get("KOKORO_SPEED", "1.03"))
         self.configured_audio_device = os.environ.get("TTS_AUDIO_DEVICE", "auto")
+        self.leading_silence_ms = int(os.environ.get("TTS_LEADING_SILENCE_MS", "500"))
+        self.trailing_silence_ms = int(os.environ.get("TTS_TRAILING_SILENCE_MS", "100"))
+        if not 0 <= self.leading_silence_ms <= 2000:
+            raise ValueError("TTS_LEADING_SILENCE_MS must be between 0 and 2000")
+        if not 0 <= self.trailing_silence_ms <= 2000:
+            raise ValueError("TTS_TRAILING_SILENCE_MS must be between 0 and 2000")
         self._speech_lock = threading.Lock()
         started = time.monotonic()
         self.voice = Kokoro(self.model_path, self.voices_path)
@@ -68,6 +100,8 @@ class SpeechState:
             "speed": self.speed,
             "audio_device": device,
             "load_time_s": self.load_time_s,
+            "leading_silence_ms": self.leading_silence_ms,
+            "trailing_silence_ms": self.trailing_silence_ms,
         }
 
     def speak(self, text: str) -> dict[str, Any]:
@@ -88,6 +122,11 @@ class SpeechState:
             )
             wav = io.BytesIO()
             sf.write(wav, samples, sample_rate, format="WAV", subtype="PCM_16")
+            audio = pad_pcm16_wav(
+                wav.getvalue(),
+                self.leading_silence_ms,
+                self.trailing_silence_ms,
+            )
             device = self.audio_device()
             if device is None:
                 raise RuntimeError(
@@ -95,7 +134,7 @@ class SpeechState:
                 )
             completed = subprocess.run(
                 ["aplay", "-q", "-D", device],
-                input=wav.getvalue(),
+                input=audio,
                 check=False,
                 capture_output=True,
                 timeout=30.0,
@@ -109,6 +148,8 @@ class SpeechState:
                 "model": "Kokoro-82M-v1.0-int8",
                 "voice": self.voice_name,
                 "audio_device": device,
+                "leading_silence_ms": self.leading_silence_ms,
+                "trailing_silence_ms": self.trailing_silence_ms,
                 "elapsed_s": round(time.monotonic() - started, 3),
             }
         finally:

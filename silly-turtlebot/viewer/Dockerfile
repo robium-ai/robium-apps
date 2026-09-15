@@ -25,6 +25,7 @@ COPY silly-turtlebot/simulation/viz_server.py /viz_server.py
 COPY silly-turtlebot/simulation/bundle_extension.py /bundle_extension.py
 RUN python3 /bundle_extension.py \
       /opt/lichtblick/index.html /opt/lichtblick/robium/dashboard.foxe \
+      /opt/lichtblick/layout.json \
  && cp /opt/lichtblick/index.html /opt/lichtblick/index.template.html
 
 EXPOSE 8080

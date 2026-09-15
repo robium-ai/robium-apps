@@ -7,7 +7,12 @@ from typing import Any
 from .config import (
     KNOWN_LOCATIONS,
     MAX_FORWARD_DISTANCE_M,
+    MAX_ANGULAR_SPEED_RAD_S,
+    MAX_LINEAR_SPEED_MPS,
+    MAX_MOVE_DISTANCE_M,
+    MAX_MOVE_DURATION_S,
     MAX_QUARTER_TURNS,
+    MAX_ROTATION_DEG,
     MAX_SPEECH_CHARS,
     MAX_STAND_OFF_M,
     MIN_FORWARD_DISTANCE_M,
@@ -18,6 +23,88 @@ from .config import (
 def function_declarations() -> list[dict[str, Any]]:
     blocking = "BLOCKING"
     return [
+        {
+            "name": "get_robot_state",
+            "description": (
+                "Return current motion, dock, odometry, velocity, camera FOV/freshness, "
+                "and configured-location state. This does not move the robot."
+            ),
+            "behavior": blocking,
+            "parameters": {"type": "OBJECT", "properties": {}},
+        },
+        {
+            "name": "move_distance",
+            "description": (
+                "Move a signed distance along the current heading with Nav2 collision "
+                "checking. Positive is forward and negative is backward."
+            ),
+            "behavior": blocking,
+            "parameters": {
+                "type": "OBJECT",
+                "properties": {
+                    "distance_m": {
+                        "type": "NUMBER",
+                        "minimum": -MAX_MOVE_DISTANCE_M,
+                        "maximum": MAX_MOVE_DISTANCE_M,
+                    },
+                    "speed_mps": {
+                        "type": "NUMBER",
+                        "minimum": 0.05,
+                        "maximum": MAX_LINEAR_SPEED_MPS,
+                    },
+                },
+                "required": ["distance_m", "speed_mps"],
+            },
+        },
+        {
+            "name": "rotate_by",
+            "description": (
+                "Rotate in place by a signed angle. Positive is counter-clockwise/left; "
+                "negative is clockwise/right."
+            ),
+            "behavior": blocking,
+            "parameters": {
+                "type": "OBJECT",
+                "properties": {
+                    "angle_deg": {
+                        "type": "NUMBER",
+                        "minimum": -MAX_ROTATION_DEG,
+                        "maximum": MAX_ROTATION_DEG,
+                    }
+                },
+                "required": ["angle_deg"],
+            },
+        },
+        {
+            "name": "move_for_duration",
+            "description": (
+                "Move with simultaneous forward/reverse speed and rotation for a bounded "
+                "time through Nav2 AssistedTeleop collision projection. Linear zero rotates "
+                "in place; angular zero translates straight."
+            ),
+            "behavior": blocking,
+            "parameters": {
+                "type": "OBJECT",
+                "properties": {
+                    "linear_mps": {
+                        "type": "NUMBER",
+                        "minimum": -MAX_LINEAR_SPEED_MPS,
+                        "maximum": MAX_LINEAR_SPEED_MPS,
+                    },
+                    "angular_rad_s": {
+                        "type": "NUMBER",
+                        "minimum": -MAX_ANGULAR_SPEED_RAD_S,
+                        "maximum": MAX_ANGULAR_SPEED_RAD_S,
+                    },
+                    "duration_s": {
+                        "type": "NUMBER",
+                        "minimum": 0.1,
+                        "maximum": MAX_MOVE_DURATION_S,
+                    },
+                },
+                "required": ["linear_mps", "angular_rad_s", "duration_s"],
+            },
+        },
         {
             "name": "navigate_to_location",
             "description": "Navigate with Nav2 to one configured named location.",
@@ -136,6 +223,26 @@ def function_declarations() -> list[dict[str, Any]]:
                 "type": "OBJECT",
                 "properties": {"reason": {"type": "STRING"}},
                 "required": ["reason"],
+            },
+        },
+        {
+            "name": "ack",
+            "description": "Record a terse progress acknowledgement without moving the robot.",
+            "behavior": blocking,
+            "parameters": {
+                "type": "OBJECT",
+                "properties": {"status": {"type": "STRING", "maxLength": 240}},
+                "required": ["status"],
+            },
+        },
+        {
+            "name": "complete_task",
+            "description": "Mark the overall operator instruction complete with a terse summary.",
+            "behavior": blocking,
+            "parameters": {
+                "type": "OBJECT",
+                "properties": {"summary": {"type": "STRING", "maxLength": 240}},
+                "required": ["summary"],
             },
         },
     ]

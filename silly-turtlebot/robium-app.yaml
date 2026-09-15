@@ -1,8 +1,8 @@
 schema_version: "1"
 id: silly-turtlebot
 name: Silly TurtleBot
-summary: A TurtleBot 4 listens, navigates with Nav2, inspects scenes with Gemini Robotics ER 2, and performs a guarded comedy routine.
-version: 0.3.0
+summary: A TurtleBot 4 streams camera and state to Gemini Robotics ER 2 for guarded proactive navigation.
+version: 0.4.0
 status: experimental
 license: MIT
 tags: [turtlebot4, ros2, nav2, gemini-robotics, voice, scene-understanding, real-robot]
@@ -38,12 +38,12 @@ verbs:
     summary: Start the safe-default Gazebo simulation and Lichtblick mission controls
   smoke:
     command: ./app smoke
-    summary: Run seven critical tests and the mock end-to-end smoke
+    summary: Run ten critical tests and the mock end-to-end smoke
 
 modes:
   demo:
     command: ./app demo
-    summary: Run the transparent hardware-free sock routine
+    summary: Run the transparent hardware-free navigation routine
   live:
     command: ./app live
     summary: Connect Gemini Robotics ER 2 Streaming to the fake or ROS robot guard
@@ -58,7 +58,7 @@ modes:
     summary: Print the semantic tools exposed to the model
 
 requirements:
-  hardware: [TurtleBot 4 with OAK-D for real mode; optional second ROS camera; Docker for simulation; mock mode is hardware-free]
+  hardware: [TurtleBot 4 with OAK-D for real mode; optional paired Bluetooth gamepad and second ROS camera; Docker for simulation; mock mode is hardware-free]
   gpu: none
   network: optional
 
