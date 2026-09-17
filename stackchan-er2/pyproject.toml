@@ -1,0 +1,32 @@
+[project]
+name = "stackchan-er2"
+version = "0.4.0"
+description = "A voice-first Gemini Robotics ER 2 companion for M5Stack STACK-CHAN"
+readme = "README.md"
+authors = [{ name = "robium", email = "admin@robium.ai" }]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "google-genai>=2.22.0,<3",
+    "pyserial>=3.5,<4",
+]
+
+[project.scripts]
+stackchan-er2 = "stackchan_er2.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4,<9",
+    "ruff>=0.12,<1",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.29,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

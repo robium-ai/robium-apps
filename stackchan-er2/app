@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+
+arduino_config="$PWD/.arduino/config/arduino-cli.yaml"
+firmware_fqbn='esp32:esp32:m5stack_cores3:USBMode=hwcdc,CDCOnBoot=cdc,FlashSize=16M,PartitionScheme=app3M_fat9M_16MB,PSRAM=enabled'
+
+require_firmware_env() {
+  if [ ! -f "$arduino_config" ]; then
+    echo "Firmware environment missing; run ./app firmware-setup first." >&2
+    return 1
+  fi
+}
+
+case "${1:-help}" in
+  help|-h|--help)
+    cat <<'USAGE'
+stackchan-er2 - voice-first Gemini Robotics ER 2 companion
+
+  ./app build             create/update the locked Python environment
+  ./app doctor            check host tools, key presence, and USB discovery
+  ./app demo              run the hardware-free action demo
+  ./app tools             print the model-visible tool names
+  ./app smoke             run lint, tests, and the mock demo
+  ./app firmware-setup    install pinned Arduino dependencies under .arduino
+  ./app firmware-build    compile the STACK-CHAN companion firmware
+  ./app firmware-backup   save the current 16 MB flash under .local
+  ./app firmware-flash    compile and upload the companion firmware
+  ./app device-doctor     query the connected companion firmware
+  ./app hardware-smoke    test display, head, mic, speaker, and camera
+  ./app camera            save one fresh onboard-camera image
+  ./app animate NAME      run one named head animation
+  ./app run               continuously listen for "Stack Chan" voice commands
+  ./app run --push-to-talk
+                          press Enter for each fixed-length voice command
+  ./app run --text TEXT   run one text-driven Gemini turn
+
+The real conversation requires GEMINI_API_KEY. The first firmware flash replaces
+the factory image; ./app firmware-backup saves a local restore image first.
+USAGE
+    ;;
+  build)
+    uv sync --locked
+    ;;
+  doctor|demo|tools|device-doctor|hardware-smoke|camera|animate)
+    command="$1"
+    shift
+    uv run --locked stackchan-er2 "$command" "$@"
+    ;;
+  run)
+    shift
+    uv run --locked stackchan-er2 run "$@"
+    ;;
+  smoke)
+    uv run --locked ruff check src tests
+    uv run --locked pytest
+    output="$(uv run --locked stackchan-er2 demo)"
+    printf '%s\n' "$output"
+    grep -q '^STACKCHAN ER2 MOCK PASS$' <<<"$output"
+    ;;
+  firmware-setup)
+    firmware/setup.sh
+    ;;
+  firmware-build)
+    require_firmware_env
+    mkdir -p .arduino/build
+    arduino-cli compile \
+      --config-file "$arduino_config" \
+      --fqbn "$firmware_fqbn" \
+      --warnings default \
+      --output-dir .arduino/build \
+      firmware/stackchan_er2
+    ;;
+  firmware-backup)
+    require_firmware_env
+    port=${STACKCHAN_PORT:-/dev/cu.usbmodem1101}
+    mkdir -p .local/device-backups
+    stamp=$(date +%Y%m%d-%H%M%S)
+    esptool="$PWD/.arduino/data/packages/esp32/tools/esptool_py/5.2.0/esptool"
+    if [ ! -x "$esptool" ]; then
+      esptool=$(find "$PWD/.arduino/data/packages/esp32/tools/esptool_py" -type f -name esptool | sort | tail -n 1)
+    fi
+    "$esptool" --port "$port" read-flash 0 0x1000000 ".local/device-backups/factory-$stamp.bin"
+    echo "Saved private factory flash backup: .local/device-backups/factory-$stamp.bin"
+    ;;
+  firmware-flash)
+    require_firmware_env
+    if ! find "$PWD/.local/device-backups" -maxdepth 1 -type f -name 'factory-*.bin' -print -quit 2>/dev/null | grep -q .; then
+      echo "No factory flash backup found; run ./app firmware-backup first." >&2
+      exit 1
+    fi
+    "$0" firmware-build
+    port=${STACKCHAN_PORT:-/dev/cu.usbmodem1101}
+    arduino-cli upload \
+      --config-file "$arduino_config" \
+      --fqbn "$firmware_fqbn" \
+      --input-dir .arduino/build \
+      --port "$port" \
+      firmware/stackchan_er2
+    ;;
+  *)
+    echo "Unknown command: $1" >&2
+    "$0" help >&2
+    exit 2
+    ;;
+esac
