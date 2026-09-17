@@ -11,10 +11,13 @@ Gemini Robotics ER 2 may answer through the onboard speaker, move the pan/tilt
 head, show short text on the display, or request one fresh camera observation
 when a question requires current visual evidence. It can also select one of
 five guarded head animations: quick yes/no gestures, privacy, turn back, and
-look straight.
+look straight. The same process exclusively owns a Bluetooth connection to the
+prepared LEGO Pybricks differential-drive robot and exposes four simple motion
+directions plus stop to ER 2.
 
 The app deliberately excludes continuous image streaming, a local wake-word
-engine, web UI, long-term memory, ROS, simulation, and autonomous behavior.
+engine, web UI, long-term memory, ROS, simulation, autonomous LEGO behavior,
+and concurrent ownership by another LEGO controller.
 The connected robot was identified over USB as an ESP32-S3 running M5Stack's
 factory `stack-chan` 1.5.1 firmware before the companion-firmware change.
 
@@ -30,6 +33,8 @@ factory `stack-chan` 1.5.1 firmware before the companion-firmware change.
 | Speech | macOS TTS rendered to 16 kHz mono PCM and played on STACK-CHAN | ER 2 Streaming returns text, not generated audio; this keeps TTS independently replaceable | validated by real onboard-speaker smoke |
 | Vision | Model-selected `look` tool captures one 320×240 JPEG from the CoreS3 GC0308 camera and attaches it as inline media to the matching function response | Gives ER 2 current visual evidence without continuously sending images, and deterministically binds each observation to its tool call | validated by repeated real-camera capture and physical mic → ER 2 → vision → speech smoke |
 | Expressive motion | One enum-only `animate` tool backed by firmware-owned keyframes | Lets the model select expressive gestures without exposing raw servo mode, durations, or extended angles | validated by host tests, real nod/shake/privacy motion, front → rear → front camera evidence, and a silent live ER 2 call |
+| LEGO integration | Stack Chan host process owns a dedicated BLE worker and exposes one enum-only `drive_lego` tool; the complete host client and Pybricks hub bridge live in this app | A direct in-process call is the smallest boundary; no sibling-app dependency or IPC service is needed when Stack Chan is the exclusive controller | protocol, direction, auto-stop, worker tests, real stopped smoke, four physical directions, and mic → ER 2 → BLE movement pass |
+| LEGO motion envelope | Fixed 30% power and 0.8 second commands, 10 Hz resend, transmitted zero before return | Keeps the first voice-control slice predictable and prevents the model from selecting raw wheel power or an unbounded duration | inherited physical calibration from the real robot; bounded live revalidation planned |
 
 ## Module boundaries and communications
 
@@ -38,6 +43,8 @@ factory `stack-chan` 1.5.1 firmware before the companion-firmware change.
 | Gemini host process | Continuous 250 ms input rate; API/network failures must not produce unguarded actions | Concurrent audio-send and response/tool loops in one persistent Live API session; every function call crosses `GuardedActions` |
 | USB device adapter | One blocking request at a time; serial disconnect is independent of the model | Compact newline JSON plus exact-length PCM on `/dev/cu.usbmodem*`; its lock bounds tool latency to at most the active mic chunk |
 | STACK-CHAN firmware | Owns servos, screen, mic, speaker, and camera; remains safe if the host disappears | Enforces the same head/audio/image limits again before touching hardware |
+| LEGO BLE worker | 10 Hz; Bluetooth failure must not block microphone streaming or bypass stop | Runs in one dedicated thread/event loop; synchronous guarded calls set a semantic direction and wait for both motion and zero revisions to transmit |
+| LEGO Pybricks bridge | 10 ms loop; must fail stopped if the Mac or BLE link disappears | Decodes fixed three-byte wheel packets and locally brakes after 400 ms without a valid drive packet |
 
 ## Provisional assumptions and risks
 
@@ -51,6 +58,8 @@ factory `stack-chan` 1.5.1 firmware before the companion-firmware change.
 | Camera frames could expose unintended surroundings | Visual data leaves the device when a visual answer is requested | Keep vision behind an explicit model tool; capture and send exactly one frame per call; document the local-only camera probe | Add a physical camera-disable flag if deployment needs a stronger privacy control |
 | Continuous yaw is velocity/time based rather than an absolute 180° target | `turn_back` can vary slightly with battery and friction | Use a fixed bounded half-turn, retain an explicit facing-back state, and make `look_straight` reverse then center | Tune only the firmware-owned duration from physical camera evidence; do not expose it to the model |
 | A Gemini key is available outside git | Live model turn cannot run otherwise | `./app doctor` checks presence without printing it | Run through the maintainer's chosen secret injection command |
+| LEGO hub advertises and has the bundled bridge saved | Default combined startup cannot expose a working LEGO tool otherwise | `./app lego-smoke` must receive READY and PONG while sending only zero power | `--no-lego` preserves Stack-Chan-only operation; do not silently claim LEGO control |
+| A second process tries to own the LEGO BLE hub | BLE connection or command ownership becomes ambiguous | Document exclusive ownership and keep all LEGO host code inside this app | Stop the other controller; do not add IPC until simultaneous controllers are an explicit requirement |
 
 ## Implementation path
 
@@ -108,3 +117,26 @@ fallback speech. Physical front/rear/front captures were distinct and the final
 pose measured yaw −1° / pitch 43°. A Doppler-injected live ER 2 request, “Nod
 yes quickly. Do not speak,” called only `animate(nod_yes)` and produced no
 speech or display action.
+
+Version 0.5.0 adds exclusive LEGO control without depending on the sibling
+teleoperation app. The host-side Pybricks discovery, framing, connection, and
+10 Hz control worker live in `stackchan_er2.lego`; the matching watchdog bridge
+lives in `lego_hub/main.py`. ER 2 receives only the five-value `drive_lego`
+direction enum. Every non-stop command is fixed at 30% power for 0.8 seconds,
+and its successful result is delayed until a zero-power revision is confirmed
+sent. The combined app connects LEGO by default and removes the model tool when
+started with `--no-lego`.
+
+Thirty-five hardware-free tests cover the direction enum and calibrated wheel
+mapping, fixed-width BLE framing, ambiguous/missing hub selection, dedicated
+worker behavior, confirmed motion-to-stop transmission, immediate stop, tool
+guarding, no-LEGO tool removal, and silent ER 2 fallback behavior.
+
+The 2026-09-17 physical smoke discovered `Pybricks Hub`, received `READY` and
+`PONG` at zero motor power, then ran forward, backward, left, and right through
+one persistent session. Every result reported the fixed 30% power, 0.8 second
+duration, and confirmed stopped state. A live ER 2 text turn selected only
+`drive_lego(forward)`. The final end-to-end test played “Stack Chan, turn the
+LEGO robot left; do not speak or display anything” into STACK-CHAN's real
+microphone; ER 2 called only `drive_lego(left)`, the BLE action stopped, and
+continuous listening resumed before a clean Control-C shutdown.

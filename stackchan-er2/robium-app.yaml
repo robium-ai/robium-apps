@@ -1,11 +1,11 @@
 schema_version: "1"
 id: stackchan-er2
 name: STACK-CHAN ER 2 Companion
-summary: Talk through an M5Stack STACK-CHAN while Gemini Robotics ER 2 speaks, performs named head animations, shows text, and looks on demand.
-version: 0.4.0
+summary: Talk through an M5Stack STACK-CHAN while Gemini Robotics ER 2 speaks, looks, animates, and commands a LEGO robot over Bluetooth.
+version: 0.5.0
 status: experimental
 license: MIT
-tags: [stackchan, m5stack, esp32-s3, gemini-robotics, voice, vision, real-robot]
+tags: [stackchan, m5stack, esp32-s3, gemini-robotics, voice, vision, lego, bluetooth, real-robot]
 
 runtime:
   kind: uv
@@ -43,7 +43,7 @@ modes:
     summary: Save one local camera frame without sending it to Gemini
 
 requirements:
-  hardware: [M5Stack STACK-CHAN K151 connected over USB]
+  hardware: [M5Stack STACK-CHAN K151 connected over USB, Pybricks LEGO robot over BLE]
   gpu: none
   network: required
 

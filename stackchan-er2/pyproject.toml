@@ -1,11 +1,12 @@
 [project]
 name = "stackchan-er2"
-version = "0.4.0"
+version = "0.5.0"
 description = "A voice-first Gemini Robotics ER 2 companion for M5Stack STACK-CHAN"
 readme = "README.md"
 authors = [{ name = "robium", email = "admin@robium.ai" }]
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "bleak>=2.0,<4",
     "google-genai>=2.22.0,<3",
     "pyserial>=3.5,<4",
 ]

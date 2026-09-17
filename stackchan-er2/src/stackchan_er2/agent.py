@@ -15,6 +15,7 @@ from .config import (
     ANIMATION_NAMES,
     CONTINUOUS_CHUNK_SECONDS,
     CONTINUOUS_SYSTEM_INSTRUCTION,
+    LEGO_DIRECTIONS,
     MAX_PITCH_DEG,
     MAX_SPEED,
     MAX_TEXT_CHARS,
@@ -30,9 +31,9 @@ from .config import (
 from .device import DeviceError, GuardedActions, StackChanDevice
 
 
-def function_declarations() -> list[dict[str, Any]]:
+def function_declarations(*, lego_enabled: bool = True) -> list[dict[str, Any]]:
     blocking = "BLOCKING"
-    return [
+    declarations = [
         {
             "name": "move_head",
             "description": "Move STACK-CHAN's head to a natural bounded yaw and pitch.",
@@ -116,15 +117,39 @@ def function_declarations() -> list[dict[str, Any]]:
             },
         },
     ]
+    if lego_enabled:
+        declarations.append(
+            {
+                "name": "drive_lego",
+                "description": (
+                    "Move the separate LEGO robot in one simple direction. Every movement is "
+                    "brief and automatically stops; use stop for an explicit immediate stop."
+                ),
+                "behavior": blocking,
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "direction": {
+                            "type": "STRING",
+                            "enum": list(LEGO_DIRECTIONS),
+                        }
+                    },
+                    "required": ["direction"],
+                },
+            }
+        )
+    return declarations
 
 
-def live_config(*, continuous: bool = False) -> types.LiveConnectConfig:
+def live_config(
+    *, continuous: bool = False, lego_enabled: bool = True
+) -> types.LiveConnectConfig:
     instruction = SYSTEM_INSTRUCTION
     if continuous:
         instruction = f"{instruction}\n\n{CONTINUOUS_SYSTEM_INSTRUCTION}"
     return types.LiveConnectConfig(
         response_modalities=["TEXT"],
-        tools=[{"function_declarations": function_declarations()}],
+        tools=[{"function_declarations": function_declarations(lego_enabled=lego_enabled)}],
         system_instruction=types.Content(parts=[types.Part(text=instruction)]),
         realtime_input_config=types.RealtimeInputConfig(
             automatic_activity_detection=types.AutomaticActivityDetection(disabled=not continuous)
@@ -152,6 +177,7 @@ class StackChanAgent:
         actions: GuardedActions,
         *,
         model: str = MODEL,
+        lego_enabled: bool = True,
     ):
         if not api_key:
             raise ValueError("GEMINI_API_KEY is required")
@@ -159,6 +185,7 @@ class StackChanAgent:
         self.device = device
         self.actions = actions
         self.model = model
+        self.lego_enabled = lego_enabled
 
     async def _send_audio(self, session: Any, pcm: bytes) -> None:
         await session.send_realtime_input(activity_start=types.ActivityStart())
@@ -250,6 +277,7 @@ class StackChanAgent:
             "speak" not in successful_tools
             and "show_text" not in successful_tools
             and "animate" not in successful_tools
+            and "drive_lego" not in successful_tools
             and text_parts
         ):
             fallback = "".join(text_parts).strip()
@@ -296,6 +324,7 @@ class StackChanAgent:
                             "speak" not in successful_tools
                             and "show_text" not in successful_tools
                             and "animate" not in successful_tools
+                            and "drive_lego" not in successful_tools
                             and text_parts
                         ):
                             fallback = "".join(text_parts).strip()
@@ -341,7 +370,8 @@ class StackChanAgent:
     ) -> None:
         continuous = text is None and not push_to_talk
         async with self.client.aio.live.connect(
-            model=self.model, config=live_config(continuous=continuous)
+            model=self.model,
+            config=live_config(continuous=continuous, lego_enabled=self.lego_enabled),
         ) as session:
             if text is not None:
                 await self._send_text(session, text)

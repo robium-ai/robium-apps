@@ -9,6 +9,7 @@ def test_required_reference_app_files_exist() -> None:
         ROOT / "robium-app.yaml",
         ROOT / "docs" / "architecture-brief.md",
         ROOT / "firmware" / "stackchan_er2" / "stackchan_er2.ino",
+        ROOT / "lego_hub" / "main.py",
     ):
         assert path.is_file()
 

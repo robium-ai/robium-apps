@@ -14,6 +14,11 @@ ANIMATION_NAMES = (
     "turn_back",
     "look_straight",
 )
+LEGO_DIRECTIONS = ("forward", "backward", "left", "right", "stop")
+LEGO_POWER = 30
+LEGO_MOVE_SECONDS = 0.8
+LEGO_CONTROL_HZ = 10.0
+LEGO_SCAN_TIMEOUT = 10.0
 
 MIN_YAW_DEG = -45
 MAX_YAW_DEG = 45
@@ -52,6 +57,12 @@ not invent capabilities beyond the declared tools.
 Use animate for the named expressive motions. If the person asks only for an
 animation, call animate without speaking or adding a textual acknowledgement.
 Speak as well only when the person explicitly asks for words with the motion.
+
+Use drive_lego when the person asks the separate LEGO robot to move forward,
+backward, turn left, turn right, or stop. Each movement is short and stops
+automatically. Use at most one drive_lego call for one user instruction; never
+chain calls to extend the motion. A LEGO-motion-only request should not speak
+or add a textual acknowledgement unless the person asks for one.
 """.strip()
 
 CONTINUOUS_SYSTEM_INSTRUCTION = """

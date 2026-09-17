@@ -13,6 +13,7 @@ from serial.tools import list_ports
 
 from .config import (
     ANIMATION_NAMES,
+    LEGO_DIRECTIONS,
     MAX_AUDIO_BYTES,
     MAX_IMAGE_BYTES,
     MAX_PITCH_DEG,
@@ -55,6 +56,10 @@ class StackChanDevice(Protocol):
     def capture_image(self) -> bytes: ...
 
     def animate(self, animation: str) -> dict[str, Any]: ...
+
+
+class LegoRobot(Protocol):
+    def drive(self, direction: str) -> dict[str, Any]: ...
 
 
 def discover_port(explicit: str | None = None) -> str:
@@ -342,9 +347,15 @@ class FakeStackChan:
 class GuardedActions:
     """Validate every model-selected action before it reaches the device."""
 
-    def __init__(self, device: StackChanDevice, tts: Any):
+    def __init__(
+        self,
+        device: StackChanDevice,
+        tts: Any,
+        lego: LegoRobot | None = None,
+    ):
         self.device = device
         self.tts = tts
+        self.lego = lego
 
     @staticmethod
     def _bounded_int(name: str, value: Any, minimum: int, maximum: int) -> int:
@@ -395,4 +406,12 @@ class GuardedActions:
                 allowed = ", ".join(ANIMATION_NAMES)
                 raise DeviceError(f"animation must be one of: {allowed}")
             return self.device.animate(animation)
+        if name == "drive_lego":
+            direction = arguments.get("direction")
+            if not isinstance(direction, str) or direction not in LEGO_DIRECTIONS:
+                allowed = ", ".join(LEGO_DIRECTIONS)
+                raise DeviceError(f"LEGO direction must be one of: {allowed}")
+            if self.lego is None:
+                raise DeviceError("LEGO robot control is disabled or not connected")
+            return self.lego.drive(direction)
         raise DeviceError(f"tool is not allowed: {name}")

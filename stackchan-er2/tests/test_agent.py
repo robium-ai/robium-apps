@@ -9,21 +9,33 @@ from google.genai import types
 
 from stackchan_er2.agent import StackChanAgent, function_declarations, iter_pcm_chunks, live_config
 from stackchan_er2.audio import FakeTTS
-from stackchan_er2.config import ANIMATION_NAMES, MODEL, PCM_CHUNK_BYTES
+from stackchan_er2.config import ANIMATION_NAMES, LEGO_DIRECTIONS, MODEL, PCM_CHUNK_BYTES
 from stackchan_er2.device import FakeStackChan, GuardedActions
+from stackchan_er2.lego import FakeLegoRobot
 
 
-def test_only_five_semantic_tools_are_exposed() -> None:
+def test_only_six_semantic_tools_are_exposed() -> None:
     assert [tool["name"] for tool in function_declarations()] == [
         "move_head",
         "show_text",
         "speak",
         "look",
         "animate",
+        "drive_lego",
     ]
-    assert function_declarations()[-1]["parameters"]["properties"]["animation"]["enum"] == list(
+    assert function_declarations()[-2]["parameters"]["properties"]["animation"]["enum"] == list(
         ANIMATION_NAMES
     )
+    assert function_declarations()[-1]["parameters"]["properties"]["direction"]["enum"] == list(
+        LEGO_DIRECTIONS
+    )
+    assert [tool["name"] for tool in function_declarations(lego_enabled=False)] == [
+        "move_head",
+        "show_text",
+        "speak",
+        "look",
+        "animate",
+    ]
     assert MODEL == "gemini-robotics-er-2-streaming-preview"
     config = live_config()
     assert config.response_modalities == ["TEXT"]
@@ -33,6 +45,7 @@ def test_only_five_semantic_tools_are_exposed() -> None:
     assert continuous.realtime_input_config.automatic_activity_detection.disabled is False
     assert "Stack Chan" in continuous.system_instruction.parts[0].text
     assert "not to speak" in continuous.system_instruction.parts[0].text
+    assert "at most one drive_lego call" in continuous.system_instruction.parts[0].text
 
 
 def test_pcm_chunks_preserve_audio() -> None:
@@ -200,3 +213,40 @@ def test_animation_only_tool_does_not_trigger_speech_fallback() -> None:
     asyncio.run(agent._receive_turn(ScriptedSession()))
 
     assert [name for name, _ in device.events] == ["animate"]
+
+
+def test_lego_motion_only_tool_does_not_trigger_speech_fallback() -> None:
+    class ScriptedSession:
+        async def receive(self):
+            yield SimpleNamespace(
+                server_content=None,
+                tool_call=SimpleNamespace(
+                    function_calls=[
+                        SimpleNamespace(
+                            name="drive_lego",
+                            args={"direction": "forward"},
+                            id="lego-1",
+                        )
+                    ]
+                ),
+            )
+            yield SimpleNamespace(
+                server_content=SimpleNamespace(
+                    model_turn=SimpleNamespace(parts=[SimpleNamespace(text="Done")]),
+                    turn_complete=True,
+                ),
+                tool_call=None,
+            )
+
+        async def send_tool_response(self, **message: object) -> None:
+            pass
+
+    device = FakeStackChan()
+    lego = FakeLegoRobot()
+    agent = object.__new__(StackChanAgent)
+    agent.actions = GuardedActions(device, FakeTTS(), lego)
+
+    asyncio.run(agent._receive_turn(ScriptedSession()))
+
+    assert device.events == []
+    assert lego.events[-1]["direction"] == "forward"

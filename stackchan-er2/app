@@ -30,7 +30,11 @@ stackchan-er2 - voice-first Gemini Robotics ER 2 companion
   ./app hardware-smoke    test display, head, mic, speaker, and camera
   ./app camera            save one fresh onboard-camera image
   ./app animate NAME      run one named head animation
-  ./app run               continuously listen for "Stack Chan" voice commands
+  ./app lego-doctor       discover the powered-on LEGO Pybricks hub
+  ./app lego-smoke        verify LEGO bridge at zero motor power
+  ./app lego-drive DIR    run one bounded LEGO direction command
+  ./app run               listen and control Stack Chan plus the LEGO robot
+  ./app run --no-lego     listen without connecting the LEGO robot
   ./app run --push-to-talk
                           press Enter for each fixed-length voice command
   ./app run --text TEXT   run one text-driven Gemini turn
@@ -42,7 +46,7 @@ USAGE
   build)
     uv sync --locked
     ;;
-  doctor|demo|tools|device-doctor|hardware-smoke|camera|animate)
+  doctor|demo|tools|device-doctor|hardware-smoke|camera|animate|lego-doctor|lego-smoke|lego-drive)
     command="$1"
     shift
     uv run --locked stackchan-er2 "$command" "$@"

@@ -3,7 +3,9 @@
 Talk to a real M5Stack STACK-CHAN K151. Gemini Robotics ER 2 can answer through
 the robot's speaker, make a small pan/tilt gesture, show a short message on its
 display, perform named head animations, and inspect a fresh onboard-camera
-image when a question requires it.
+image when a question requires it. Stack Chan also owns the Bluetooth
+connection to a two-motor LEGO Pybricks robot and can drive it with short,
+auto-stopping voice commands.
 
 The default mode continuously streams short microphone chunks. Say “Stack Chan”
 followed by a command or question; Gemini detects the speech boundary and may
@@ -27,6 +29,11 @@ by git.
 ./app hardware-smoke
 ```
 
+The LEGO hub runs the bundled [`lego_hub/main.py`](lego_hub/main.py) watchdog
+bridge. Save that file to the hub once with Pybricks Code. The Stack Chan app
+contains its own BLE client and does not import, launch, or communicate with
+the separate LEGO teleoperation example.
+
 Then inject the Gemini API key from Doppler without printing or committing it:
 
 ```bash
@@ -42,6 +49,12 @@ Named animations are also available by voice. Try “Stack Chan, nod yes,”
 “Stack Chan, shake your head no,” “Stack Chan, privacy,” “Stack Chan, turn your
 back,” or “Stack Chan, look straight.” Animation-only requests do not produce a
 spoken acknowledgement.
+
+For the LEGO robot, say “Stack Chan, move the LEGO robot forward,” “backward,”
+“turn left,” “turn right,” or “stop the LEGO robot.” Stack Chan exclusively
+owns the hub's BLE connection while running. Each movement uses 30% power for
+0.8 seconds and transmits zero motor power before the tool returns. Motion-only
+requests do not produce a spoken acknowledgement.
 
 The green body LEDs indicate listening. Press Control-C to stop. Continuous mode
 sends room audio to Gemini and consumes Live API usage while running.
@@ -71,7 +84,11 @@ doppler run --project robium --config dev -- \
 ./app hardware-smoke    bounded real display/head/mic/speaker check
 ./app camera            save one fresh image as stackchan-view.jpg
 ./app animate NAME      run nod_yes, shake_no, privacy, turn_back, or look_straight
-./app run               continuous ER 2 voice-command session
+./app lego-doctor       discover the powered-on LEGO Pybricks hub
+./app lego-smoke        connect, stay stopped, and verify READY plus PING/PONG
+./app lego-drive DIR    run one bounded forward/backward/left/right/stop command
+./app run               control Stack Chan and LEGO through continuous voice
+./app run --no-lego     run Stack Chan without connecting the LEGO robot
 ./app run --push-to-talk
                         press Enter for each four-second recording
 ./app tools             model-visible capability list
@@ -86,8 +103,9 @@ STACKCHAN_PORT=/dev/cu.usbmodem1201 ./app firmware-flash
 
 ## Safety and limits
 
-The model sees five semantic tools: move, display, speak, an on-demand
-single-image `look`, and a named `animate` action. Both Python and firmware
+The model sees six semantic tools: move, display, speak, an on-demand
+single-image `look`, a named `animate` action, and enum-only `drive_lego`.
+Both Python and firmware
 enforce yaw `-45..45°`, pitch `5..85°`, speed `100..400`, short display text,
 and bounded speech for ordinary model-selected movement. The animation tool
 accepts only five exact names: `nod_yes` and `shake_no` are quick gestures;
@@ -96,6 +114,13 @@ continuous-rotation mode for an approximately 180° half-turn; and
 `look_straight` reverses that half-turn and centers at yaw 0°, pitch 45°. There
 is no raw-servo or arbitrary binary model tool. Keep the full circle around the
 head clear during motion and never force a powered joint by hand.
+
+`drive_lego` accepts only `forward`, `backward`, `left`, `right`, and `stop`.
+The host streams the calibrated wheel command at 10 Hz for a fixed 0.8 seconds,
+then waits until a zero-power packet has actually crossed BLE. Closing the app
+also sends zero and exits the hub program. Independently, the bundled hub
+bridge brakes after 400 ms without a valid drive packet. Keep the floor clear
+and do not run another LEGO BLE controller at the same time.
 
 The camera remains absent from the Live API input until ER 2 calls `look`. That
 call pauses microphone chunks, captures and JPEG-encodes one 320×240 frame on
@@ -125,3 +150,4 @@ device-specific recovery copy and must not be committed or shared.
 - [M5Stack STACK-CHAN source](https://github.com/m5stack/StackChan)
 - [M5Stack StackChan-BSP](https://github.com/m5stack/StackChan-BSP)
 - [M5Stack CoreS3 camera example](https://docs.m5stack.com/en/arduino/m5cores3/camera)
+- [Pybricks Bluetooth protocol](https://docs.pybricks.com/projects/pybricksdev/en/stable/api/pybricksdev.ble.pybricks.html)

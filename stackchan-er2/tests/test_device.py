@@ -8,6 +8,7 @@ import pytest
 from stackchan_er2.audio import FakeTTS
 from stackchan_er2.config import ANIMATION_NAMES, SAMPLE_RATE
 from stackchan_er2.device import DeviceError, FakeStackChan, GuardedActions, SerialStackChan
+from stackchan_er2.lego import FakeLegoRobot
 
 
 class ScriptedSerial:
@@ -32,9 +33,10 @@ class ScriptedSerial:
         return chunk
 
 
-def test_guard_executes_the_five_bounded_tools() -> None:
+def test_guard_executes_the_six_bounded_tools() -> None:
     device = FakeStackChan()
-    guard = GuardedActions(device, FakeTTS())
+    lego = FakeLegoRobot()
+    guard = GuardedActions(device, FakeTTS(), lego)
 
     assert (
         guard.execute("move_head", {"yaw": -20, "pitch": 55, "speed": 150})["status"] == "succeeded"
@@ -43,12 +45,15 @@ def test_guard_executes_the_five_bounded_tools() -> None:
     speech = guard.execute("speak", {"message": "Hello"})
     visual = guard.execute("look", {})
     animation = guard.execute("animate", {"animation": "nod_yes"})
+    lego_motion = guard.execute("drive_lego", {"direction": "left"})
 
     assert speech["status"] == "succeeded"
     assert speech["sample_rate"] == SAMPLE_RATE
     assert visual["mime_type"] == "image/jpeg"
     assert visual["_image"] == b"\xff\xd8\xff\xd9"
     assert animation["animation"] == "nod_yes"
+    assert lego_motion["direction"] == "left"
+    assert lego_motion["stopped"] is True
     assert [name for name, _ in device.events] == [
         "move_head",
         "show_text",
@@ -67,6 +72,7 @@ def test_guard_executes_the_five_bounded_tools() -> None:
         ("show_text", {"text": ""}),
         ("speak", {"message": "x" * 241}),
         ("animate", {"animation": "dance"}),
+        ("drive_lego", {"direction": "spin"}),
         ("raw_motor", {}),
     ],
 )
@@ -92,6 +98,12 @@ def test_all_named_animations_are_supported() -> None:
     assert [result["animation"] for result in results] == list(ANIMATION_NAMES)
     assert results[-2]["yaw"] == 180
     assert results[-1]["yaw"] == 0
+
+
+def test_lego_tool_requires_a_connected_controller() -> None:
+    guard = GuardedActions(FakeStackChan(), FakeTTS())
+    with pytest.raises(DeviceError, match="disabled or not connected"):
+        guard.execute("drive_lego", {"direction": "forward"})
 
 
 def test_speech_waits_for_device_ready_before_sending_pcm() -> None:
