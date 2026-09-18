@@ -3,6 +3,10 @@
 A TurtleBot 4 physical-AI demo that listens to free-form navigation requests,
 moves with Nav2, and reasons proactively over its live camera and robot state.
 
+Read [the development tutorial](docs/case-study.md) for the guarded Gemini
+Robotics session, fake-to-simulation-to-hardware path, and the Robium skills
+that shaped the application.
+
 The real app has three runtime parts:
 
 - The containerized Gemini agent and Lichtblick console run on the operator
