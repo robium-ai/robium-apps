@@ -1,6 +1,6 @@
 ---
-title: Building a guarded Gemini Robotics agent for TurtleBot 4
-summary: Connect Gemini Robotics ER 2 Streaming to camera, voice, and Nav2 without giving a generative model direct control of the robot.
+title: Building a mobile home robot with Gemini Robotics ER 2 and ROS 2 in under an hour
+summary: Use ER 2 for visual reasoning, continuous perception, and voice commands while ROS 2 and Nav2 handle proven navigation and control.
 collection: blog
 category: tutorial
 kind: tutorial
@@ -17,148 +17,120 @@ hero_alt: A simulated TurtleBot 4 camera view inside the furnished Gazebo home
 featured: false
 ---
 
-The original idea was a TurtleBot that could move through a room, notice what
-was happening, and add a little personality to the result. The harder problem
-was not the personality. It was building a continuous vision-and-language loop
-without letting a generative model become the robot's motor controller.
+Who said robots need to be serious?
 
-Silly TurtleBot uses Gemini Robotics ER 2 Streaming to interpret an instruction,
-camera frames, and robot state. It can select a small set of semantic actions.
-ROS 2, Nav2, Create 3 actions, and an independent guard decide whether those
-actions are valid and execute them. The same boundary runs against a fake
-robot, a TurtleBot 4 in Gazebo, and the physical robot.
+This project started at Founders Inc's [Silly Robot
+Hackathon](https://luma.com/sillybot?tk=0DYbRY) in San Francisco, an evening for
+building robots that were whimsical, funny, or simply unnecessary. We wanted a
+small home robot that could move between rooms, notice what was happening, make
+the occasional joke, and sometimes decide that a request did not deserve
+immediate attention.
 
-The occasional commentary is an application behavior on top of that stack. The
-reusable part is the guarded observe-act-observe loop.
+We used a TurtleBot 4, which combines an iRobot Create 3 mobile base with a
+Raspberry Pi and the ROS 2 navigation stack. We had less than an hour for the
+first version and wanted to try the newly available Gemini Robotics ER 2
+Streaming model. The shortest useful version was one instruction, one camera
+view, a few safe actions, and a visible result.
 
-## Start with the model boundary, not the robot
+The personality was the easy part. The useful engineering question was how to
+let Gemini understand an open-ended request without making it the robot's motor
+controller. Our answer was to split the work: Gemini Robotics ER 2 handles
+language, vision, conversation, and high-level decisions; ROS 2 and Nav2 handle
+motion, localization, obstacle checks, and action completion.
 
-We began with a fake adapter and one deterministic mission. It exposed the
-shape of the model integration before any physical motion was possible:
+## ER 2 for decisions, ROS 2 for motion
 
-1. Send an instruction and optional JPEG or raw PCM audio.
+The names are close, but [Gemini Robotics
+2](https://deepmind.google/models/gemini-robotics/) and Gemini Robotics ER 2
+have different jobs. Gemini Robotics 2 is a vision-language-action model. It
+turns camera and language input into motor actions for manipulation and
+whole-body control.
+
+Gemini Robotics ER 2 is an embodied-reasoning vision-language model. It watches
+video, listens to instructions, plans multi-step work, and calls tools. It then
+hands execution to a lower-level VLA or an existing robot API. That fit our
+TurtleBot: Nav2 already knew how to plan a route and avoid obstacles, so there
+was no reason to replace it with learned motor control.
+
+We used `gemini-robotics-er-2-streaming-preview`. The streaming endpoint keeps
+one Live API session open for text, JPEG frames, and raw microphone audio. Its
+output is text plus function calls. Speech stays a separate tool, and the model
+never sends wheel speeds directly.
+
+## Give Gemini a small set of robot skills
+
+We began with a fake robot and one deterministic mission. This let us test the
+Gemini interaction before a physical robot could move:
+
+1. Send an instruction and an optional camera frame or audio clip.
 2. Receive model text or a function call.
-3. Validate the call in ordinary Python.
-4. Execute it through a fake robot.
-5. Return the structured result with the original call ID.
-6. Continue until the application reports task completion.
+3. Check the requested action and arguments in ordinary Python.
+4. Execute the action through the fake robot.
+5. Return the result with the matching call ID.
+6. Continue until the model completes the task.
 
-That slice caught the unfamiliar parts cheaply. Gemini's Live API does not
-execute functions or return their results automatically. The client must keep
-the receive loop alive, execute each requested function, and send a matching
-`FunctionResponse` back into the session.
+The same loop now runs against Gazebo and the real TurtleBot. Gemini can inspect
+state, move a bounded distance, rotate, navigate to a named location, look
+around, face a person, speak, stop, or complete a task. It cannot use
+`/cmd_vel`, send arbitrary poses, or choose unrestricted coordinates.
 
-It also established the most important rule in the project: the model never
-receives `/cmd_vel`, raw wheel commands, arbitrary poses, or unrestricted
-coordinates.
+The guard is a small deterministic layer between Gemini and ROS. It rejects
+unknown tools, extra arguments, invalid numbers, overlapping motion, and object
+IDs that did not come from current perception. Tool descriptions help the model
+choose correctly; Python remains responsible for enforcing the rules.
 
 > [!DECISION]
-> Gemini chooses among capabilities. Deterministic software owns arguments,
-> limits, cancellation, and the final actuator boundary.
+> Gemini chooses what the robot should try next. Existing robot software decides
+> whether the request is valid and owns the final motion command.
 
-## Why Gemini Robotics ER 2 Streaming
-
-The application uses `gemini-robotics-er-2-streaming-preview`, not the standard
-ER 2 request-response endpoint. The streaming endpoint accepts text, images,
-video, and audio in one persistent Live API session and supports low-latency
-function calling. Its output is text, so speech remains a separate bounded tool.
-
-Physical actions are declared with blocking behavior. When the model asks the
-robot to rotate, navigate, dock, or speak, the session waits for the real
-terminal result before selecting another action. A request being accepted is
-not reported as success.
-
-The model-visible operations are semantic:
-
-- inspect robot state;
-- move a bounded signed distance at a bounded speed;
-- rotate by a bounded angle;
-- navigate to a configured location;
-- look around and ground currently visible objects;
-- face a person without approaching;
-- speak a short message;
-- stop, acknowledge progress, or complete the task.
-
-The guard checks the exact argument set, finite numeric ranges, named locations,
-current perception-issued object IDs, and the active-motion state. Prompt text
-and JSON schemas help the model use the tools, but neither is treated as the
-safety mechanism.
-
-## Keep perception, planning, and motion separate
+## How the parts connect
 
 ![Silly TurtleBot system flow](../assets/diagrams/system.svg)
 
-*Gemini owns multimodal interpretation and tool selection. The guard and robot
-adapter turn those requests into bounded ROS 2 actions, while the browser reads
-the same state through a separate visualization path.*
+*ER 2 interprets the instruction and camera stream. The guard converts approved
+requests into ROS 2 and Nav2 actions, while the browser shows the same robot
+state through a separate visualization path.*
 
-The operator-side agent is a locked Python environment. It owns the Gemini
-session and talks to a narrow HTTP adapter instead of joining the robot's DDS
-graph across the network.
+The Gemini agent runs in a locked Python environment and talks to a narrow HTTP
+adapter. ROS 2 stays on the robot or inside the simulator, where Nav2 owns route
+planning, lidar costmaps, odometry, docking, and action cancellation. This keeps
+API and network failures away from low-level motion.
 
-On the physical TurtleBot, native ROS 2 Humble owns Nav2, lidar, odometry,
-rolling costmaps, docking, and the action servers. An NVIDIA Orin runs the
-DepthAI camera path and Kokoro neural speech in separate containers. The agent
-can fail or reconnect without becoming the authority for low-level motion.
+For simulation, ROS 2 Jazzy, Gazebo Harmonic, TurtleBot 4, Nav2, and a simulated
+OAK-D camera run together in Docker. The browser uses Lichtblick to show the
+camera, map, laser scan, plans, controls, and logs.
 
-The simulator uses ROS 2 Jazzy and Gazebo Harmonic in one Docker container. It
-reuses the furnished-home asset, occupancy map, and visualization lessons from
-the Robot Navigation application while preserving TurtleBot 4's own Nav2
-configuration. Keeping the ROS graph together also avoids making Docker Desktop
-multicast discovery part of the application contract.
+## Keep one mission session open
 
-## Turn one request into a continuous mission
+Our first version opened a new Gemini connection for each instruction. It lost
+context between requests and made a moving robot look idle in the browser.
 
-The first live implementation opened a Gemini connection for every submitted
-instruction and returned one final HTTP response. The robot could be moving
-correctly while the browser looked idle, and every request discarded the
-session context.
+The current app keeps one Gemini session open while the robot is running. A
+background worker receives text and tool calls, while a single writer sends
+instructions, recent camera frames, and tool results. Only the newest frame is
+kept, so a slow viewer cannot build a queue of old scenes.
 
-The current control plane keeps one Gemini session open for the running robot.
-Mission submission returns immediately. A background receive worker streams
-model text and guarded tool events into a bounded server-sent-event journal,
-while a single writer serializes instructions, images, and tool responses onto
-the Live connection.
+Camera frames update the session but do not start a new reasoning turn by
+themselves. We send a short heartbeat only when no model turn or robot action
+is waiting to finish. After motion, Gemini receives the final robot state and a
+fresh image before deciding what to do next.
 
-Camera frames continue during an active mission, but only the newest frame is
-kept. A slow network or viewer should drop stale observations rather than build
-a queue of old scenes. Images update context but do not start a reasoning turn,
-so the application sends a compact heartbeat only when no model turn or
-blocking tool is unresolved.
+## Test the same actions in three places
 
-That distinction matters. A heartbeat is new model input, not a transport ping.
-Sending one during a blocking action can interrupt the turn. Local progress
-events can continue to the operator, while model-facing state waits for the
-terminal function response.
+We kept the progression small:
 
-After motion, the tool response includes a compact authoritative snapshot of
-motion, docking, and odometry state. Visual actions also prioritize a fresh
-post-action image. The next decision is based on the resulting scene rather
-than the frame from before the robot moved.
+- A fake adapter tested function calls, validation, cancellation, and session
+  behavior without Gemini credits, ROS, or hardware.
+- Gazebo tested TurtleBot 4 navigation, localization, camera frames, and the
+  browser view in a furnished home.
+- The physical robot tested the same semantic actions against ROS 2 Humble,
+  Nav2, lidar, odometry, docking, OAK-D vision, and bounded speech.
 
-## Build the simulation around observable contracts
+The Gazebo path was accepted only when a fresh container could start the world,
+activate Nav2, return a current camera frame, and complete a short forward move
+and quarter turn through the same interface used by Gemini.
 
-The Gazebo slice was accepted only when one fresh container could prove the
-whole boundary:
-
-- the furnished world and TurtleBot 4 model loaded;
-- localization and Nav2 became active;
-- distance, rotation, and assisted-teleoperation actions existed;
-- a fresh simulated OAK-D JPEG arrived;
-- forward and quarter-turn actions completed through the semantic bridge;
-- the bundled Lichtblick view showed the robot, scan, plans, camera, controls,
-  and logs.
-
-One failure looked like a generic headless-rendering problem. The installed
-Create 3 model already owned a model-scoped Gazebo Sensors system configured
-for Ogre 1. Adding another Sensors system at world scope did not override it;
-it created two rendering owners and different failures. The reproducible fix
-patched the existing xacro to Ogre2 and kept one Sensors system.
-
-That lesson went back into the Gazebo skill: inspect who already owns rendering
-before adding another plugin.
-
-## Run the same boundary locally
+## Run it locally
 
 You need Git, Docker with Compose v2, a modern browser, and a Gemini API key.
 Load the key through your shell or secret manager, then run:
@@ -171,63 +143,71 @@ cd robium-apps/silly-turtlebot
 ./app run
 ```
 
-Open [http://localhost:8091](http://localhost:8091). Enter a mission in the
-Silly TurtleBot control panel and select Run mission. The default path is the
-safe Gazebo simulation; it does not require a physical robot or local ROS
-installation. The first run downloads and builds the pinned simulation inputs,
-so later starts are faster.
+Open [http://localhost:8091](http://localhost:8091), enter a mission, and select
+**Run mission**. The default path is the Gazebo simulation, so it does not need
+a physical robot or a local ROS installation.
 
-For a hardware-free check without Gemini or Gazebo, run:
+For a hardware-free check without Gemini or Gazebo:
 
 ```bash
 ./app smoke
 ```
 
-The smoke suite exercises the model-facing action guard, manual tool-response
-loop, persistent session behavior, heartbeat filtering, camera flow, event
-replay, cancellation, and the deterministic mock mission.
+The smoke suite covers the action guard, Live API tool loop, persistent
+session, heartbeat filtering, camera handoff, cancellation, event replay, and a
+deterministic mock mission.
 
-## Move to hardware without moving the safety boundary
+## From simulation to the TurtleBot
 
-The physical stack changes transports and drivers, not the model contract. The
-TurtleBot Pi runs mapless, odom-relative Nav2 with rolling lidar costmaps. The
-Orin serves full camera frames directly to Gemini and sends a reduced preview
-through a robot-side ROS image relay for Lichtblick. Camera fetching runs in a
-separate process so a stalled HTTP request cannot block navigation callbacks.
-
-Speech follows the same isolation rule. The bounded `speak` tool calls a
-Kokoro-82M service on the Orin, which owns inference and USB audio playback.
-Navigation remains available if speech fails. A simpler Pi-side voice stays as
-a fallback rather than becoming a hidden dependency of the mission loop.
-
-The robot-side smoke checks actions, lidar, odometry, costmaps, lifecycle state,
-camera freshness, and speech without commanding autonomous motion. Supervised
-movement remains a separate acceptance step with the stop path ready.
+Moving to hardware did not change Gemini's tools. The HTTP adapter connected
+those same actions to the TurtleBot's native ROS 2 and Nav2 services. An OAK-D
+camera supplied frames, and a separate speech service handled the `speak`
+action. Navigation could continue if vision or speech stopped responding.
 
 > [!EVIDENCE]
-> The fake mission, Gazebo navigation and camera path, physical ROS/Nav2 state,
-> full-resolution OAK-D frame, low-bandwidth operator preview, and bounded
-> neural speech have each passed. Repeated end-to-end autonomous physical
-> missions remain a separate supervised validation step.
+> The mock mission, Gazebo navigation and camera path, physical ROS/Nav2 state,
+> OAK-D capture, browser preview, and bounded speech have passed separately.
+> Repeated autonomous physical missions remain a supervised validation step.
 
-## The skills that shaped the app
+## What ER 2 Streaming does not do
 
-`architect` kept the first slice on one visible outcome instead of a general
-robot framework. `environments` separated the locked agent, simulation image,
-native robot overlay, and Orin services. `simulation` and `gazebo` guided the
-sensor and rendering contract. `ros2` and `navigation` kept TF, time, Nav2
-actions, and command ownership explicit.
+The streaming endpoint is still a preview. It accepts text, images, and audio,
+but returns text, limits JPEG input to one frame per second, and supports only
+blocking function calls for robotics. Google's [streaming
+guide](https://ai.google.dev/gemini-api/docs/robotics-streaming) requires a
+physical action to finish and return its tool result before the model selects
+the next one.
 
-`integration` shaped the HTTP boundary between the cloud-facing agent and the
-robot. `foxglove` supplied the Lichtblick topic and layout patterns. `testing`
-kept fake, simulation, and hardware evidence distinct. The first application
-also produced the `gemini-robotics` skill; the later STACK-CHAN ER 2 companion
-added continuous microphone, tool-bound camera, half-duplex device, and optional
-hardware lessons to the same guidance.
+That makes the robot tool loop sequential. We can keep showing local progress
+and accepting camera frames while Nav2 is moving, but Gemini waits for the
+terminal result before issuing another action. This is a useful constraint for
+a small mobile robot, although it limits overlapping work and richer concurrent
+control.
 
-The important result is not that the robot can make a remark. It is that the
-model can look, choose a bounded action, wait for real completion, and look
-again without bypassing the software that owns the robot.
+Google's [Robotics Live API
+examples](https://github.com/google-gemini/robotics-samples/tree/main/live-api)
+show the same pattern on other embodiments. The [Spot snack-fetch
+example](https://github.com/google-gemini/robotics-samples/tree/main/live-api/spot)
+uses ER 2 to coordinate navigation and manipulation APIs rather than replacing
+Spot's controllers. We used that same division of responsibility with Nav2.
 
-Source, launchers, tests, deployment scripts, and the complete architecture
-brief live in the [Silly TurtleBot application](https://github.com/robium-ai/robium-apps/tree/main/silly-turtlebot).
+The under-an-hour build was the first fake-robot loop, not the complete system
+described here. Gazebo, the persistent browser session, camera delivery, and
+physical hardware checks came afterward. The physical components have passed
+separately; repeated end-to-end autonomous missions still require supervised
+testing.
+
+## The Robium skills behind the build
+
+`architect` kept the first version focused on one visible outcome.
+`gemini-robotics` captured the streaming session and function-response loop.
+`ros2`, `navigation`, and `integration` kept Gemini above the existing motion
+stack. `simulation`, `gazebo`, `foxglove`, and `testing` shaped the Docker
+simulation, browser view, and fake-to-hardware test ladder.
+
+The reusable result is not the robot's sense of humor. It is a compact pattern
+for combining high-level visual reasoning with robot software that already
+knows how to move.
+
+Source, tests, deployment scripts, and the architecture brief live in the
+[Silly TurtleBot application](https://github.com/robium-ai/robium-apps/tree/main/silly-turtlebot).
