@@ -26,7 +26,24 @@ run_with_gemini_key() {
     -- "$@"
 }
 
+# Robot profile for the simulation. "tb3" is the fast default: a TurtleBot 3
+# Waffle Pi with two render-based sensors instead of the TurtleBot 4's
+# thirteen. "tb4" keeps the full TurtleBot 4 stack for hardware-parity work.
+resolve_sim_launch() {
+  case "${1:-tb3}" in
+    tb3|lite) echo "lite.launch.py" ;;
+    tb4|turtlebot4|home) echo "home.launch.py" ;;
+    *) return 1 ;;
+  esac
+}
+
 start_simulation() {
+  sim_robot=${1:-tb3}
+  if ! SILLY_SIM_LAUNCH=$(resolve_sim_launch "$sim_robot"); then
+    echo "Unknown robot profile: $sim_robot (use tb3 or tb4)." >&2
+    return 2
+  fi
+  export SILLY_SIM_LAUNCH
   docker compose -f real/compose.yaml down --remove-orphans >/dev/null 2>&1 || true
   if ! docker image inspect silly-turtlebot-sim:latest >/dev/null 2>&1 \
     || ! docker image inspect silly-turtlebot-agent:latest >/dev/null 2>&1; then
@@ -35,7 +52,12 @@ start_simulation() {
   fi
   run_with_gemini_key \
     docker compose -f simulation/compose.yaml up -d --no-build sim agent
-  echo "MODE: SIMULATION (Gazebo + simulated TurtleBot 4)"
+  if [ "$SILLY_SIM_LAUNCH" = "lite.launch.py" ]; then
+    echo "MODE: SIMULATION (Gazebo + simulated TurtleBot 3 Waffle Pi, fast)"
+    echo "No Create 3 dock: dock/undock report unavailable in /v1/health."
+  else
+    echo "MODE: SIMULATION (Gazebo + simulated TurtleBot 4)"
+  fi
   echo "Lichtblick console: http://localhost:${SILLY_VIZ_PORT:-8091}"
   echo "Robot API: http://127.0.0.1:${SILLY_SIM_PORT:-8088}/v1/health"
 }
@@ -144,7 +166,8 @@ silly-turtlebot - guarded Gemini Robotics ER 2 agent for TurtleBot 4
   ./app build       create/update the locked uv environment
   ./app doctor      check local and optional live prerequisites
   ./app run          start the simulated robot and Lichtblick (safe default)
-  ./app run --sim    explicitly run the Gazebo simulation
+  ./app run --sim    explicitly run the Gazebo simulation (fast TurtleBot 3)
+  ./app run --sim --robot tb4   run the full TurtleBot 4 stack instead
   ./app run --real --robot-url URL [--camera-url URL] [--tts-url URL]
   ./app demo        run the deterministic fake sock mission
   ./app live ...    connect ER 2 Streaming to fake or ROS robot
@@ -152,7 +175,7 @@ silly-turtlebot - guarded Gemini Robotics ER 2 agent for TurtleBot 4
   ./app smoke       run twelve fast tests and the mock end-to-end smoke
   ./app sim-doctor  check Docker prerequisites for Gazebo
   ./app sim-build   build TurtleBot 4 + Gazebo Harmonic
-  ./app sim-up      start the simulator and browser mission backend
+  ./app sim-up [tb3|tb4]  start the simulator and browser mission backend
   ./app sim-smoke   verify Gazebo, Nav2, and the simulated OAK-D
   ./app sim-live ... connect Gemini to the running simulator
   ./app sim-logs    follow simulator logs
@@ -171,6 +194,7 @@ silly-turtlebot - guarded Gemini Robotics ER 2 agent for TurtleBot 4
 Live examples:
   ./app run
   ./app run --sim
+  ./app run --sim --robot tb4
   ./app run --real --robot-url http://192.168.0.50:8088 --camera-url http://192.168.0.51:8081
   ./app live --text "Patrol the living room and report any mess."
   ./app live --text "What do you see?" --image frame.jpg
@@ -185,11 +209,22 @@ USAGE
     case "$mode" in
       --sim|sim)
         [ "$#" -eq 0 ] || shift
-        if [ "$#" -ne 0 ]; then
-          echo "Simulation mode does not accept additional arguments." >&2
+        sim_robot=tb3
+        while [ "$#" -gt 0 ]; do
+          case "$1" in
+            --robot) sim_robot=${2:-}; shift 2 || true ;;
+            --robot=*) sim_robot=${1#--robot=}; shift ;;
+            *)
+              echo "Simulation mode accepts only --robot tb3|tb4." >&2
+              exit 2
+              ;;
+          esac
+        done
+        if [ -z "$sim_robot" ]; then
+          echo "--robot needs a value (tb3 or tb4)." >&2
           exit 2
         fi
-        start_simulation
+        start_simulation "$sim_robot"
         ;;
       --real|real)
         shift
@@ -269,7 +304,8 @@ USAGE
     docker compose -f simulation/compose.yaml build sim agent
     ;;
   sim-up)
-    start_simulation
+    shift
+    start_simulation "${1:-tb3}"
     ;;
   sim-smoke)
     SILLY_ROBOT_URL="${SILLY_ROBOT_URL:-http://127.0.0.1:${SILLY_SIM_PORT:-8088}}" \

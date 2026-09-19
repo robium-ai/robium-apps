@@ -9,7 +9,7 @@ from vla_pick_and_place.rollout import (
 from vla_pick_and_place.ui import stream_rollout
 
 
-def test_ui_generator_streams_frames_and_returns_measured_result():
+def test_ui_generator_streams_frames_and_returns_plain_status():
     fixture_dir = Path(__file__).parents[1] / "test-assets" / "fixtures"
     runner = RolloutRunner(FixtureEnvironment(fixture_dir), DeterministicFakePolicy())
 
@@ -18,10 +18,9 @@ def test_ui_generator_streams_frames_and_returns_measured_result():
     )
 
     assert len(updates) >= 2
-    assert updates[0][1]["phase"] == "starting"
+    assert updates[0][1] == "Getting the robot ready…"
     assert updates[1][0].getbbox() is not None
-    assert updates[-1][1]["success"] is True
-    assert updates[-1][1]["frame_count"] == 5
+    assert updates[-1][1] == "Done — the bowl is on the plate."
 
 
 def test_ui_duplicate_rollout_returns_readable_busy_state():
@@ -47,10 +46,9 @@ def test_ui_duplicate_rollout_returns_readable_busy_state():
     updates = list(
         stream_rollout(runner, "Official fixed state 1", "put the bowl on the plate")
     )
-    assert updates[-1][1] == {
-        "phase": "busy",
-        "message": "A rollout is already running. Wait for it to finish or cancel it, then retry.",
-    }
+    assert updates[-1][1] == (
+        "Another task is already running. Stop it or wait, then try again."
+    )
 
     runner.cancel()
     release.set()

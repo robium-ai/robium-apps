@@ -1,7 +1,7 @@
 # Quadruped locomotion
 
 Train a Unitree Go2 walking policy with reinforcement learning in NVIDIA Isaac
-Lab, compare recorded checkpoints, and optionally pilot a policy from a browser.
+Lab, then pilot it and switch between saved checkpoints from a browser.
 
 The simulation and training path requires a compatible Linux NVIDIA GPU host.
 The repository can still verify command construction, artifact integrity, and
@@ -12,13 +12,19 @@ the recorded experience on macOS or a CPU-only machine.
 - a small wrapper around Isaac Lab's registered Go2 velocity task and RSL-RL;
 - a real GPU smoke test that requires a newly written checkpoint;
 - content-addressed evidence tooling for run directories and tar archives;
-- five real rollout clips from the recovered 2026-07-27 training run; and
-- the browser-control prototype used during that run.
+- five real task clips from the recovered 2026-07-27 training run; and
+- the capability-scoped live browser controller used by the hosted demo.
 
 The recovered baseline contains 21 checkpoints, policy exports, task and agent
 configuration, a complete training log, and 15 rollout clips. Its manifest is
 [`evidence/manifest.json`](evidence/manifest.json). It remains historical
 evidence; a fresh current-stack run is still required to close issue #70.
+
+The public demo is the interactive path: it starts one temporary RunPod GPU,
+streams real Isaac Sim frames, accepts velocity or keyboard commands, resets the
+scene, and hot-swaps any checkpoint in the recovered run without restarting the
+Pod. The recorded clips remain supporting evidence in the guide rather than the
+primary demo experience.
 
 ## Free local checks
 

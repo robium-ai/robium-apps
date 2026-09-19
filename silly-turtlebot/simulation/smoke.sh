@@ -5,7 +5,7 @@ bridge_url="${SILLY_ROBOT_URL:-http://127.0.0.1:8088}"
 console_url="${SILLY_CONSOLE_URL:-http://127.0.0.1:8091}"
 deadline=$((SECONDS + ${SILLY_SIM_STARTUP_TIMEOUT:-240}))
 
-echo "Waiting for Gazebo, Nav2, and the simulated OAK-D at ${bridge_url} ..."
+echo "Waiting for Gazebo, Nav2, and the simulated camera at ${bridge_url} ..."
 while (( SECONDS < deadline )); do
   health="$(curl --silent --show-error --max-time 3 "${bridge_url}/v1/health" 2>/dev/null || true)"
   if HEALTH_JSON="$health" python3 - <<'PY'

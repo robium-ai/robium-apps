@@ -26,6 +26,7 @@ setup(
             "external_camera_relay = silly_turtlebot_ros.external_camera_relay:main",
             "gamepad_actions = silly_turtlebot_ros.gamepad_actions:main",
             "remote_joy = silly_turtlebot_ros.remote_joy:main",
+            "teleop_relay = silly_turtlebot_ros.teleop_relay:main",
         ]
     },
 )

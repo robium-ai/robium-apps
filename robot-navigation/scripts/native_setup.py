@@ -320,7 +320,7 @@ def install_viewer(paths: NativePaths) -> None:
         staging = paths.runtime / 'viewer.new'
         _remove_path(staging)
         shutil.copytree(source, staging, symlinks=True)
-        inject_layout(staging, paths.app_root / 'lichtblick' / 'nav-layout.json')
+        inject_layout(staging, paths.app_root / 'lichtblick' / 'layout.json')
         neutralize_publish_cleanup(staging)
         _remove_path(paths.viewer)
         os.replace(staging, paths.viewer)

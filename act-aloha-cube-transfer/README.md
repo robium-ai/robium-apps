@@ -1,23 +1,22 @@
 # ACT ALOHA Cube Transfer
 
 Run a published Action Chunking with Transformers policy on the simulated
-ALOHA bimanual cube-transfer task. Replay seeded layouts, change how much of
-each 100-action prediction is executed, and inspect the camera, joints,
-actions, reward stages, and policy calls in one browser.
+ALOHA bimanual cube-transfer task. Switch between manual joint control and the
+pretrained policy, randomize the layout, and inspect the camera and live status
+in one browser.
 
 No training, NVIDIA server, or physical ALOHA robot is required.
 
 **Stack:** LeRobot 0.6.1, the official ACT 80k checkpoint, gym-aloha, MuJoCo,
-Gradio 6, Rerun, uv, Python 3.12, native Apple MPS, and an optional CPU image.
+Gradio 6, uv, Python 3.12, native Apple MPS, and an optional CPU image.
 
 ## What you can do
 
 - Run the pinned official `lerobot/act_aloha_sim_transfer_cube_human` model.
-- Replay an exact cube placement or randomize the layout.
-- Compare 25, 50, and 100 executed actions from each 100-action prediction.
-- Watch the transfer directly while inspecting a scrub-able Rerun timeline.
-- See all fourteen joint-state and action dimensions beside reward stages.
-- Compare published evidence with a clearly separate local calibration.
+- Randomize the simulated cube layout from either control mode.
+- Execute the complete 100-action horizon from each policy prediction.
+- Manually pose all 14 named joints with compact left/right arm switching.
+- Watch the transfer directly in a focused MuJoCo camera view.
 
 The official LeRobot evaluation reports **83% success over 500 episodes**.
 Our five-seed Apple MPS calibration produced two successes, and seed 1001
@@ -46,32 +45,34 @@ terminal.
 
 ## Use the policy workspace
 
-### Choose an execution horizon
+### Switch control modes
 
 ACT observes the top camera and fourteen joint values, then predicts 100
-fourteen-dimensional actions in one forward pass. The execution horizon
-controls how many predicted actions are used before ACT observes again.
+fourteen-dimensional actions in one forward pass. Select **Manual control** to
+drive one arm at a time, or **Pretrained ACT model** to run the official model
+with its complete 100/100 action horizon. Only the active mode is shown.
 
-| Mode | Execute | Behavior |
-| --- | ---: | --- |
-| Responsive | 25/100 | Replans most often; more inference calls |
-| Balanced | 50/100 | Middle ground for exploration |
-| Reference | 100/100 | Executes the full published action chunk |
-
-This setting is not a training checkpoint and does not change the model.
-
-### Replay and randomize layouts
+### Randomize layouts
 
 Seed 1001 is the default because it completed a transfer twice during local
-calibration. Keep a seed fixed when comparing execution horizons. Randomize
-creates a new deterministic cube placement that can be replayed afterward.
+calibration. Randomize is always available and creates a new deterministic
+cube placement for either control mode.
 
-### Read the result
+### Watch the simulator
 
 The simulator exposes five task stages: reaching, right-gripper contact, cube
-lifted, left-gripper contact, and transfer complete. The direct frame is the
-primary live view. Rerun adds camera history, reward stage, policy-call and
-chunk indices, inference time, and all state/action traces.
+lifted, left-gripper contact, and transfer complete. The MuJoCo camera is the
+only visualization in the main panel; current progress and inference time stay
+in the compact Health field on the left.
+
+The independently scrolling left panel shows one arm's manual controls at a
+time, so the camera stays visible while scrolling through the sliders.
+The six arm targets use radians and follow the model's real joint limits;
+gripper values run from 0 (closed) to 1 (open). Manual mode starts live control
+automatically, advances physics at 50 Hz, and streams the top camera at 30 FPS.
+The command and frame queues retain only their newest item, so rapid movement
+drops stale work instead of building latency. Starting a policy rollout stops
+the manual simulator first.
 
 ## Commands
 
@@ -128,7 +129,7 @@ Pinned official checkpoint + upstream processor migration
         seeded ALOHA Transfer Cube environment
                             |
                             v
-       direct Gradio view + additive Rerun timeline
+             focused MuJoCo camera view
 ```
 
 MuJoCo's macOS windowing backend must be created on the main thread. Gradio
@@ -145,7 +146,7 @@ policy-selection and implementation walkthrough.
 | Command | Purpose |
 | --- | --- |
 | `make smoke` | Check launcher behavior, deterministic simulation, migration, real inference, and a real rollout |
-| `make demo-smoke` | Check complete inline frames and evidence labeling |
+| `make demo-smoke` | Check complete inline simulator frames |
 | `make demo-container-smoke` | Boot the CPU gateway, verify session guards/UI, and complete seed 1001 through the API |
 | `make calibrate` | Re-run the bounded five-seed local evidence set |
 

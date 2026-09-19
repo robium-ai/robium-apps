@@ -16,11 +16,14 @@ services:
       - "127.0.0.1:${SILLY_FOXGLOVE_PORT:-8765}:8765"
     volumes:
       - gazebo-fuel:/root/.gz/fuel
+    # SILLY_SIM_LAUNCH selects the robot profile: lite.launch.py is the fast
+    # TurtleBot 3 default, home.launch.py the full TurtleBot 4 stack. `./app
+    # run --sim --robot tb4` sets it; see the README's "Robot profiles".
     command:
       - ros2
       - launch
       - silly_turtlebot_sim
-      - home.launch.py
+      - ${SILLY_SIM_LAUNCH:-lite.launch.py}
 
   agent:
     build:

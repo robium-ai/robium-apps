@@ -8,13 +8,13 @@ one layout, no session logic.
 
 Why inject at request time instead of at build time: the Dockerfile's layout
 injection is a one-shot string replace that consumes
-`/*LICHTBLICK_SUITE_DEFAULT_LAYOUT_PLACEHOLDER*/`, so index.html can only ever
-carry one layout. It keeps the uninjected page as index.template.html, and this
-server fills that placeholder per request from --layout. Serving a second
-layout therefore costs one HTML file rather than a second copy of the bundle.
+`/*LICHTBLICK_SUITE_DEFAULT_LAYOUT_PLACEHOLDER*/`, so the baked index.html is
+frozen with whatever layout it was built with. It keeps the uninjected page as
+index.template.html, and this server fills that placeholder per request from
+--layout, which is what makes the layout file editable without a rebuild.
 
 The layout is read on every request rather than cached, so editing
-lichtblick/mapping-layout.json and reloading the tab is enough to see the
+lichtblick/layout.json and reloading the tab is enough to see the
 change — no rebuild, no restart. Panel arrangement is fiddly to get right and
 that loop is the difference between minutes and an image rebuild each time.
 
@@ -107,7 +107,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--port', type=int, default=8080)
     ap.add_argument('--root', default='/opt/lichtblick')
-    ap.add_argument('--layout', default='/opt/lichtblick/mapping-layout.json')
+    ap.add_argument('--layout', default='/opt/lichtblick/layout.json')
     ap.add_argument('--bridge-url', default='ws://localhost:8765',
                     help='foxglove_bridge URL as reached FROM THE BROWSER')
     args = ap.parse_args()

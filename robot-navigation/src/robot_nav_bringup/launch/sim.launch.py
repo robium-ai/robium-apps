@@ -58,6 +58,46 @@ def world_spec(bringup, tb3_gazebo, world_name):
     raise ValueError(f'unknown simulation world: {world_name}')
 
 
+def tune_physics(world):
+    """Coarsen the legacy AWS step size so the house holds real time.
+
+    The pinned asset ships Gazebo Classic's defaults: a 1 ms step at a
+    1000 Hz update rate. That is 1000 physics steps per simulated second,
+    and under this demo's CPU-only rendering the sim cannot afford them —
+    measured real-time factor was 0.52 with the camera on (8 CPUs, headless
+    ogre2/llvmpipe). A 4 ms step at 250 Hz measured 0.63 with the camera and
+    0.999 with it off, at 92% of one core. TurtleBot3 rolling on a flat floor
+    is well inside what a 4 ms step resolves; the Tugbot Warehouse asset ships
+    10 ms and drives correctly in this same app.
+
+    `real_time_factor` is the hard cap, and it is NOT simply step x rate the
+    way Gazebo Classic computed it: with the factor left at the asset's 1,
+    raising `real_time_update_rate` to 500 or disabling it entirely both
+    measured exactly RTF 1.000 at 250 iterations/s. The factor is also a
+    throttle rather than a target — gz paces itself with sleeps and does not
+    make them up after a render stall, so a cap of exactly 1.0 lands at 0.92.
+    Capping slightly above the goal is what actually delivers it: 1.15
+    measured 1.024, steady within +/-0.01 across six windows. The uncapped
+    ceiling here is 1.35, so the cap is doing the pacing rather than the
+    hardware, which is why the result is stable rather than drifting.
+
+    `<solver><iters>` is deliberately NOT set: modern Gazebo runs dartsim
+    (the `type='ode'` attribute is legacy decoration), and a measured
+    quick/10-iteration solver block moved RTF 0.631 -> 0.631, i.e. it is
+    ignored. Only the three values below actually bind.
+    """
+    physics = world.find('physics')
+    if physics is None:
+        raise RuntimeError('AWS Small House asset has no <physics> element')
+    for tag, value in (('max_step_size', '0.004'),
+                       ('real_time_update_rate', '288'),
+                       ('real_time_factor', '1.15')):
+        element = physics.find(tag)
+        if element is None:
+            element = ET.SubElement(physics, tag)
+        element.text = value
+
+
 def prepare_furnished_house_world(source_world):
     """Add the modern Gazebo systems missing from the legacy AWS world."""
     source_world = Path(source_world)
@@ -98,6 +138,8 @@ def prepare_furnished_house_world(source_world):
         corrected = contents.replace('../../../../photos/', '../../../photos/')
         if corrected != contents:
             mesh.write_text(corrected)
+
+    tune_physics(world)
 
     existing_plugins = {
         plugin.get('name') for plugin in world.findall('plugin')

@@ -1,8 +1,8 @@
 schema_version: "1"
 id: quadruped-locomotion
 name: Quadruped locomotion (Go2 + Isaac Lab RL)
-summary: Train a Unitree Go2 walking policy in Isaac Lab, compare real checkpoints, and optionally pilot it in a private browser session.
-version: 1.1.0
+summary: Drive a Unitree Go2 in live Isaac Sim and switch between trained checkpoints to compare how its gait changes.
+version: 1.2.0
 status: experimental
 license: MIT
 tags: [reinforcement-learning, isaac-lab, isaac-sim, go2, gpu-cloud]
@@ -39,8 +39,38 @@ requirements:
 
 demo:
   default_mode: play
-  hosted: false            # recorded explorer is ready; paid live capacity is not enabled
-  recorded_id: quadruped-locomotion
+  hosted: true
+  orchestrator:
+    provider: runpod
+    demo_id: quadruped-locomotion
+    title: Unitree Go2 · Isaac Lab locomotion
+    image: us-central1-docker.pkg.dev/robium-prod/robium/quadruped-locomotion@sha256:7daec73ea19d424f26005ae36304fbddbe0924d57b3ad306b974adbbcaa65f88
+    command: [/opt/robium/quadruped-locomotion/containers/live/entrypoint.sh]
+    gateway_port: 8888
+    ready_log: LIVE_SERVER_UP
+    max_instances: 1
+    session_seconds: 600
+    boot_timeout_seconds: 3600
+    ready_seconds: 600
+    absolute_lifetime_seconds: 5400
+    gpu_allowlist: [NVIDIA RTX PRO 4500 Blackwell Server Edition]
+    env:
+      DEMO_STARTUP_MODE: live
+      ACCEPT_EULA: Y
+      PRIVACY_CONSENT: Y
+      GO2_DATA_ROOT: /models/quadruped
+      GO2_TASK: Isaac-Velocity-Flat-Unitree-Go2-v0
+      GO2_CHECKPOINT_ITERATION: 1999
+    runpod:
+      template_id: cxbqh0yym5
+      registry_auth_id: cmt6r3i1c004cq5uqoj4666yr
+      data_center_ids: [US-KS-2]
+      network_volume_id: 68s0bxbv7p
+      volume_mount_path: /models
+      ports: [8888/http, 22/tcp]
+      container_disk_in_gb: 80
+      max_hourly_rate_usd: 0.72
+      daily_budget_usd: 1.08
   estimated_startup_seconds: 300
 
 artifacts:

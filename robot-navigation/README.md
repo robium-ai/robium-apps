@@ -133,6 +133,91 @@ and the Dashboard extension, so no manual extension installation is needed.
 See [docs/architecture-brief.md](docs/architecture-brief.md) for the full
 architecture and design decisions.
 
+### Simulation speed
+
+Everything renders on the CPU — there is no GPU in this app, so Gazebo's
+`ogre2` renderer falls back to llvmpipe and every sensor frame is rasterized
+in software. The demo targets real time, because real-time factor is what
+makes teleop feel right: at RTF 0.25 a TurtleBot commanded to 0.2 m/s appears
+to crawl at 5 cm/s. Four settings hold it there, and each is worth
+understanding before changing it:
+
+- **Physics: a 4 ms step at 288 Hz, capped at `real_time_factor` 1.15**
+  (`tune_physics()` in `sim.launch.py`). The pinned AWS house asset ships
+  Gazebo Classic's 1 ms / 1000 Hz defaults, which this demo cannot afford.
+  The 1.15 cap is not a typo — see below.
+- **Camera at 4 Hz** (patched into the Waffle Pi SDF at image build time).
+  Camera *rate* is a top cost; camera *resolution* is nearly free, because
+  the cost is scene traversal rather than rasterization (320x240 measured
+  0.521 against 640x480 at 0.522).
+- **Lidar at 5 Hz.** `gpu_lidar` renders the scene exactly as the camera
+  does, and halving it buys more than slowing the camera further. 5 Hz is a
+  floor with a reason: the Nav2 local costmap updates at 5 Hz and
+  slam_toolbox's `minimum_time_interval` is 0.5 s, so nothing downstream
+  consumes scans faster.
+- **The browser reads the camera as JPEG**, not raw. The Lichtblick layouts
+  name `/camera/image_raw/compressed`, which `ros_gz_image`'s bridge
+  advertises for free through `image_transport`. Raw RGB8 is 922 KB per
+  frame; compressed measured 52 KB.
+
+**Why the cap is 1.15 and not 1.0.** `real_time_factor` is a throttle, not a
+target. Gazebo paces itself with sleeps and does not make them up after a
+render stall, so a cap of exactly 1.0 settles at 0.92. Capping just above the
+goal is what delivers it. It is also the only knob that binds: with the
+factor left at the asset's 1, raising `real_time_update_rate` to 500 or
+disabling it entirely both measured exactly RTF 1.000 — modern Gazebo does
+not derive the factor from step x rate the way Classic did.
+
+Measured on 8 CPUs in the House world with a live camera subscriber:
+**RTF 1.02, steady within +/-0.01 across six windows, 269% CPU, 229 KB/s of
+camera** — against 0.52, 377%, and roughly 4.7 MB/s before this work. On the
+wire that is 5.8 Hz of `/scan`, 4.1 Hz of camera, and 47 Hz of IMU. Commanded
+0.2 m/s tracked at 0.199 m/s with 0.0004 m/s velocity jitter, so the coarser
+step costs no drive fidelity.
+
+The uncapped ceiling in this configuration is 1.35, so the cap is doing the
+pacing rather than the hardware — which is why the result is stable rather
+than drifting. Headroom is what that spare 0.35 buys: slower hosts land
+lower, and a Cloud Run vCPU is materially slower than a development Mac.
+
+Two knobs that look promising and are not: Ogre 1.x (`render_engine` `ogre`)
+is ~30% cheaper in principle but requires an X display and throws
+`Couldn't open X display` under `--headless-rendering`, so only `ogre2` works
+here. And decorative-mesh collision stripping — all 66 house models use full
+trimesh collisions — is worth 11% at a 1 ms step and nothing at all once the
+step is 4 ms.
+
+`foxglove/robot-navigation-layout.json` deliberately stays on the raw topic.
+It is imported into an external viewer over `ws://localhost:8765`, where
+bandwidth is local and free, and raw works in both the Docker and native
+Pixi/RoboStack environments — the compressed topic exists only where
+`image_transport_plugins` is installed.
+
+### Layout changes reach an existing browser
+
+Lichtblick persists the layout in IndexedDB, so the layout bundled into
+`index.html` is consulted only when the browser has none of its own. Without
+help, a shipped layout change stays invisible to anyone who has opened the
+page before — the old view keeps appearing until they clear site data. (HTTP
+caching is not the culprit; the gateway already sends `Cache-Control:
+no-cache`.)
+
+`scripts/bundle_default_extension.py` injects a bootstrap that writes the
+bundled layout straight into that store, guarded by a revision in
+`localStorage`. The revision is a hash of the layout the page actually
+carries, computed in the browser rather than baked in at build time, because
+`scripts/viz_server.py` re-reads its layout file on every request so it can be
+edited live — a build-time hash would go stale immediately.
+
+The result is the rule you want: **the page starts from the layout file, and
+only re-installs when that file changes.** A layout a user rearranged and
+saved themselves survives every reload until a different one is shipped.
+
+The IndexedDB database name, object store, and key path are tied to the
+Lichtblick image digest pinned in `docker/Dockerfile`. Re-verify them whenever
+that digest moves; the bootstrap fails soft (a `console.warn`, and Lichtblick
+still loads) rather than breaking the page.
+
 ## Reuse the Dashboard
 
 The Robium Dashboard is a configurable Lichtblick extension shared across

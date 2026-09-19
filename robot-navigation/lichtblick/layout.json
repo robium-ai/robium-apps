@@ -33,7 +33,7 @@
     },
     "Image!robotcam": {
       "imageMode": {
-        "imageTopic": "/camera/image_raw"
+        "imageTopic": "/camera/image_raw/compressed"
       },
       "cameraState": {
         "distance": 20,

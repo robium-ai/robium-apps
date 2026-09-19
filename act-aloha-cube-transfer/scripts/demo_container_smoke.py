@@ -57,11 +57,10 @@ def main() -> None:
             base,
             "POST",
             "/ui/gradio_api/call/run_episode",
-            {"data": [1001, 100]},
+            {"data": [1001]},
         )
         assert code == 200
         final = None
-        final_result = None
         with urllib.request.urlopen(
             base + "/ui/gradio_api/call/run_episode/" + submitted["event_id"],
             timeout=240,
@@ -71,13 +70,11 @@ def main() -> None:
                 if not line.startswith("data:") or line == "data: null":
                     continue
                 data = json.loads(line[5:])
-                if isinstance(data, list) and len(data) == 4:
+                if isinstance(data, list) and len(data) == 2:
                     final = data[1]
-                    final_result = data[3]
-                    if "<strong>Transfer complete</strong>" in final_result:
+                    if final.startswith("transfer complete"):
                         break
         assert final and final.startswith("transfer complete")
-        assert final_result and "<strong>Transfer complete</strong>" in final_result
         runtime_logs = subprocess.check_output(
             ["docker", "logs", NAME], text=True, stderr=subprocess.STDOUT
         )

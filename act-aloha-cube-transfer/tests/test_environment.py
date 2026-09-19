@@ -2,7 +2,16 @@ import hashlib
 
 import numpy as np
 
-from act_aloha_cube_transfer.environment import make_env, validate_observation
+import pytest
+
+from act_aloha_cube_transfer.environment import (
+    JOINT_CONTROLS,
+    make_env,
+    render_top_frame,
+    step_manual_physics,
+    validate_joint_targets,
+    validate_observation,
+)
 
 
 def test_aloha_environment_contract_and_seeded_state():
@@ -26,5 +35,36 @@ def test_aloha_environment_contract_and_seeded_state():
         assert not terminated
         assert not truncated
         assert "is_success" in info
+    finally:
+        env.close()
+
+
+def test_manual_joint_controls_name_both_arms_and_validate_ranges():
+    assert len(JOINT_CONTROLS) == 14
+    assert [control[0] for control in JOINT_CONTROLS[:2]] == ["Left waist", "Left shoulder"]
+    assert [control[0] for control in JOINT_CONTROLS[-2:]] == ["Right wrist rotate", "Right gripper"]
+
+    defaults = [control[3] for control in JOINT_CONTROLS]
+    assert np.array_equal(validate_joint_targets(defaults), np.asarray(defaults, dtype=np.float32))
+
+    invalid = defaults.copy()
+    invalid[0] = JOINT_CONTROLS[0][2] + 0.1
+    with pytest.raises(ValueError, match="Left waist"):
+        validate_joint_targets(invalid)
+
+
+def test_manual_physics_moves_named_joint_without_observation_rendering():
+    targets = [control[3] for control in JOINT_CONTROLS]
+    targets[0] = 0.5
+    env = make_env()
+    try:
+        env.reset(seed=1001)
+        for _ in range(10):
+            realized = step_manual_physics(env, targets)
+        frame = render_top_frame(env)
+        assert frame.shape == (480, 640, 3)
+        assert frame.dtype == np.uint8
+        assert realized.shape == (14,)
+        assert realized[0] == pytest.approx(0.5, abs=0.04)
     finally:
         env.close()

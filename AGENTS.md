@@ -7,6 +7,18 @@ robotics examples built with the [robium](https://github.com/robium-ai/robium)
 plugin. Apps are developed, validated, and published here. There is no second
 applications repository and no promotion-copy workflow.
 
+## Sibling repositories
+
+Robium is three repositories checked out as siblings. Change things in the
+repository that owns them and cross-reference rather than duplicate.
+
+- `../robium` owns the skills plugin, the `robium-ai` CLI, and the learning
+  engine. Learnings from work here go there as `learnings/YYYY-MM-DD-<app>.md`.
+- `../robium-website` owns the robium.ai site and the live-demo orchestrator.
+  It reads this repository by relative path at build time (overridable with
+  `ROBIUM_APPS_DIR`), so app metadata and `REGISTRY.md` cards feed the site
+  directly — keep them accurate rather than editing the site to compensate.
+
 ## Application rules
 
 1. One app lives in one top-level `<name>/` directory with its own environment,

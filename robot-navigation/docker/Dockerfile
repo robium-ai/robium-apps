@@ -60,30 +60,62 @@ RUN . /opt/ros/${ROS_DISTRO}/setup.sh \
  && colcon build --symlink-install \
  && rm -rf /var/lib/apt/lists/*
 
-# Make Waffle Pi's upstream pinhole camera affordable under software rendering
-# by reducing only its frame rate. Preserve its optics, noise, and frame IDs.
+# Make Waffle Pi's upstream sensors affordable under software rendering by
+# reducing only their rates. Preserve optics, samples, noise, and frame IDs.
+#
+# Frame RATE is the only lever that works here. Every camera frame is a full
+# ogre2 render pass over the ~100-model house on llvmpipe, and the cost is
+# scene traversal rather than rasterization: dropping the image to 320x240
+# measured RTF 0.521 against 0.522 at 640x480 — no change at all. Rate does
+# bind. With the 4 ms physics step from sim.launch.py's tune_physics(),
+# measured RTF was 0.63 at 10 Hz, 0.79 at 4 Hz with a live subscriber, and
+# 0.999 with the camera off entirely (8 CPUs). 4 Hz keeps a live camera panel
+# in the hosted demo while leaving the simulator near real time, which is
+# what a teleop demo needs; the browser sees JPEG frames, so the low rate
+# costs no fidelity beyond motion smoothness in that one panel.
+#
+# The lidar is the OTHER render-based sensor — gpu_lidar renders the scene
+# exactly as the camera does — and halving it buys more headroom than
+# slowing the camera further: uncapped RTF measured 1.15 with a 10 Hz lidar,
+# 1.28 with the camera at 3 Hz instead, and 1.35 with the lidar at 5 Hz.
+# 5 Hz is a principled floor rather than a shaved number: the Nav2 local
+# costmap in config/nav2_params.yaml updates at 5 Hz and slam_toolbox's
+# minimum_time_interval is 0.5 s, so nothing downstream consumes scans
+# faster. The IMU is not render-based and costs nothing here; 200 Hz is
+# simply 200 messages/second across the ros_gz bridge and the browser
+# WebSocket for a panel nothing plots.
 RUN python3 - <<'PYEOF'
 import xml.etree.ElementTree as ET
 from pathlib import Path
 sdf = Path('/opt/ros/jazzy/share/turtlebot3_gazebo/models/'
            'turtlebot3_waffle_pi/model.sdf')
 tree = ET.parse(sdf)
-cameras = [sensor for sensor in tree.getroot().findall('.//sensor')
-           if sensor.get('name') == 'camera' and sensor.get('type') == 'camera']
-assert len(cameras) == 1, f'expected one Waffle Pi pinhole camera, found {len(cameras)}'
-rate = cameras[0].find('update_rate')
-assert rate is not None and rate.text == '30', 'upstream Waffle Pi camera rate changed; re-verify'
-rate.text = '10'
+sensors = tree.getroot().findall('.//sensor')
+
+
+def retune(name, kind, upstream, wanted):
+    found = [s for s in sensors
+             if s.get('name') == name and s.get('type') == kind]
+    assert len(found) == 1, f'expected one {kind} named {name}, found {len(found)}'
+    rate = found[0].find('update_rate')
+    assert rate is not None and rate.text == upstream, (
+        f'upstream Waffle Pi {name} rate is {rate.text if rate is not None else None},'
+        f' expected {upstream}; re-verify')
+    rate.text = wanted
+    print(f'turtlebot3_waffle_pi {name}: {upstream}Hz -> {wanted}Hz')
+
+
+retune('camera', 'camera', '30', '4')
+retune('hls_lfcd_lds', 'gpu_lidar', '10', '5')
+retune('tb3_imu', 'imu', '200', '50')
 tree.write(sdf, encoding='unicode')
-print('turtlebot3_waffle_pi camera: pinhole 30Hz -> 10Hz')
 PYEOF
 
 COPY robot-navigation/docker/entrypoint.sh /entrypoint.sh
 
 # Bundled viewer: the demo gateway serves /opt/lichtblick on non-API GETs.
 COPY --from=lichtblick /src /opt/lichtblick
-COPY robot-navigation/lichtblick/nav-layout.json /opt/lichtblick/nav-layout.json
-COPY robot-navigation/lichtblick/mapping-layout.json /opt/lichtblick/mapping-layout.json
+COPY robot-navigation/lichtblick/layout.json /opt/lichtblick/layout.json
 COPY --from=dashboard /extension/robium.dashboard-0.9.0.foxe /opt/lichtblick/robium/dashboard.foxe
 COPY shared/lichtblick-dashboard/package.json /opt/lichtblick/robium/package.json
 COPY shared/lichtblick-dashboard/README.md /opt/lichtblick/robium/README.md
@@ -99,13 +131,14 @@ token = '/*LICHTBLICK_SUITE_DEFAULT_LAYOUT_PLACEHOLDER*/'
 assert token in html, 'Lichtblick default-layout placeholder missing: upstream image changed, re-verify'
 
 # Keep the UNINJECTED page as a template. Injection is a one-shot string
-# replace that consumes the placeholder, so baking nav-layout into index.html
-# would leave no way to serve a different layout later. The mapping dashboard
-# needs a different one, and scripts/viz_server.py injects it per request from
-# this template. Cheap to keep: one HTML file, not a second copy of the bundle.
+# replace that consumes the placeholder, so once index.html carries a layout
+# it can never carry a different one. scripts/viz_server.py fills this
+# template per request instead, which is what makes lichtblick/layout.json
+# editable without an image rebuild. Cheap to keep: one HTML file, not a
+# second copy of the bundle.
 Path('/opt/lichtblick/index.template.html').write_text(html)
 
-layout = Path('/opt/lichtblick/nav-layout.json').read_text()
+layout = Path('/opt/lichtblick/layout.json').read_text()
 idx.write_text(html.replace(token, layout))
 print('lichtblick default layout injected (template preserved)')
 PYEOF

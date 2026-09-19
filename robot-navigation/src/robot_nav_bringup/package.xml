@@ -19,6 +19,13 @@
   <exec_depend>foxglove_bridge</exec_depend>
   <exec_depend>ros_gz_sim</exec_depend>
   <exec_depend>ros_gz_bridge</exec_depend>
+  <!-- The camera reaches the browser as JPEG: ros_gz_image's bridge uses an
+       image_transport publisher, which advertises every INSTALLED transport
+       and encodes only while something subscribes. So the compressed topic
+       exists for free and the Lichtblick layouts simply name it — but only
+       while this package is present. Without it the topic silently
+       disappears and the Image panel goes blank. -->
+  <exec_depend>image_transport_plugins</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>std_srvs</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>

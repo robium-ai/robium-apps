@@ -177,6 +177,226 @@ and are sent directly to Gemini during `sim-live`. The simulator acknowledges
 the `speak` tool without playing audio; audible TTS is validated on the host or
 physical robot.
 
+### Robot profiles: fast simulation, TurtleBot 4 parity
+
+The simulation runs one of two robots. They share the world, the saved map, the
+waypoints, the semantic bridge, the Gemini agent, and the Lichtblick layout —
+only the robot differs.
+
+```bash
+./app run                     # TurtleBot 3 Waffle Pi, fast (default)
+./app run --sim --robot tb4   # TurtleBot 4, hardware parity
+```
+
+**Why a second robot exists.** Simulation cost here is almost entirely sensor
+rendering, and the two robots are not close. TurtleBot 4 carries **thirteen**
+render-based sensors: one rplidar, seven IR-intensity and four cliff sensors
+(all `gpu_lidar`), plus an OAK-D `rgbd_camera` that renders colour and depth.
+TurtleBot 3 Waffle Pi carries **two** — one lidar and one pinhole camera. Under
+CPU-only rendering that ratio is the whole budget.
+
+The lite profile spends the difference on the camera, which is what the agent
+actually looks through: **4 Hz against the TurtleBot 4 profile's 2 Hz**, with
+the lidar at 5 Hz in both to match the Nav2 local costmap.
+
+As shipped, measured from a cold `./app run` on 10 CPUs with Nav2 active and
+the robot idle:
+
+| Profile | Camera | RTF | CPU |
+| --- | --- | --- | --- |
+| TurtleBot 4 | 2 Hz (320x240) | 0.950 | 584% |
+| **TurtleBot 3 (lite)** | **4 Hz (640x480)** | **0.951** | **418%** |
+
+So the lite robot runs the same real time on **28% less CPU while rendering its
+camera twice as often**. That headroom is the point: it is what absorbs a slower
+host, a heavier world, or a busier developer machine before the demo starts
+crawling.
+
+The rate sweep behind the shipped choice, all at the same 4 ms step:
+
+| Robot | Camera | RTF |
+| --- | --- | --- |
+| TurtleBot 3 | 2 Hz (640x480) | 1.065 |
+| TurtleBot 3 | 4 Hz (640x480) | 0.956 |
+| TurtleBot 3 | 10 Hz (640x480) | 0.595 |
+| TurtleBot 3 | 10 Hz (320x240) | 0.647 |
+
+The last two rows are why the camera keeps its upstream 640x480: cutting the
+pixel count by four bought 5%, because a render pass costs scene traversal over
+the ~100-model house rather than rasterization. Rate is the lever on both
+robots, exactly as it is for the TurtleBot 4.
+
+**What the lite robot gives up.** It has no Create 3 base, so there is no
+charging dock. `dock` and `undock` report unavailable through `/v1/health`, and
+`is_docked` is absent. Nothing needed to change for that: the bridge already
+discovers capabilities from live action servers rather than from a configured
+robot name, so the health endpoint and the mission panel's status pill follow
+automatically.
+
+Distance motion is kept rather than dropped. `move_distance` and `move_forward`
+prefer the Create 3 `DriveDistance` action whenever the robot provides it, and
+otherwise fall back to Nav2's own `DriveOnHeading` and `BackUp` behaviours,
+which take the same unsigned distance along the robot's heading. On the lite
+profile that path is the one that runs — and it works, where TurtleBot 4's
+`DriveDistance` currently does not (see *Safety and current limits*).
+
+Everything else Gemini can ask for is unchanged: named navigation, `look_around`,
+`rotate_by`, bounded `move_for_duration`, `speak`, and `stop`.
+
+**Keep using `--robot tb4`** when the question is about the real robot: Create 3
+behaviours, dock and undock, hazard and cliff topics, or anything whose answer
+has to transfer to hardware. The lite profile is for iterating on the agent.
+
+Both robots spawn at the same world pose the shared map was made from, so their
+map-frame pose is the origin and `config/waypoints.yaml` addresses the same
+`dock`, `kitchen` and `living_room` in either profile. (`dock` remains a
+navigable named location on the lite robot; only the docking *action* is gone.)
+
+Two implementation notes. Nav2 is composed from its individual servers rather
+than through `nav2_bringup`'s launch files, matching `robot-navigation`: those
+expose no `bond_timeout` control, and this params file's `$(find-pkg-share ...)`
+substitutions need `ParameterFile(allow_substs=True)` to expand at all. And the
+lifecycle manager is held until every managed server answers on its
+`change_state` service — it begins configuring about a second after it starts
+and does not retry a call that times out, so constructing ten servers while
+Gazebo is still settling the furnished world would otherwise leave the stack
+half-configured and every goal rejected.
+
+The world repair and physics tuning both profiles need live in
+`silly_turtlebot_sim/world.py`, imported by both launch files. The one
+thing that genuinely differs is the system plugin list — TurtleBot 4's Create 3
+description carries its own model-scoped Sensors system and the world must not
+add a second, while TurtleBot 3 has none and the world must supply it.
+
+### Manual driving from the console
+
+The console's **Teleop** panel (arrows, and the keyboard when the panel has
+focus) drives the robot directly on `/cmd_vel`, bypassing Gemini but staying
+inside the panel's bounded 0.15 m/s and 0.4 rad/s. Two simulator-only problems
+sit behind that, and both fail silently -- no error anywhere, the robot just
+does not move:
+
+- **The message type differs by ROS distribution.** The panel publishes
+  `geometry_msgs/Twist`, which is what the physical robot's Humble stack
+  subscribes to. The simulator runs Jazzy, where `/cmd_vel` carries
+  `geometry_msgs/TwistStamped`. ROS 2 allows both types to coexist on one topic
+  name, so the panel publishes happily into a topic nothing is listening to on
+  that type.
+- **Gazebo latches the last velocity.** Its DiffDrive system has no command
+  timeout, and the panel sends nothing when a button is released. So the moment
+  manual driving starts working, the first press would drive the robot away and
+  nothing would ever stop it.
+
+`silly_turtlebot_ros`'s `teleop_relay` fixes both, and runs in both profiles. It
+converts the panel's `Twist` into the `TwistStamped` the simulated base expects,
+and sends a single stop when the command stream goes quiet — the watchdog real
+hardware provides for free. Converting here rather than forking the layout is
+what keeps one console working against both the simulator and the real robot.
+
+It runs as **two processes** (`teleop_capture` and `teleop_inject`) for a reason
+worth knowing before anyone tries to simplify it: a single node may not
+subscribe to `Twist` and publish `TwistStamped` under one topic name. rmw
+rejects whichever endpoint is created second — in either order — as an
+incompatible type on an existing topic. Separate processes each keep their own
+view, which is exactly how the panel and the robot already coexist on
+`/cmd_vel`. The stages are:
+
+```
+capture:  Twist        /cmd_vel        ->  TwistStamped  /cmd_vel_manual
+inject:   TwistStamped /cmd_vel_manual ->  TwistStamped  /cmd_vel
+```
+
+`inject` owns the idle stop, and emits one stop per burst rather than a
+continuous stream, so it never competes with Nav2 for the topic: Nav2's commands
+never reach `/cmd_vel_manual`, so nothing here reacts while Nav2 is driving.
+
+Measured on the lite profile: held, the robot tracks the commanded 0.150 m/s
+exactly; four seconds after release it reads 0.000 m/s and its odometry stops
+advancing.
+
+### Simulation speed
+
+Everything renders on the CPU: there is no GPU in this app, so Gazebo's `ogre2`
+renderer falls back to llvmpipe and every sensor frame is rasterized in
+software. TurtleBot 4 is an expensive robot to simulate that way. It carries
+thirteen render-based sensors — the rplidar, seven IR-intensity sensors and
+four cliff sensors are all `gpu_lidar`, and the OAK-D is an `rgbd_camera` that
+renders colour and depth — and upstream they run at 62 Hz and 30 Hz against the
+pinned AWS house's Gazebo Classic 1 ms physics step.
+
+Measured, that configuration ran at **real-time factor 0.079**: the simulation
+was roughly thirteen times slower than the wall clock, so a robot commanded to
+0.3 m/s appeared to crawl at 2 cm/s and a short hallway trip cost minutes of a
+viewer's patience. Two changes fix it:
+
+- **Physics: a 4 ms step at 250 Hz, capped at `real_time_factor` 1.15**
+  (`_tune_physics()` in `simulation/.../home.launch.py`).
+- **Sensor rates: OAK-D 2 Hz, rplidar 5 Hz, cliff and IR intensity 5 Hz**
+  (patched into the upstream xacro at image build time). Optics, samples,
+  ranges, noise, and frame IDs are untouched, so topic names, message shapes,
+  Nav2's costmaps and AMCL's likelihood field all see exactly what they saw
+  before.
+
+Together these measure **RTF 0.996 and 0.977 over two 60 s windows of a fresh
+`./app run`** — effectively real time, at 249 physics iterations per real
+second and 541% CPU with Nav2 active on 10 CPUs. That is about 12x faster than
+upstream. On the wire it is 4.0 Hz of `/scan`, 1.8 Hz of camera, and 79 Hz of
+`/odom`.
+
+**Rate is the only lever that matters.** A render pass costs scene traversal
+rather than rasterization, so the OAK-D's 320x240 image is already small enough
+that shrinking it buys nothing. What the rate is worth, measured at the 4 ms
+step:
+
+| OAK-D | IR/cliff | RTF |
+| --- | --- | --- |
+| 30 Hz | 62 Hz | 0.079 (upstream, with the 62 Hz lidar and 1 ms step) |
+| 4 Hz | 10 Hz | 0.659 |
+| 4 Hz | 2 Hz | 0.742 |
+| 2 Hz | 10 Hz | 0.764 |
+| **2 Hz** | **5 Hz** | **0.852** (shipped) |
+| 1 Hz | 2 Hz | 1.038 |
+
+Those rows are a comparative sweep taken on one repeatedly restarted container,
+so read them against each other rather than as absolutes — the shipped
+configuration measures 0.98–1.00 from a clean start.
+
+The camera dominates: holding IR/cliff at 2 Hz, moving the OAK-D alone from
+4 Hz to 1 Hz was worth 0.742 → 1.038. The shipped configuration deliberately
+stops short of that last step, because a 1 FPS panel reads as a stalled camera
+to whoever is watching the demo. 2 Hz is still twice what the agent consumes —
+it samples fresh frames at no more than 1 FPS — so nothing the model sees
+changes.
+
+Each rate has a downstream reason rather than being a shaved number. The
+rplidar's 5 Hz is the rate Nav2's local costmap updates at (the global costmap
+runs at 1 Hz), so nothing consumes scans faster; AMCL updates on movement, not
+on a clock. The cliff and IR sensors share that 5 Hz: the simulated house has
+no cliffs at all, and the 360° lidar already sees everything their 10° cones
+do. They stay live rather than being deleted so the hazard topics the Create 3
+bridges and Nav2 expect keep publishing.
+
+**Why the cap is 1.15 and not 1.0.** `real_time_factor` is a throttle, not a
+target — Gazebo paces itself with sleeps and does not make them up after a
+render stall, so a cap of exactly 1.0 settles below it. Leaving the cap clear
+of where this demo actually runs means rendering rather than the throttle sets
+the pace, and a faster host is free to use its headroom. The update rate is not
+an independent lever: modern Gazebo does not derive the factor from step ×
+rate the way Classic did, so 250 Hz is simply the 4 ms step's partner.
+
+The sensor-rate patch sits after the colcon build in `simulation/Dockerfile` on
+purpose: re-tuning a rate is then a seconds-long rebuild rather than a full
+workspace and asset rebuild.
+
+The simulator also republishes its OAK-D JPEG onto
+`/orin/oakd/preview/image_raw/compressed`. The bundled Lichtblick layout is
+shared with the physical console, whose Image panel names the topic the
+robot-side Orin relay publishes; the simulator has no Orin, so without that
+republisher the browser's camera panel reads "Image topic does not exist" even
+though the OAK-D is running. The model-facing contract is untouched — the
+semantic bridge still reads `/oakd/rgb/preview/image_raw/compressed`, exactly as
+the physical robot does.
+
 ## Test ladder
 
 Keep the automated suite small and use the simulator for behavior:
@@ -348,6 +568,18 @@ dock/undock, speech, and stop. It never receives raw
 velocity, motor, map-coordinate, or arbitrary-pose tools. The ROS bridge also
 refuses concurrent motions. `Stop robot` cancels both bridge-owned motions and
 any active Nav2 pose goal published directly from Lichtblick.
+
+On the TurtleBot 4 simulation profile, `move_distance` (the Create 3
+`DriveDistance` action) does not move the robot: `motion_control` accepts the goal and reports it started, but
+the base creeps a few centimetres and the bridge cancels at its timeout. This is
+independent of the simulation-speed work — it reproduces identically with the
+physics step set back to the original 1 ms, in open space with no hazard
+detections, while a direct `/cmd_vel` command at the same 0.2 m/s drives
+correctly and Nav2 navigation succeeds. Named navigation, spins, dock/undock and
+the Gemini mission path are unaffected; prefer them in simulation until this is
+diagnosed. The lite profile is not affected at all — with no Create 3 server to
+find, the bridge takes its Nav2 `DriveOnHeading`/`BackUp` path instead, which
+drives correctly.
 
 Object approach and person-facing are deliberately rejected on the real bridge
 until RGB-depth grounding is implemented. The fake mission exercises those

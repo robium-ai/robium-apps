@@ -14,9 +14,9 @@ Gradio, uv, Python 3.10, local fixtures, and a RunPod NVIDIA GPU runtime.
 
 ## What you can do
 
-- Replay three fixed LIBERO starting states with the canonical instruction.
+- Choose one of three fixed LIBERO initial states with the canonical instruction.
 - Edit the instruction for clearly labeled qualitative experiments.
-- Watch the complete autonomous rollout and LIBERO success signal.
+- Watch the complete autonomous task and its plain-language status.
 - Watch all 20 attempts and download the files used to make them.
 - Exercise prompt, state, cancellation, evidence, and private-session behavior
   locally without allocating a GPU.
@@ -50,14 +50,18 @@ evidence validation, gateway, and Gradio UI as the hosted path.
 
 ## Use the policy workspace
 
-Choose state 0, 1, or 2, then run the canonical instruction. Keeping the state
-fixed makes prompt experiments comparable. Edited prompts are labeled
-experimental and do not inherit the published 20/20 result.
+Choose an initial state, edit the instruction if you want, then select **Run
+task**. Keeping the state fixed makes instruction experiments comparable.
+Edited instructions are experimental and do not inherit the published 20/20
+result.
 
-Each run is a complete autonomous rollout. There is no manual stepping, scene
+Each run is one complete autonomous task. There is no manual stepping, scene
 editing, or scripted grasp controller. Frames come from the simulator, and the
-result comes only from LIBERO's sparse success signal. The interface allows one
-rollout at a time and turns a duplicate click into a readable busy state.
+result comes only from LIBERO's sparse success signal. The compact left rail
+holds the initial state, editable instruction, Run task, Stop, and status;
+the rest of the workspace is reserved for the simulator image. The interface
+allows one task at a time and turns a duplicate click into a readable busy
+state.
 
 ## What happened
 

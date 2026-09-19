@@ -1,5 +1,5 @@
 ---
-title: Watching a robot dog learn to walk, checkpoint by checkpoint
+title: Training a Unitree Go2 to walk with Isaac Lab, checkpoint by checkpoint
 summary: A recovered Isaac Lab run turns policy training into a recorded progression, backed by a fresh capability-scoped GPU smoke.
 collection: blog
 category: tutorial

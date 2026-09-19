@@ -16,6 +16,7 @@ import rclpy
 import yaml
 from action_msgs.msg import GoalStatus
 from action_msgs.srv import CancelGoal
+from builtin_interfaces.msg import Duration
 from diagnostic_msgs.msg import DiagnosticArray
 from geometry_msgs.msg import PoseStamped, Twist
 from irobot_create_msgs.action import Dock, DriveDistance, Undock
@@ -287,17 +288,22 @@ class SillyTurtleBotBridge(Node):
                 "age_s": age_s,
                 **self.camera_geometry,
             }
+        # Readiness means "every motion this robot can perform is live", not
+        # "every action a TurtleBot 4 has exists". Docking is hardware some
+        # robots simply do not have, and a robot without a Create 3 base drives
+        # a distance through Nav2 instead (see _distance_action), so gating
+        # `ok` on the Create 3 servers would leave such a robot reporting
+        # "starting" forever while it navigates perfectly well. The individual
+        # flags below still report exactly what is and is not available, which
+        # is what callers use to decide whether to offer docking at all.
+        distance_ready = drive_distance_ready or (drive_ready and backup_ready)
         return {
             "status": (
                 "ok"
                 if navigate_ready
-                and drive_ready
-                and backup_ready
-                and drive_distance_ready
+                and distance_ready
                 and spin_ready
                 and assisted_ready
-                and dock_ready
-                and undock_ready
                 else "starting"
             ),
             "navigate_to_pose": navigate_ready,
@@ -370,6 +376,43 @@ class SillyTurtleBotBridge(Node):
             "visible_objects": [],
         }
 
+    def _distance_action(self, distance_m: float, speed_mps: float):
+        """Pick the action that can drive a signed distance on this robot.
+
+        The Create 3 `DriveDistance` action is the TurtleBot 4's own and takes a
+        signed distance, so prefer it whenever the robot actually provides it --
+        that keeps simulation behaviour identical to the hardware the app is
+        built for. A robot without a Create 3 base (the lite simulation profile)
+        has no such server, and Nav2's own recovery behaviours cover the same
+        ground: `DriveOnHeading` forwards, `BackUp` in reverse, both taking an
+        unsigned distance along the robot's heading.
+
+        Capability is read from the live action server rather than from a
+        configured robot name, which is the same rule `health()` already
+        applies, so a profile that gains or loses the Create 3 needs no change
+        here.
+        """
+        if self.drive_distance_client.server_is_ready():
+            goal = DriveDistance.Goal()
+            goal.distance = distance_m
+            goal.max_translation_speed = speed_mps
+            return self.drive_distance_client, goal, "drive_distance"
+
+        forward = distance_m >= 0.0
+        goal = DriveOnHeading.Goal() if forward else BackUp.Goal()
+        goal.target.x = abs(distance_m)
+        goal.speed = speed_mps
+        # Nav2 aborts the behaviour when its own allowance expires, which would
+        # surface as a bare "failed" well before the bridge's timeout and hide
+        # the cause. Give it the time the motion actually needs plus a margin
+        # for acceleration and costmap checks.
+        allowance = abs(distance_m) / max(speed_mps, 0.01) + 5.0
+        goal.time_allowance = Duration(
+            sec=int(allowance), nanosec=int((allowance % 1.0) * 1e9)
+        )
+        client = self.drive_client if forward else self.backup_client
+        return client, goal, "drive_on_heading" if forward else "backup"
+
     def move_forward(self, distance_m: Any) -> dict[str, Any]:
         if isinstance(distance_m, bool) or not isinstance(distance_m, (int, float)):
             return {"status": "rejected", "reason": "distance_m must be numeric"}
@@ -379,15 +422,10 @@ class SillyTurtleBotBridge(Node):
                 "status": "rejected",
                 "reason": "distance_m must be between 0.1 and 1.0",
             }
-        goal = DriveDistance.Goal()
-        goal.distance = distance_m
-        goal.max_translation_speed = self.forward_speed_mps
-        result = self._run_action(
-            self.drive_distance_client,
-            goal,
-            self.drive_timeout_s + 5.0,
-            "drive_distance",
+        client, goal, name = self._distance_action(
+            distance_m, self.forward_speed_mps
         )
+        result = self._run_action(client, goal, self.drive_timeout_s + 5.0, name)
         result["distance_m"] = distance_m
         return result
 
@@ -403,15 +441,8 @@ class SillyTurtleBotBridge(Node):
             return {"status": "rejected", "reason": "absolute distance_m must be 0.1..2.0"}
         if not math.isfinite(speed_mps) or not 0.05 <= speed_mps <= 0.2:
             return {"status": "rejected", "reason": "speed_mps must be 0.05..0.2"}
-        goal = DriveDistance.Goal()
-        goal.distance = distance_m
-        goal.max_translation_speed = speed_mps
-        result = self._run_action(
-            self.drive_distance_client,
-            goal,
-            self.drive_timeout_s + 5.0,
-            "drive_distance",
-        )
+        client, goal, name = self._distance_action(distance_m, speed_mps)
+        result = self._run_action(client, goal, self.drive_timeout_s + 5.0, name)
         result.update(distance_m=distance_m, speed_mps=speed_mps)
         return result
 

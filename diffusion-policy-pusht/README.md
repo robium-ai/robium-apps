@@ -203,14 +203,16 @@ Training is not part of application setup.
   process; a stale PID is removed automatically by `status`, `doctor`, or
   the next run.
 
-## Live demo
+## Demo page
 
-The website presents two choices: start a private temporary CPU instance or
-run the native application locally. The hosted path uses the same policy,
-evidence manifest, seeded environment, and Gradio workspace.
+The website currently keeps hosted PushT capacity paused. Its demo page shows
+recorded proof, evaluation context, and the exact local start command instead
+of offering a session that may not be available. The native MPS path above is
+the recommended way to interact with the policy today.
 
-Try it at
-[robium.ai/demos/diffusion-policy-pusht](https://robium.ai/demos/diffusion-policy-pusht/).
-
-Image publication and production deployment are maintained separately from
+Open
+[robium.ai/demos/diffusion-policy-pusht](https://robium.ai/demos/diffusion-policy-pusht/)
+for the recorded demo and current availability. The CPU image and private
+session gateway remain in the repository for reproducible hosted testing;
+image publication and production deployment are maintained separately from
 the local application workflow.

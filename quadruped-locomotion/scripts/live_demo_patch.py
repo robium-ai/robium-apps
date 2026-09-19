@@ -37,41 +37,39 @@ src = src.replace(anchor, tweak)
 
 PAGE_HTML = """<!doctype html><html><head><meta charset=utf-8><title>Go2 Live Control</title>
 <meta name=viewport content=\"width=device-width,initial-scale=1\">
-<style>body{background:#0e1013;color:#e8eaee;font-family:system-ui,-apple-system,sans-serif;margin:0;padding:18px;text-align:center}
-h2{font-weight:600;margin:2px 0 10px}
-#v{max-width:100%;width:760px;border-radius:12px;background:#000;aspect-ratio:16/9;object-fit:contain}
-.row{display:flex;gap:18px;justify-content:center;align-items:flex-end;flex-wrap:wrap;margin:12px 0}
-.sl{display:flex;flex-direction:column;align-items:center;font-size:13px;color:#a5adba}
-.sl b{color:#e8eaee;font-size:14px}
-input[type=range]{width:190px;margin-top:6px;accent-color:#6f9bff}
-select{background:#1a2030;color:#e8eaee;border:1px solid #2a3446;border-radius:8px;padding:7px 10px;font-size:14px}
-button{background:#1a2030;color:#dfe6f5;border:1px solid #2a3446;border-radius:9px;padding:9px 14px;font-size:13px;cursor:pointer;margin:3px}
-button:hover{border-color:#6f9bff}
-.kbd{display:inline-block;background:#1a2030;border:1px solid #2a3446;border-radius:6px;padding:2px 7px;font-size:12px;margin:0 1px}
-.note{color:#6b7280;font-size:12px;margin-top:8px}
-.ck{color:#6f9bff;font-size:13px}</style></head>
-<body>
-<h2>🐕 Go2 — live velocity control</h2>
-<img id=v src=\"__BASE__/stream\" alt=\"live sim\"><br>
-<div class=row>
-  <div class=sl><b>checkpoint</b><select id=ckpt></select></div>
-  <span id=curckpt class=ck></span>
-</div>
-<div class=row>
-  <div class=sl><b>forward vx</b><span id=lvx>0.50</span><input type=range id=vx min=-1.5 max=1.5 step=0.05 value=0.5></div>
-  <div class=sl><b>strafe vy</b><span id=lvy>0.00</span><input type=range id=vy min=-1 max=1 step=0.05 value=0></div>
-  <div class=sl><b>turn yaw</b><span id=lyaw>0.00</span><input type=range id=yaw min=-1.5 max=1.5 step=0.05 value=0></div>
-</div>
-<div class=row>
-  <button onclick=\"preset(0.8,0,0)\">▶ forward</button>
-  <button onclick=\"preset(0,0,0)\">■ stop</button>
-  <button onclick=\"preset(0,0,1.0)\">↻ spin</button>
-  <button onclick=\"preset(0,0.6,0)\">⇄ strafe</button>
-  <button onclick=\"preset(-0.6,0,0)\">◀ back</button>
-  <button onclick=\"resetSim()\">reset</button>
-</div>
-<div class=note>Keyboard: <span class=kbd>W</span>/<span class=kbd>↑</span> forward · <span class=kbd>S</span>/<span class=kbd>↓</span> back · <span class=kbd>A</span>/<span class=kbd>←</span> turn left · <span class=kbd>D</span>/<span class=kbd>→</span> turn right · <span class=kbd>Q</span>/<span class=kbd>E</span> strafe. Hold to move; release to stop. (Click the video once so the page has keyboard focus.)</div>
-<div class=note>~10 fps via RunPod proxy · policy trained on ~[-1,1] m/s, extremes may wobble.</div>
+<style>
+*{box-sizing:border-box}html,body{height:100%}body{background:#090c12;color:#f7f8fa;font-family:system-ui,-apple-system,sans-serif;margin:0;overflow:hidden}
+.app{display:grid;grid-template-columns:300px minmax(0,1fr);height:100%;min-height:0}
+.controls{display:flex;min-height:0;flex-direction:column;gap:16px;overflow:auto;border-right:1px solid #2a3140;background:#0d1119;padding:22px}
+h1{margin:0;font-size:22px;line-height:1.1}p{margin:5px 0 0;color:#aab1bf;font-size:12px;line-height:1.5}
+.field{display:grid;gap:7px}.label{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#f7f8fa;font-size:13px;font-weight:650}.value{color:#8db4ff;font:12px ui-monospace,monospace}
+select{width:100%;border:1px solid #343c4e;border-radius:6px;background:#151a24;color:#f7f8fa;padding:10px;font-size:13px}
+input[type=range]{width:100%;margin:0;accent-color:#4c8dff}
+.presets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+button{min-height:38px;border:1px solid #343c4e;border-radius:6px;background:#151a24;color:#e8edf7;padding:8px 10px;font-size:12px;font-weight:650;cursor:pointer}
+button:hover{border-color:#6f9bff}.stop{border-color:#2f65d8;background:#2356bd}.reset{grid-column:1/-1;background:transparent}
+.keys{display:grid;grid-template-columns:repeat(3,32px);justify-content:center;gap:5px;margin-top:auto}.key{display:grid;height:30px;place-items:center;border:1px solid #343c4e;border-radius:5px;background:#151a24;color:#aab1bf;font:11px ui-monospace,monospace}.key.blank{visibility:hidden}
+.hint{text-align:center;color:#737c8e;font-size:11px}.camera{display:flex;min-width:0;min-height:0;align-items:center;justify-content:center;background:#05070b;padding:14px}
+#v{display:block;width:100%;height:100%;min-height:0;background:#000;object-fit:contain}
+@media(max-width:700px){body{overflow:auto}.app{grid-template-columns:1fr;height:auto;min-height:100%}.controls{overflow:visible;border-right:0;border-bottom:1px solid #2a3140;padding:16px}.camera{min-height:54vh}.keys,.hint{display:none}}
+</style></head>
+<body><main class=app>
+<aside class=controls>
+  <div><h1>Go2 control</h1><p>Drive the robot, then change checkpoints to feel how the policy improves.</p></div>
+  <label class=field><span class=label><span>Checkpoint</span><span id=curckpt class=value>loading…</span></span><select id=ckpt></select></label>
+  <label class=field><span class=label><span>Forward</span><span id=lvx class=value>0.50</span></span><input type=range id=vx min=-1.5 max=1.5 step=0.05 value=0.5></label>
+  <label class=field><span class=label><span>Strafe</span><span id=lvy class=value>0.00</span></span><input type=range id=vy min=-1 max=1 step=0.05 value=0></label>
+  <label class=field><span class=label><span>Turn</span><span id=lyaw class=value>0.00</span></span><input type=range id=yaw min=-1.5 max=1.5 step=0.05 value=0></label>
+  <div class=presets>
+    <button onclick=\"preset(0.8,0,0)\">Forward</button><button onclick=\"preset(-0.6,0,0)\">Back</button>
+    <button onclick=\"preset(0,0.6,0)\">Strafe</button><button onclick=\"preset(0,0,1.0)\">Turn</button>
+    <button class=stop onclick=\"preset(0,0,0)\">Stop</button><button onclick=\"resetSim()\">Reset robot</button>
+  </div>
+  <div class=keys><span class=key>Q</span><span class=key>W</span><span class=key>E</span><span class=key>A</span><span class=key>S</span><span class=key>D</span></div>
+  <div class=hint>Hold W/A/S/D or arrow keys to move · Q/E to strafe</div>
+</aside>
+<section class=camera><img id=v src=\"__BASE__/stream\" alt=\"Live Isaac Sim view of the Unitree Go2\"></section>
+</main>
 <script>
 const g=id=>document.getElementById(id);
 const BASE='__BASE__';
@@ -94,9 +92,9 @@ window.addEventListener('keyup',e=>{const k=e.key.toLowerCase();if(keys[k]){dele
 // checkpoints
 fetch(BASE+'/ckpts').then(r=>r.json()).then(d=>{const s=g('ckpt');
  d.ckpts.forEach(it=>{const o=document.createElement('option');o.value=it;o.textContent='iter '+it;if(it==d.current)o.selected=true;s.appendChild(o);});
- g('curckpt').textContent='loaded: iter '+d.current;});
-g('ckpt').addEventListener('change',e=>{const it=e.target.value;g('curckpt').textContent='loading iter '+it+'…';
- post('/load',{ckpt:it}).then(()=>setTimeout(()=>g('curckpt').textContent='loaded: iter '+it,900));});
+ g('curckpt').textContent='iteration '+d.current;});
+g('ckpt').addEventListener('change',e=>{const it=e.target.value;g('curckpt').textContent='loading '+it+'…';
+ post('/load',{ckpt:it}).then(()=>{const check=setInterval(()=>fetch(BASE+'/status').then(r=>r.json()).then(d=>{if(String(d.checkpoint)===String(it)){clearInterval(check);g('curckpt').textContent='iteration '+it;}}),300);setTimeout(()=>clearInterval(check),15000);});});
 send();
 </script></body></html>"""
 

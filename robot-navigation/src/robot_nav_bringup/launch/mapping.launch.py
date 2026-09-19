@@ -27,8 +27,7 @@ def generate_launch_description():
         package='foxglove_bridge', executable='foxglove_bridge',
         output='screen', parameters=[{'port': 8765, 'use_sim_time': True}])
     viz = ExecuteProcess(
-        cmd=['python3', '/ws/scripts/viz_server.py', '--port', '8080',
-             '--layout', '/opt/lichtblick/mapping-layout.json'],
+        cmd=['python3', '/ws/scripts/viz_server.py', '--port', '8080'],
         output='screen')
 
     return LaunchDescription([

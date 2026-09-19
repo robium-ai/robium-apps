@@ -38,7 +38,7 @@ services:
       # the layout on every request, so editing either file and reloading the
       # tab is enough.
       - ../scripts:/ws/scripts:ro
-      - ../lichtblick/mapping-layout.json:/opt/lichtblick/mapping-layout.json:ro
+      - ../lichtblick/layout.json:/opt/lichtblick/layout.json:ro
     command: >
       ros2 launch robot_nav_bringup mapping.launch.py
       world:=${WORLD:-furnished_house} map_name:=${MAP_NAME:-map}

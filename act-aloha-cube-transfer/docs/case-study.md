@@ -1,6 +1,6 @@
 ---
-title: Running the official ACT policy on ALOHA cube transfer
-summary: Replay a bimanual transfer on macOS, inspect its 100-action chunks, and keep the published benchmark separate from local runs.
+title: Training and running an ALOHA cube-transfer policy with ACT
+summary: Run the official ACT cube-transfer policy locally, see why action chunking mattered, and use the same workflow as a starting point for your own demonstrations.
 collection: blog
 category: tutorial
 kind: tutorial
@@ -10,7 +10,7 @@ audience: robotics-developer
 level: intermediate
 app: act-aloha-cube-transfer
 date: 2026-08-28
-tested: 2026-08-23
+tested: 2026-09-19
 tags: [robium, lerobot, imitation-learning, act, aloha, mujoco, gradio, rerun, macos]
 hero: assets/gifs/transfer-seed-1001.gif
 hero_alt: Two simulated ALOHA arms pass a red cube between their grippers
@@ -18,66 +18,71 @@ social_image: assets/social/card.png
 featured: false
 ---
 
-One arm lifts a red cube and presents it near the center of the workspace. The
-other closes around it and completes the transfer. ACT chooses the joint targets
-in chunks of 100 actions, while MuJoCo reports each stage of the task.
+Before ALOHA, a bimanual learning experiment could begin with an awkward
+problem: the robot and teleoperation rig were expensive before anyone had
+collected a single demonstration.
 
-The application runs LeRobot's official ALOHA Transfer Cube checkpoint. There
-is no training step in the quick start. On Apple Silicon, inference uses MPS;
-the hosted-compatible image uses CPU-only PyTorch.
+The original [ALOHA project](https://tonyzhaozh.github.io/aloha/) approached
+that problem from both sides. It introduced an open, comparatively low-cost
+two-arm teleoperation system for recording human demonstrations, then paired
+it with Action Chunking with Transformers, or ACT, to learn from those
+demonstrations. The researchers showed fine tasks such as opening a cup and
+slotting a battery with about 50 demonstrations per task.
+
+That combination mattered more than either piece alone. ALOHA made it practical
+to collect coordinated two-arm data; ACT turned that data into a policy. The
+hardware, code, datasets, and simulation tasks were released openly, which is
+why ALOHA became such a recognizable starting point for imitation-learning
+experiments.
+
+This tutorial removes the physical hardware and keeps the learning loop. Two
+simulated ALOHA arms pass a red cube from one gripper to the other while the
+official ACT policy chooses the joint targets.
 
 ![The official ACT checkpoint completing seed 1001](../assets/gifs/transfer-seed-1001.gif)
 
-*A recorded MuJoCo rollout for seed 1001. The sidecar stores the checkpoint
-revision, seed, device, action horizon, step count, and final simulator stage.*
+*A real ACT rollout in MuJoCo. The right arm lifts the cube and the left arm
+completes the transfer.*
 
-## A task ACT was built for
+## Why ACT predicts a chunk instead of one action
 
-ALOHA Transfer Cube is a bimanual imitation-learning task. The observation
-contains a 480 by 640 top-camera image and fourteen joint-state values. Each
-action also has fourteen values for the two arms and grippers.
+A long manipulation task is difficult to learn one command at a time. Small
+errors accumulate, and two arms can drift out of sync. ACT shortens that
+effective horizon by predicting a sequence of future actions in one pass.
 
-Predicting one command at a time would leave a long control horizon. ACT,
-Action Chunking with Transformers, predicts a sequence instead. This checkpoint
-produces 100 future joint targets from the current observation, giving the two
-arms a coherent movement before the next policy call.
+The checkpoint used here observes a 480 by 640 top-camera image and fourteen
+joint values. It predicts 100 future fourteen-dimensional joint targets for
+the two arms and grippers. The app can execute the full chunk or replan after
+25 or 50 actions so you can see the tradeoff between coherent motion and fresh
+feedback.
 
-LeRobot publishes a task-matched checkpoint at
-`lerobot/act_aloha_sim_transfer_cube_human`. Its model card reports 83 percent
-success over 500 evaluation episodes. That made it a better starting point than
-training a new model for the sake of the demo.
+ACT is still one of the easiest learned manipulation policies to start with.
+It is smaller and quicker to run than a VLA, its objective is fixed and easy to
+evaluate, and LeRobot recommends it as a first imitation-learning model.
 
-> [!DECISION]
-> ACT fit because the task is fixed, bimanual, and demonstration-driven.
-> Diffusion Policy is a stronger starting point for PushT's contact geometry.
-> A VLA belongs where language changes the requested object or action.
+## The simulator is MuJoCo, wrapped by gym-aloha
 
-## From image to transfer
+This is not a video of the physical ALOHA hardware. The application runs
+[`gym-aloha`](https://github.com/huggingface/gym-aloha), which defines the
+Transfer Cube task, observation and action spaces, and success stages.
+[MuJoCo](https://mujoco.org/) supplies the robot dynamics, contacts, cameras,
+and rendering underneath it.
+
+The right arm must grasp and lift the cube; the left arm must receive it. The
+simulator reports the progress from first contact through a completed transfer.
+The browser lets you switch between manual joint control and the pretrained ACT
+policy, randomize the cube layout, and inspect the rollout timeline in Rerun.
 
 ![ACT ALOHA system flow](../assets/diagrams/system.svg)
 
-*The browser asks for a rollout. A child process keeps MuJoCo on its main
-thread, while the policy predicts chunks and Rerun records the episode.*
+*The camera and joint state go into ACT. MuJoCo executes part of the predicted
+action chunk, then the policy observes again.*
 
-The execution-horizon control decides how many actions from each prediction are
-applied before ACT observes again. It does not select another checkpoint.
+## Run it locally without an NVIDIA GPU
 
-- `25/100` replans most often and spends more time in inference.
-- `50/100` is useful for comparing the tradeoff.
-- `100/100` executes the complete reference chunk.
-
-Keep the layout seed fixed while comparing those settings. Seed 1001 is the
-default because it completed the bounded MPS calibration and then completed
-again on replay.
-
-The direct camera frame remains the primary view. Rerun adds a timeline for
-camera frames, task stage, policy calls, chunk indices, inference time, state,
-and action values.
-
-## Run it on macOS
-
-You need Git, [uv](https://docs.astral.sh/uv/), a modern browser, and port 8765.
-No NVIDIA GPU or physical robot is required.
+The published policy runs locally on Apple Silicon with MPS and can fall back
+to CPU. You do not need a physical ALOHA robot, an NVIDIA GPU, or a training
+run for this tutorial.
 
 ```bash
 npx robium-ai@latest setup
@@ -87,84 +92,75 @@ cd robium-apps/act-aloha-cube-transfer
 ./app run
 ```
 
-Open [http://localhost:8765](http://localhost:8765). The first run resolves the
-Python 3.12 environment and downloads the pinned checkpoint source plus the
-ResNet backbone. Later runs reuse the environment, migrated model, and cache.
+Open [http://localhost:8765](http://localhost:8765). The first run prepares the
+Python environment and downloads about 207 MB of model weights. Later starts
+reuse both. Run `./app stop` when you are finished.
 
-The [application README](https://github.com/robium-ai/robium-apps/tree/main/act-aloha-cube-transfer)
-covers the remaining launcher commands and troubleshooting paths.
+You can also open the [live ACT demo](/demos/act-aloha-cube-transfer/live) for
+a temporary browser session, or use the [demo page](/demos/act-aloha-cube-transfer)
+to see the recorded result before starting anything.
 
-## An older checkpoint in current LeRobot
+## What this checkpoint shows
 
-The official checkpoint predates LeRobot's standalone preprocessor and
-postprocessor files. A current loader cannot use the raw Hub snapshot directly.
+The app uses LeRobot's official 80k-step
+[`act_aloha_sim_transfer_cube_human`](https://huggingface.co/lerobot/act_aloha_sim_transfer_cube_human)
+checkpoint. It comes from an older LeRobot release, so the launcher prepares a
+compatible local copy without changing the pinned source weights.
 
-LeRobot 0.6.1 includes a normalization migration. The application runs that
-tool into a separate directory, removes the legacy normalization buffers from
-the copied state dictionary, and creates processor files from the same stored
-statistics. The original revisioned download stays untouched.
-
-The build compares the remaining weights, checks the model and processor
-artifacts, hashes the source and migrated files, and writes a manifest. A
-partially migrated directory is not accepted as ready. Recomputing
-normalization from another dataset could create plausible files while changing
-the policy's behavior, so the migration does not substitute new statistics.
-
-## What happened in the recorded runs
-
-The workspace keeps two results separate:
-
-- The official checkpoint model card reports 83 percent over 500 episodes.
-- The local MPS calibration recorded two completions across seeds 1000 through
-  1004 with the 100-action execution horizon.
-
-Five local runs are useful for compatibility and replay checks. They are not a
-new estimate of the published rate. The app stores unsuccessful runs as well as
-completed ones and does not draw a learning curve between unrelated tests.
-
-The simulator reports reaching, right-gripper contact, cube lifted,
-left-gripper contact, and transfer complete. The UI uses those stage names. It
-does not turn brief contact into a broader claim about grasp stability.
+Its model card reports 83 percent success over 500 simulated episodes. Our
+local calibration is deliberately smaller: two of five Apple MPS runs
+completed, and seed 1001 completed again when replayed. Those local runs prove
+that the checkpoint, simulator, and application work together; they are not a
+new estimate of the policy's success rate.
 
 > [!EVIDENCE]
-> Seed 1001 reached the simulator's terminal transfer stage with the 100-action
-> execution horizon. The capture metadata records the conditions for that run.
+> Seed 1001 reached the simulator's final transfer stage with the full
+> 100-action execution horizon. The application records the checkpoint,
+> device, seed, action horizon, and simulator result for that episode.
 
-## The browser changed the process boundary
+## From replaying a policy to training your own
 
-On macOS, creating the gym-aloha environment from a Gradio worker thread raised
-an AppKit exception because GLFW must initialize on the main thread.
+The quick start performs inference only, and its manual controls are for
+exploring the simulator rather than recording a training dataset. You do not
+have to stop at the older checkpoint, though.
 
-Previews and episodes now run in spawned child processes. Each process creates
-MuJoCo and GLFW on its own main thread, sends typed rollout events to the UI,
-and closes the environment at the episode boundary. A bounded lock prevents two
-browser jobs from mutating one simulator. Stop uses a shared cancellation event
-and takes effect at the next simulator action.
+The current [LeRobot imitation-learning
+workflow](https://huggingface.co/docs/lerobot/il_robots) is to teleoperate a
+supported robot, record a set of demonstrations, train a fresh ACT policy, and
+evaluate the resulting checkpoint. Start with a short smoke-training run to
+verify the dataset and policy shapes before spending hours on a full run.
 
-The CPU image follows the same application contract with MuJoCo EGL rendering,
-the migrated checkpoint, and a baked torchvision backbone cache. Readiness is
-reported only after a CPU prediction returns a finite 100 by 14 action chunk.
-On the tested Docker Desktop path, seed 1001 completed through the Gradio API;
-its final policy call took 900 ms.
+Apple Silicon is enough for inference and small experiments. It can train ACT,
+but a CUDA GPU is the practical choice for larger image datasets or repeated
+training runs. The important first step is not maximum scale; it is proving
+that recording, training, and evaluation form one reproducible loop.
 
-## A stricter pass bar
+## Where to go next
 
-The `architect` and `lerobot` skills kept the project on a task where ACT had a
-clear reason to exist. `environments` separated the native MPS path from the
-CPU image instead of hiding both behind one performance claim. `testing` and
-`rerun` shaped the migration checks, direct frame, typed timeline, and
-separation between published and local results.
+[Mobile ALOHA](https://mobile-aloha.github.io/) carried ACT into longer,
+whole-body household tasks, while [ALOHA 2](https://aloha-2.github.io/)
+improved the hardware for larger-scale demonstration collection.
 
-The most useful change was not visual. The pass bar moved from “the checkpoint
-loads” to “a seeded rollout reaches a named simulator stage, records its
-conditions, and can be stopped without corrupting the next run.”
+For another lightweight policy experiment, continue with [Diffusion Policy on
+PushT](/blog/diffusion-policy-pusht). When language must change the requested
+object or action, the [Pi0.5 VLA tutorial](/blog/vla-pick-and-place) shows the
+larger next step.
 
-## What this app does not cover
+## The Robium skills behind the tutorial
 
-This application covers one simulated ALOHA task and one published checkpoint.
-It does not train ACT, test physical arms, or estimate performance beyond the
-attached run sets. Docker uses CPU inference, so native MPS remains the better
-interactive path on Apple Silicon.
+[lerobot](https://github.com/robium-ai/robium/tree/main/skills/lerobot) guided
+the ACT policy, demonstration workflow, and separation between training and
+inference. [environments](https://github.com/robium-ai/robium/tree/main/skills/environments)
+kept the local MPS and CPU paths reproducible, while
+[testing](https://github.com/robium-ai/robium/tree/main/skills/testing) kept
+the published 500-episode result separate from the smaller local replay.
 
-The source, smoke tests, and architecture brief live in the
-[ACT ALOHA application](https://github.com/robium-ai/robium-apps/tree/main/act-aloha-cube-transfer).
+The useful lesson is simple: begin with a task you can observe and measure,
+verify one complete learned-policy rollout, then collect data and train your
+own checkpoint when you are ready to change the behavior.
+
+Source, tests, and architecture notes live in the
+[ACT ALOHA application repository](https://github.com/robium-ai/robium-apps/tree/main/act-aloha-cube-transfer).
+If something does not work, ask in the [Robium Discord](https://robium.ai/join/discord)
+or [create an issue](https://github.com/robium-ai/robium-apps/issues/new) with
+your operating system and the output from `./app doctor`.
