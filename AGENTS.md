@@ -9,11 +9,15 @@ applications repository and no promotion-copy workflow.
 
 ## Sibling repositories
 
-Robium is three repositories checked out as siblings. Change things in the
-repository that owns them and cross-reference rather than duplicate.
+Robium is checked out as siblings inside a `robium-workspace` parent. Change
+things in the repository that owns them and cross-reference rather than
+duplicate.
 
 - `../robium` owns the skills plugin, the `robium-ai` CLI, and the learning
   engine. Learnings from work here go there as `learnings/YYYY-MM-DD-<app>.md`.
+- `../my-apps` is the user's own application library, when present. Their
+  apps go there, not here: building here leaves this checkout dirty and
+  `npx robium-ai update` then refuses it.
 - `../robium-website` owns the robium.ai site and the live-demo orchestrator.
   It reads this repository by relative path at build time (overridable with
   `ROBIUM_APPS_DIR`), so app metadata and `REGISTRY.md` cards feed the site
