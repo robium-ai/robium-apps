@@ -7,6 +7,13 @@ a clone of this repo); the design standard is
 Detailed battle scars live in each app's architecture brief and in the sibling
 `robium` repository's dated learnings.
 
+First-user Gemini onboarding: [Silly TurtleBot](silly-turtlebot/README.md#gazebo-furnished-home-simulation)
+uses its fast TurtleBot3 simulation profile. The launcher requires a local API
+key or explicitly configured Doppler project/config before building, and
+refuses to tear down an existing real-robot session. Offline mock checks are
+diagnostics, not proof of live Gemini access. Cross-platform clean-start
+qualification is separate from the historical runtime evidence below.
+
 | App | Vertical | Stack | Sim | Env | Viz | Smoke |
 | --- | --- | --- | --- | --- | --- | --- |
 | [lego-powered-up-teleop](lego-powered-up-teleop/) | Real-robot differential-drive teleoperation | Native Python + Pygame + Bleak + Pybricks hub bridge | none; real LEGO Powered Up hub and two motors; optional Stadia controller detected over Bluetooth | uv + Python 3.12; native BLE and SDL gamepad input on Apple Silicon host | Pygame directional pad with proportional Stadia left-stick throttle, right-stick steering, D-pad, mouse, arrows, and WASD control | 35 hardware-free tests, lint, app-contract validation, rendered UI lifecycle, detected `Google Stadia Controller`, and stopped real-hub `READY` + `PING/PONG` smoke pass 2026-09-14; steering validated and throttle-only inversion applied from wheels-up evidence, final re-check pending |

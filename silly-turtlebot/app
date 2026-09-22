@@ -4,25 +4,30 @@ set -euo pipefail
 cd "$(dirname "$0")"
 export PYTHONUNBUFFERED=1
 
+require_gemini_credentials() {
+  if [ -n "${GEMINI_API_KEY:-}" ]; then
+    return 0
+  fi
+  if [ -n "${DOPPLER_PROJECT:-}" ] && [ -n "${DOPPLER_CONFIG:-}" ] \
+    && command -v doppler >/dev/null 2>&1; then
+    return 0
+  fi
+  echo "GEMINI_API_KEY is unset. Configure it locally before starting live Gemini control." >&2
+  echo "Your key needs access to the configured model; live missions may incur API charges." >&2
+  echo "Do not paste keys into chat or commit them. See README.md for setup." >&2
+  echo "Optional Doppler users must explicitly set DOPPLER_PROJECT and DOPPLER_CONFIG." >&2
+  return 1
+}
+
 run_with_gemini_key() {
+  require_gemini_credentials
   if [ -n "${GEMINI_API_KEY:-}" ]; then
     "$@"
     return
   fi
-  if ! command -v doppler >/dev/null 2>&1; then
-    echo "GEMINI_API_KEY is unset and the Doppler CLI is not installed." >&2
-    echo "Install/login to Doppler, or export GEMINI_API_KEY." >&2
-    return 1
-  fi
-  doppler_project=${DOPPLER_PROJECT:-robium}
-  doppler_config=${DOPPLER_CONFIG:-}
-  if [ -z "$doppler_config" ]; then
-    doppler_config=$(doppler configs --project "$doppler_project" --json 2>/dev/null | \
-      python3 -c 'import json,sys; names={item["name"] for item in json.load(sys.stdin)}; print("test" if "test" in names else "dev")')
-  fi
   doppler run \
-    --project "$doppler_project" \
-    --config "$doppler_config" \
+    --project "$DOPPLER_PROJECT" \
+    --config "$DOPPLER_CONFIG" \
     -- "$@"
 }
 
@@ -44,7 +49,13 @@ start_simulation() {
     return 2
   fi
   export SILLY_SIM_LAUNCH
-  docker compose -f real/compose.yaml down --remove-orphans >/dev/null 2>&1 || true
+  require_gemini_credentials
+  real_services=$(docker compose -f real/compose.yaml ps --status running -q)
+  if [ -n "$real_services" ]; then
+    echo "Real-robot services are running. Simulation will not stop them automatically." >&2
+    echo "When safe, explicitly stop that session with ./app real-down before starting simulation." >&2
+    return 1
+  fi
   if ! docker image inspect silly-turtlebot-sim:latest >/dev/null 2>&1 \
     || ! docker image inspect silly-turtlebot-agent:latest >/dev/null 2>&1; then
     echo "Demo image missing; building it first..."
@@ -132,6 +143,7 @@ run_real() {
   export SILLY_CAMERA_URL=$camera_url
   export SILLY_TTS_URL=$tts_url
   export SILLY_FOXGLOVE_URL=$foxglove_url
+  require_gemini_credentials
   docker compose -f simulation/compose.yaml down --remove-orphans >/dev/null 2>&1 || true
   if ! docker image inspect silly-turtlebot-agent:latest >/dev/null 2>&1 \
     || ! docker image inspect silly-turtlebot-viewer:latest >/dev/null 2>&1; then

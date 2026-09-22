@@ -27,7 +27,11 @@ locally. The real Humble robot is also deployed and verified without commanding
 motion: scan, odometry, rolling costmaps, Nav2 lifecycle nodes, guarded actions, OAK-D
 capture, the browser proxy, and offline TTS are live.
 
-## Local quick start
+## Offline diagnostic (not Gemini control)
+
+For first-time live Gemini control, use the simulation quick start below.
+These commands exercise a deterministic fake robot without an API key; they
+do not demonstrate a live model or Gazebo.
 
 ```bash
 ./app build
@@ -43,15 +47,27 @@ contract.
 
 ## Gazebo furnished-home simulation
 
-Docker is the reproducible ROS/Gazebo environment on macOS. Start Docker
-Desktop, then run:
+Docker/Compose is the reproducible ROS/Gazebo environment. On macOS, start
+Docker Desktop; on Linux, use a running Docker Engine with Compose v2. Check
+the environment with `./app sim-doctor` before building.
+
+Configure `GEMINI_API_KEY` in your local environment using your own key with
+access to the configured Gemini Robotics model. Do not paste the key into
+chat, put it in shell command history, or commit it. Live missions may incur
+API charges; confirm access and billing before running a mission. A key's
+presence alone does not prove model access. Missing or denied access is a
+setup blocker, not a reason to silently run a mock instead.
+
+Then run:
 
 ```bash
 ./app run
 ```
 
-`run` follows the repository-wide app convention and defaults to the safe
-simulation target. The equivalent explicit command is:
+`run` defaults to the fast **TurtleBot3 Waffle Pi simulation**, without physical
+robot motion. It checks for credentials before building or changing services.
+It refuses to stop an existing real-robot session; switching away from one
+requires an explicit, safe `./app real-down`. The equivalent command is:
 
 ```bash
 ./app run --sim
@@ -69,8 +85,8 @@ When the image is missing, the first `sim-up` downloads ROS 2 Jazzy packages
 and the checksum-verified home asset, so it can take several minutes. Later
 `sim-up` runs reuse those images; use `sim-build` when you intentionally want
 to refresh them. `sim-up` starts the headless simulation and its guarded
-Gemini mission service. The simulation contains Gazebo Harmonic, a standard
-TurtleBot 4, localization, Nav2, an OAK-D JPEG stream, and the same semantic
+Gemini mission service. The default simulation contains Gazebo Harmonic,
+TurtleBot3 Waffle Pi, localization, Nav2, a camera JPEG stream, and the same semantic
 bridge used by the physical robot.
 It also bundles the same Lichtblick/Foxglove visualization path proven in
 `robot-navigation`. Open <http://localhost:8091> for the control panel's OAK-D
@@ -159,9 +175,10 @@ The CLI remains available for debugging or scripted runs:
 ```
 
 `run`, `live`, and `sim-live` use `GEMINI_API_KEY` when it is already exported.
-Otherwise the app loads it from Doppler internally: it prefers `robium/test`
-when the current token can access it and uses `robium/dev` for a dev-scoped
-token. `DOPPLER_CONFIG` remains an explicit override.
+No maintainer account is required. Existing Doppler users can opt in by setting
+both `DOPPLER_PROJECT` and `DOPPLER_CONFIG` explicitly; the launcher never
+guesses a project or enumerates configurations. Without either credential
+path, it stops with local setup guidance.
 
 Useful controls:
 
