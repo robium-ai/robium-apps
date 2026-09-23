@@ -184,11 +184,8 @@ The website ingestion script copies those assets to:
 public/articles/robot-navigation/assets/
 ```
 
-The local raw-frame backup moves outside Git to:
-
-```text
-/Users/mdemirst/repos/robium-backup/robot-navigation/raw/
-```
+The local raw-frame backup moves outside Git to
+`robium-backup/robot-navigation/raw/` under the workspace root.
 
 The generated website fallback and public files use only the new namespace.
 The former public asset directory is removed after the new article build is

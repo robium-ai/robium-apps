@@ -20,7 +20,6 @@ reference for what done looks like (its README is the template for yours).
 
    | App | Old snake_case | New snake_case |
    | --- | --- | --- |
-   | imitation-manipulation | `manip_trial` | `imitation_manipulation` |
    | vla-pick-and-place | `vla_trial` | `vla_pick_and_place` |
    | quadruped-locomotion | `go2_locomotion` | `quadruped_locomotion` |
    | robot-teleoperation | (uses `tb4`/`tb4_teleop` strings) | `robot_teleoperation` / keep `tb4` where it names the physical robot |
@@ -58,14 +57,6 @@ reference for what done looks like (its README is the template for yours).
 ### robot-navigation — DONE 2026-08-03 (reference example)
 Cold-build smoke pass + post-rename smoke pass. Internal rename complete
 (`nav_trial_bringup` → `robot_nav_bringup`). Public README done.
-
-### imitation-manipulation — needs the pass
-- Bar: `make smoke` (uv + MPS native, ~40 s warm) and `make demo-smoke`
-  (Docker demo gateway). Host dep: `brew install ffmpeg`.
-- Rename surface: `src/manip_trial/` package, pyproject, Makefile, demo
-  Dockerfile, tests. Grep `manip_trial|manip-trial`.
-- Watch: the demo image bakes artifacts from local outputs; if `outputs/`
-  is empty you must run `make train-baseline` first (~15 min) — see card.
 
 ### vla-pick-and-place — needs the pass
 - Bar: `make smoke` (pipeline mechanics) + `make oracle` (10/10 scripted IK

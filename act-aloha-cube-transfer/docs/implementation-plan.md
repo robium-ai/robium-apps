@@ -344,7 +344,8 @@ own AGENTS.md and live-demo rules.
 ### Gate
 
 ```bash
-cd /Users/mdemirst/repos/robium-website
+ROBIUM_WORKSPACE=/path/to/robium-workspace
+cd "$ROBIUM_WORKSPACE/robium-website"
 make smoke
 ```
 

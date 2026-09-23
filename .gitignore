@@ -3,3 +3,17 @@ __pycache__/
 *.py[cod]
 .claude/settings.local.json
 .DS_Store
+
+# Local capture and credentials never belong in reference applications.
+.robium/
+.env
+.env.*
+!.env.template
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+credentials.json
+service-account*.json

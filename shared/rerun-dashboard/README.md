@@ -10,8 +10,8 @@ to their demo UI) exactly the way they vendor
 self-contained and promotion-ready, and this copy is the source they vendor
 from and where fixes land first.
 
-Used by: `vla-pick-and-place`. Next obvious consumer:
-`imitation-manipulation`, which is also Gradio + Rerun.
+Used by: `vla-pick-and-place`. `diffusion-policy-pusht` has a separate,
+app-specific Gradio + Rerun workspace.
 
 ## The layout contract
 

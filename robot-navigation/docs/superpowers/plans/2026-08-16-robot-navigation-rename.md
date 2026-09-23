@@ -12,6 +12,8 @@
 
 - The public app name is **Robot Navigation**; the stable app ID is `robot-navigation`.
 - The shared GitHub repository remains `robium-ai/robium-apps`.
+- Shell examples assume `ROBIUM_WORKSPACE` points to the parent directory that
+  contains the sibling `robium`, `robium-apps`, and `robium-website` checkouts.
 - Active ROS package and Python module names become `robot_nav_bringup`.
 - Historical plans, specifications, changelog entries, Git history, and dated learning records retain their original wording.
 - The former product name may remain only in historical records and the two explicit compatibility redirects.
@@ -26,7 +28,7 @@
 
 **Files:**
 - Rename: `robot-navigation/` to `robot-navigation/`
-- Rename: `/Users/mdemirst/repos/robium-backup/robot-navigation/` to `/Users/mdemirst/repos/robium-backup/robot-navigation/`
+- Rename: `${ROBIUM_WORKSPACE}/robium-backup/robot-navigation/` to `${ROBIUM_WORKSPACE}/robium-backup/robot-navigation/`
 - Preserve: `robot-navigation/data/maps/**`
 - Preserve: `robot-navigation/src/robot_nav_bringup/maps/**` until the ROS package directory moves
 
@@ -40,7 +42,7 @@ Run:
 
 ```bash
 find robot-navigation/data/maps robot-navigation/src/robot_nav_bringup/maps -maxdepth 3 -type f -print 2>/dev/null | sort
-find /Users/mdemirst/repos/robium-backup/robot-navigation -type f -print 2>/dev/null | wc -l
+find "${ROBIUM_WORKSPACE}/robium-backup/robot-navigation" -type f -print 2>/dev/null | wc -l
 git status --short
 ```
 
@@ -51,8 +53,8 @@ Expected: saved maps and sidecars are visible but remain untracked or ignored; t
 Run:
 
 ```bash
-mv /Users/mdemirst/repos/robium-apps/robot-navigation /Users/mdemirst/repos/robium-apps/robot-navigation
-mv /Users/mdemirst/repos/robium-backup/robot-navigation /Users/mdemirst/repos/robium-backup/robot-navigation
+mv "${ROBIUM_WORKSPACE}/robium-apps/robot-navigation" "${ROBIUM_WORKSPACE}/robium-apps/robot-navigation"
+mv "${ROBIUM_WORKSPACE}/robium-backup/robot-navigation" "${ROBIUM_WORKSPACE}/robium-backup/robot-navigation"
 ```
 
 Expected: neither old directory exists and both new directories do.
@@ -63,7 +65,7 @@ Run:
 
 ```bash
 find robot-navigation/data/maps robot-navigation/src/robot_nav_bringup/maps -maxdepth 3 -type f -print 2>/dev/null | sort
-find /Users/mdemirst/repos/robium-backup/robot-navigation/raw -type f -name '*.png' | wc -l
+find "${ROBIUM_WORKSPACE}/robium-backup/robot-navigation/raw" -type f -name '*.png' | wc -l
 ```
 
 Expected: the pre-move local map listing is preserved and the backup count is `90`.
@@ -213,8 +215,8 @@ Expected: no former-name matches and the registry link target exists.
 ### Task 5: Update the published CLI examples and fixtures
 
 **Files:**
-- Modify: `/Users/mdemirst/repos/robium/cli/README.md`
-- Modify: `/Users/mdemirst/repos/robium/cli/test/apps.test.js`
+- Modify: `${ROBIUM_WORKSPACE}/robium/cli/README.md`
+- Modify: `${ROBIUM_WORKSPACE}/robium/cli/test/apps.test.js`
 
 **Interfaces:**
 - Consumes: generic CLI implementation and manifest ID `robot-navigation`.
@@ -234,10 +236,10 @@ Run:
 
 ```bash
 npm exec --yes --package=robium-ai@0.6.0 -- robium app --help
-node /Users/mdemirst/repos/robium/cli/bin/robium.js app help robot-navigation \
-  --dir /Users/mdemirst/repos/robium-apps
-node /Users/mdemirst/repos/robium/cli/bin/robium.js app doctor robot-navigation \
-  --dir /Users/mdemirst/repos/robium-apps
+node "${ROBIUM_WORKSPACE}/robium/cli/bin/robium.js" app help robot-navigation \
+  --dir "${ROBIUM_WORKSPACE}/robium-apps"
+node "${ROBIUM_WORKSPACE}/robium/cli/bin/robium.js" app doctor robot-navigation \
+  --dir "${ROBIUM_WORKSPACE}/robium-apps"
 ```
 
 Expected: published help lists lifecycle subcommands; local help shows the Make mapping; doctor resolves the renamed app.
@@ -317,20 +319,20 @@ Expected: the former name is absent and every required new topic is present.
 ### Task 7: Generate the new website slug, assets, and compatibility redirects
 
 **Files:**
-- Modify: `/Users/mdemirst/repos/robium-website/astro.config.mjs`
-- Modify: `/Users/mdemirst/repos/robium-website/nginx.conf`
-- Modify: `/Users/mdemirst/repos/robium-website/scripts/fetch-articles.mjs`
-- Generate: `/Users/mdemirst/repos/robium-website/src/data/articles/robot-navigation.md`
-- Delete: `/Users/mdemirst/repos/robium-website/src/data/articles/robot-navigation.md`
-- Generate: `/Users/mdemirst/repos/robium-website/public/articles/robot-navigation/**`
-- Delete: `/Users/mdemirst/repos/robium-website/public/articles/robot-navigation/**`
-- Generate: `/Users/mdemirst/repos/robium-website/src/data/apps.json`
-- Modify: `/Users/mdemirst/repos/robium-website/demo-orchestrator/src/demos/nav-trial.json`
-- Modify: `/Users/mdemirst/repos/robium-website/src/pages/demos/nav-trial.astro`
-- Modify: `/Users/mdemirst/repos/robium-website/tests/smoke.sh`
-- Modify: `/Users/mdemirst/repos/robium-website/docs/editorial/article-voice-standard.md`
-- Modify: `/Users/mdemirst/repos/robium-website/docs/editorial/voice-reference-report.md`
-- Modify: `/Users/mdemirst/repos/robium-website/docs/handover-2026-08-15.md`
+- Modify: `${ROBIUM_WORKSPACE}/robium-website/astro.config.mjs`
+- Modify: `${ROBIUM_WORKSPACE}/robium-website/nginx.conf`
+- Modify: `${ROBIUM_WORKSPACE}/robium-website/scripts/fetch-articles.mjs`
+- Generate: `${ROBIUM_WORKSPACE}/robium-website/src/data/articles/robot-navigation.md`
+- Delete: `${ROBIUM_WORKSPACE}/robium-website/src/data/articles/robot-navigation.md`
+- Generate: `${ROBIUM_WORKSPACE}/robium-website/public/articles/robot-navigation/**`
+- Delete: `${ROBIUM_WORKSPACE}/robium-website/public/articles/robot-navigation/**`
+- Generate: `${ROBIUM_WORKSPACE}/robium-website/src/data/apps.json`
+- Modify: `${ROBIUM_WORKSPACE}/robium-website/demo-orchestrator/src/demos/nav-trial.json`
+- Modify: `${ROBIUM_WORKSPACE}/robium-website/src/pages/demos/nav-trial.astro`
+- Modify: `${ROBIUM_WORKSPACE}/robium-website/tests/smoke.sh`
+- Modify: `${ROBIUM_WORKSPACE}/robium-website/docs/editorial/article-voice-standard.md`
+- Modify: `${ROBIUM_WORKSPACE}/robium-website/docs/editorial/voice-reference-report.md`
+- Modify: `${ROBIUM_WORKSPACE}/robium-website/docs/handover-2026-08-15.md`
 
 **Interfaces:**
 - Consumes: canonical article `app: robot-navigation`, app assets, and image `robot-navigation:latest`.
@@ -360,8 +362,8 @@ Use `robot-navigation:latest` in demo configuration and replace current app/arti
 Run from `robium-website`:
 
 ```bash
-ROBIUM_APPS_DIR=/Users/mdemirst/repos/robium-apps \
-ROBIUM_DIR=/Users/mdemirst/repos/robium \
+ROBIUM_APPS_DIR="${ROBIUM_WORKSPACE}/robium-apps" \
+ROBIUM_DIR="${ROBIUM_WORKSPACE}/robium" \
 npm run build
 ```
 
@@ -407,7 +409,7 @@ Expected: the new article renders and both former paths are redirect pages point
 Run:
 
 ```bash
-cd /Users/mdemirst/repos/robium-apps/robot-navigation
+cd "${ROBIUM_WORKSPACE}/robium-apps/robot-navigation"
 make build
 ```
 
@@ -418,7 +420,7 @@ Expected: Docker produces `robot-navigation:latest` and the ROS workspace builds
 Run:
 
 ```bash
-cd /Users/mdemirst/repos/robium-apps
+cd "${ROBIUM_WORKSPACE}/robium-apps"
 npx robium-ai@latest app list
 npx robium-ai@latest app help robot-navigation
 npx robium-ai@latest app doctor robot-navigation
@@ -446,9 +448,9 @@ Expected: no former identifier appears in active app, CLI, or website files exce
 Run:
 
 ```bash
-find /Users/mdemirst/repos/robium-backup/robot-navigation/raw -type f -name '*.png' | wc -l
-find /Users/mdemirst/repos/robium-apps/robot-navigation/data/maps -type f -print 2>/dev/null | sort
-find /Users/mdemirst/repos/robium-apps/robot-navigation/src/robot_nav_bringup/maps -type f -print 2>/dev/null | sort
+find "${ROBIUM_WORKSPACE}/robium-backup/robot-navigation/raw" -type f -name '*.png' | wc -l
+find "${ROBIUM_WORKSPACE}/robium-apps/robot-navigation/data/maps" -type f -print 2>/dev/null | sort
+find "${ROBIUM_WORKSPACE}/robium-apps/robot-navigation/src/robot_nav_bringup/maps" -type f -print 2>/dev/null | sort
 ```
 
 Expected: 90 backup frames and the pre-rename map files remain present.

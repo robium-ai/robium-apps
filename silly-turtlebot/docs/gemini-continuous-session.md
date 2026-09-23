@@ -361,7 +361,7 @@ Manual acceptance in simulation and on the real robot:
 
 Use this in a new Codex session:
 
-> Work in `/Users/mdemirst/repos/robium-apps/silly-turtlebot` on local `main`.
+> Work in the `robium-apps/silly-turtlebot` checkout on local `main`.
 > Read `AGENTS.md` and `docs/gemini-continuous-session.md`, then implement the
 > persistent Gemini Robotics ER 2 session plus SSE feedback described there.
 > Keep `MissionGuard` as the only physical action path, preserve the current
