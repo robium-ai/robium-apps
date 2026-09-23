@@ -1,8 +1,19 @@
-# Robium reference applications
+<div align="center">
 
-Runnable robotics projects built with the
-[Robium skills plugin](https://github.com/robium-ai/robium). Explore the code,
-get one working, then copy the closest example and make it yours.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/robium-ai/robium/main/assets/brand/robium-lockup-dark.png">
+  <img src="https://raw.githubusercontent.com/robium-ai/robium/main/assets/brand/robium-lockup.png" alt="robium" width="360">
+</picture>
+
+### Runnable robotics reference applications
+
+Explore the code. Get a robot working. Make it yours.
+
+[![Website](https://img.shields.io/badge/robium.ai-live%20demos-4c8bf5)](https://robium.ai/demos/)
+[![Plugin](https://img.shields.io/badge/Robium-plugin-2563eb)](https://github.com/robium-ai/robium)
+[![License: MIT](https://img.shields.io/badge/license-MIT-3da638)](LICENSE)
+
+</div>
 
 <table>
   <tr>
