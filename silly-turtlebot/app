@@ -252,7 +252,7 @@ USAGE
     uv sync --locked
     ;;
   smoke)
-    uv run --locked pytest
+    uv run --locked python -m pytest
     output="$(uv run --locked silly-turtlebot demo)"
     printf '%s\n' "$output"
     grep -q '^SILLY TURTLEBOT MOCK PASS$' <<<"$output"
