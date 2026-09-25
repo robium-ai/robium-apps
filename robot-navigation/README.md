@@ -11,7 +11,7 @@ Docker, and Lichtblick.
 
 ## What you can do
 
-- Map the House or Warehouse simulation.
+- Map the Simple House, Furnished House, or Warehouse simulation.
 - Save maps and load them for localization.
 - Save the robot's current pose as a named waypoint.
 - Navigate to saved waypoints or goals selected in the 3D view.
@@ -44,7 +44,8 @@ the bottom, and the Robium Dashboard on the right.
 
 ### Create a map
 
-1. Choose **House** or **Warehouse** in Simulation. House is the default.
+1. Choose **Simple House**, **Furnished House**, or **Warehouse** in
+   Simulation. Simple House is the default.
 2. Enter a map name.
 3. Select **Start mapping**.
 4. Drive with WASD, the arrow keys, or the movement buttons.
@@ -104,12 +105,15 @@ Saved maps and waypoint sidecars are local, untracked files. Waypoints are
 stored beside their map as `<map>.waypoints.json`. The app never promotes or
 deletes them automatically.
 
-House and Warehouse are registered in the repository-wide asset catalog as
-`world.aws-small-house` and `world.tugbot-warehouse`. Their source revisions,
-checksums, entrypoints, and licenses are tracked under `shared/assets/`; large
-payloads are downloaded during the image build. House uses the MIT-licensed
-AWS RoboMaker Small House. Warehouse uses an upstream CC BY-NC-ND 4.0 asset,
-so review its license before reuse.
+Simple House is a source-owned SDF world bundled with the ROS package. It is
+one static model made from ten primitive wall boxes and two primitive
+furnishings, with no mesh or downloaded model dependencies. Furnished House
+and Warehouse remain available and are registered in the repository-wide
+asset catalog as `world.aws-small-house` and `world.tugbot-warehouse`. Their
+source revisions, checksums, entrypoints, and licenses are tracked under
+`shared/assets/`; large payloads are downloaded during the image build.
+Furnished House uses the MIT-licensed AWS RoboMaker Small House. Warehouse
+uses an upstream CC BY-NC-ND 4.0 asset, so review its license before reuse.
 
 ## How it works
 
@@ -137,15 +141,18 @@ architecture and design decisions.
 
 Everything renders on the CPU — there is no GPU in this app, so Gazebo's
 `ogre2` renderer falls back to llvmpipe and every sensor frame is rasterized
-in software. The demo targets real time, because real-time factor is what
-makes teleop feel right: at RTF 0.25 a TurtleBot commanded to 0.2 m/s appears
-to crawl at 5 cm/s. Four settings hold it there, and each is worth
-understanding before changing it:
+in software. Simple House is the default specifically to keep scene traversal
+small. The more visually detailed Furnished House is still useful when the
+extra objects matter. The demo targets real time, because real-time factor is
+what makes teleop feel right: at RTF 0.25 a TurtleBot commanded to 0.2 m/s
+appears to crawl at 5 cm/s. Four settings support that target, and each is
+worth understanding before changing it:
 
-- **Physics: a 4 ms step at 288 Hz, capped at `real_time_factor` 1.15**
-  (`tune_physics()` in `sim.launch.py`). The pinned AWS house asset ships
-  Gazebo Classic's 1 ms / 1000 Hz defaults, which this demo cannot afford.
-  The 1.15 cap is not a typo — see below.
+- **Physics: a 4 ms step at 288 Hz, capped at `real_time_factor` 1.15.**
+  Simple House declares this directly; `tune_physics()` in `sim.launch.py`
+  applies the same settings to the pinned AWS house, whose Gazebo Classic
+  1 ms / 1000 Hz defaults are too expensive here. The 1.15 cap is not a typo
+  — see below.
 - **Camera at 4 Hz** (patched into the Waffle Pi SDF at image build time).
   Camera *rate* is a top cost; camera *resolution* is nearly free, because
   the cost is scene traversal rather than rasterization (320x240 measured
@@ -168,7 +175,7 @@ factor left at the asset's 1, raising `real_time_update_rate` to 500 or
 disabling it entirely both measured exactly RTF 1.000 — modern Gazebo does
 not derive the factor from step x rate the way Classic did.
 
-Measured on 8 CPUs in the House world with a live camera subscriber:
+Measured on 8 CPUs in the Furnished House world with a live camera subscriber:
 **RTF 1.02, steady within +/-0.01 across six windows, 269% CPU, 229 KB/s of
 camera** — against 0.52, 377%, and roughly 4.7 MB/s before this work. On the
 wire that is 5.8 Hz of `/scan`, 4.1 Hz of camera, and 47 Hz of IMU. Commanded

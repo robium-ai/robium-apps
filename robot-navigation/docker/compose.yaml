@@ -20,7 +20,7 @@ services:
       - gazebo-fuel:/root/.gz/fuel
     command: >
       ros2 launch robot_nav_bringup sim.launch.py
-      world:=${WORLD:-furnished_house}
+      world:=${WORLD:-simple_house}
 
   # Persistent interactive dashboard. The supervisor starts in IDLE and owns
   # restartable simulator and mapping/localization child process groups.
@@ -41,7 +41,7 @@ services:
       - ../lichtblick/layout.json:/opt/lichtblick/layout.json:ro
     command: >
       ros2 launch robot_nav_bringup mapping.launch.py
-      world:=${WORLD:-furnished_house} map_name:=${MAP_NAME:-map}
+      world:=${WORLD:-simple_house} map_name:=${MAP_NAME:-map}
 
   slam:
     <<: *app

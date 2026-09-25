@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+
+case "${1:-help}" in
+  help|-h|--help)
+    cat <<'USAGE'
+stackchan-er2-sim - local-first Stack-chan MuJoCo demo
+
+  ./app build             install locked Python deps, simulator, and voice models
+  ./app doctor            report simulator, speech-model, and ER2 readiness
+  ./app run               open the local demo at http://127.0.0.1:8017
+  ./app run --no-open     run without opening a browser
+  ./app run --brain er2   use Gemini Robotics ER2 (requires GEMINI_API_KEY)
+  ./app demo              exercise scripted commands without a browser
+  ./app smoke             lint, test, and run the deterministic demo
+
+The default brain is a deterministic local command router. Whisper base.en Q5
+and Kokoro-82M int8 run locally. ER2 is opt-in and never selected merely because
+GEMINI_API_KEY exists.
+USAGE
+    ;;
+  build)
+    uv sync
+    uv run python scripts/setup_assets.py
+    uv lock --check
+    ;;
+  doctor|demo)
+    command="$1"
+    shift
+    uv run --locked stackchan-er2-sim "$command" "$@"
+    ;;
+  run)
+    shift
+    uv run --locked stackchan-er2-sim run "$@"
+    ;;
+  smoke)
+    uv run --locked ruff check src tests scripts
+    uv run --locked pytest
+    output="$(uv run --locked stackchan-er2-sim demo)"
+    printf '%s\n' "$output"
+    grep -q '^STACKCHAN SIM POC PASS$' <<<"$output"
+    ;;
+  *)
+    echo "Unknown command: $1" >&2
+    "$0" help >&2
+    exit 2
+    ;;
+esac

@@ -1,0 +1,57 @@
+schema_version: "1"
+id: robot-zoo
+name: Robot Zoo
+summary: Try a Panda, Stretch 3, and Go2 from a compact native controller beside MuJoCo's standard viewer.
+version: 1.0.0
+status: experimental
+license: MIT
+tags: [mujoco, simulation, manipulation, mobile-manipulation, quadruped, interactive, native-ui]
+
+runtime:
+  kind: uv
+  entrypoint: ./app run
+
+verbs:
+  help:
+    command: ./app help
+    summary: Show commands and controls
+  doctor:
+    command: ./app doctor
+    summary: Diagnose desktop and runtime prerequisites
+  check:
+    command: ./app check
+    summary: Run bounded physics checks for all three robots
+  build:
+    command: ./app build
+    summary: Prepare the locked uv environment and robot models
+  run:
+    command: ./app run
+    summary: Open the controller beside MuJoCo's standard viewer
+  smoke:
+    command: ./app smoke
+    summary: Test the launcher, controllers, models, and physics
+
+modes:
+  panda:
+    command: ./app run --robot panda
+    summary: Open the Franka Panda arm
+  stretch:
+    command: ./app run --robot stretch
+    summary: Open the Stretch 3 mobile manipulator
+  go2:
+    command: ./app run --robot go2
+    summary: Open the Unitree Go2 quadruped
+
+requirements:
+  hardware: []
+  gpu: none
+  network: required
+
+demo:
+  default_mode: panda
+  hosted: false
+  estimated_startup_seconds: 8
+
+artifacts:
+  thumbnail: assets/stills/robot-zoo-macos.png
+  architecture_brief: docs/architecture-brief.md

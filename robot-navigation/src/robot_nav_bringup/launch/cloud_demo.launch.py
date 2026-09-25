@@ -17,7 +17,7 @@ def generate_launch_description():
         package='robot_nav_bringup', executable='session_manager',
         name='session_manager', output='screen', parameters=[{
             'map_name': 'map',
-            'world': 'furnished_house',
+            'world': 'simple_house',
             'maps_root': '/ws/maps',
         }])
     relay = Node(

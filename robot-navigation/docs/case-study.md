@@ -91,10 +91,6 @@ or no simulator section.
 You need Git, Docker with Compose v2, a modern browser, and ports 8080 and 8765.
 The simulation does not require a GPU, physical robot, or system ROS install.
 
-To try it before cloning the repository, open the [live Robot Navigation
-simulator](https://robium.ai/demos/robot-navigation/live/). It starts a private,
-temporary session with the viewer already connected.
-
 ```bash
 npx robium-ai@latest setup
 git clone https://github.com/robium-ai/robium-apps.git

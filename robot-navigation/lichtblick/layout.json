@@ -240,8 +240,12 @@
       "showQuickActions": true,
       "simulationWorlds": [
         {
+          "value": "simple_house",
+          "label": "Simple House"
+        },
+        {
           "value": "furnished_house",
-          "label": "House"
+          "label": "Furnished House"
         },
         {
           "value": "tugbot_warehouse",

@@ -5,6 +5,7 @@ import re
 
 
 WORLD_NAMES = (
+    'simple_house',
     'furnished_house',
     'tugbot_warehouse',
 )
@@ -14,7 +15,7 @@ MAP_NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$')
 class SessionProcesses:
     """Own one simulator and at most one mapping/localization child process."""
 
-    def __init__(self, process_factory, maps_root, initial_world='furnished_house'):
+    def __init__(self, process_factory, maps_root, initial_world='simple_house'):
         self._factory = process_factory
         self._maps_root = Path(maps_root)
         self._simulation = None

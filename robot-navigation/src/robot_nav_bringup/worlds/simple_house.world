@@ -1,0 +1,187 @@
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <world name="default">
+    <scene>
+      <shadows>false</shadows>
+      <ambient>0.55 0.55 0.55 1</ambient>
+      <background>0.82 0.86 0.88 1</background>
+    </scene>
+
+    <gui fullscreen="0">
+      <camera name="user_camera">
+        <pose>0 -11 12 0 0.65 1.57</pose>
+        <view_controller>orbit</view_controller>
+        <projection_type>perspective</projection_type>
+      </camera>
+    </gui>
+
+    <physics name="4ms" type="ode">
+      <max_step_size>0.004</max_step_size>
+      <real_time_update_rate>288</real_time_update_rate>
+      <real_time_factor>1.15</real_time_factor>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system"
+            name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system"
+            name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system"
+            name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system"
+            name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-imu-system"
+            name="gz::sim::systems::Imu"/>
+
+    <light type="directional" name="sun">
+      <cast_shadows>false</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="floor">
+        <collision name="collision">
+          <geometry>
+            <plane><normal>0 0 1</normal><size>20 20</size></plane>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane><normal>0 0 1</normal><size>20 20</size></plane>
+          </geometry>
+          <material>
+            <ambient>0.72 0.70 0.65 1</ambient>
+            <diffuse>0.72 0.70 0.65 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!--
+      Deliberately lightweight: one static house model, ten primitive wall
+      boxes, and two primitive furnishings. There are no mesh resources or
+      downloaded models for Gazebo's CPU renderer to traverse.
+    -->
+    <model name="simple_house">
+      <static>true</static>
+
+      <link name="wall_west">
+        <pose>-5 0 1.25 0 0 0</pose>
+        <collision name="collision"><geometry><box><size>0.15 8 2.5</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.15 8 2.5</size></box></geometry>
+          <material><ambient>0.72 0.79 0.81 1</ambient><diffuse>0.72 0.79 0.81 1</diffuse></material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+      <link name="wall_east">
+        <pose>5 0 1.25 0 0 0</pose>
+        <collision name="collision"><geometry><box><size>0.15 8 2.5</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.15 8 2.5</size></box></geometry>
+          <material><ambient>0.72 0.79 0.81 1</ambient><diffuse>0.72 0.79 0.81 1</diffuse></material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+      <link name="wall_south">
+        <pose>0 -4 1.25 0 0 0</pose>
+        <collision name="collision"><geometry><box><size>10 0.15 2.5</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>10 0.15 2.5</size></box></geometry>
+          <material><ambient>0.72 0.79 0.81 1</ambient><diffuse>0.72 0.79 0.81 1</diffuse></material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+      <link name="wall_north">
+        <pose>0 4 1.25 0 0 0</pose>
+        <collision name="collision"><geometry><box><size>10 0.15 2.5</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>10 0.15 2.5</size></box></geometry>
+          <material><ambient>0.72 0.79 0.81 1</ambient><diffuse>0.72 0.79 0.81 1</diffuse></material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+
+      <link name="wall_center_south">
+        <pose>0 -2.6 1.25 0 0 0</pose>
+        <collision name="collision"><geometry><box><size>0.15 2.8 2.5</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.15 2.8 2.5</size></box></geometry>
+          <material><ambient>0.72 0.79 0.81 1</ambient><diffuse>0.72 0.79 0.81 1</diffuse></material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+      <link name="wall_center_north">
+        <pose>0 2.6 1.25 0 0 0</pose>
+        <collision name="collision"><geometry><box><size>0.15 2.8 2.5</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.15 2.8 2.5</size></box></geometry>
+          <material><ambient>0.72 0.79 0.81 1</ambient><diffuse>0.72 0.79 0.81 1</diffuse></material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+
+      <link name="wall_northwest_west">
+        <pose>-4 1.5 1.25 0 0 0</pose>
+        <collision name="collision"><geometry><box><size>2 0.15 2.5</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>2 0.15 2.5</size></box></geometry>
+          <material><ambient>0.72 0.79 0.81 1</ambient><diffuse>0.72 0.79 0.81 1</diffuse></material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+      <link name="wall_northwest_east">
+        <pose>-1 1.5 1.25 0 0 0</pose>
+        <collision name="collision"><geometry><box><size>2 0.15 2.5</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>2 0.15 2.5</size></box></geometry>
+          <material><ambient>0.72 0.79 0.81 1</ambient><diffuse>0.72 0.79 0.81 1</diffuse></material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+
+      <link name="wall_southeast_west">
+        <pose>1 -1.5 1.25 0 0 0</pose>
+        <collision name="collision"><geometry><box><size>2 0.15 2.5</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>2 0.15 2.5</size></box></geometry>
+          <material><ambient>0.72 0.79 0.81 1</ambient><diffuse>0.72 0.79 0.81 1</diffuse></material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+      <link name="wall_southeast_east">
+        <pose>4 -1.5 1.25 0 0 0</pose>
+        <collision name="collision"><geometry><box><size>2 0.15 2.5</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>2 0.15 2.5</size></box></geometry>
+          <material><ambient>0.72 0.79 0.81 1</ambient><diffuse>0.72 0.79 0.81 1</diffuse></material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+
+      <link name="sofa">
+        <pose>-3.4 2.8 0.35 0 0 0</pose>
+        <collision name="collision"><geometry><box><size>1.6 0.7 0.7</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>1.6 0.7 0.7</size></box></geometry>
+          <material><ambient>0.25 0.47 0.56 1</ambient><diffuse>0.25 0.47 0.56 1</diffuse></material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+      <link name="table">
+        <pose>2.8 2.2 0.35 0 0 0</pose>
+        <collision name="collision"><geometry><box><size>0.9 0.9 0.7</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.9 0.9 0.7</size></box></geometry>
+          <material><ambient>0.64 0.43 0.25 1</ambient><diffuse>0.64 0.43 0.25 1</diffuse></material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+    </model>
+  </world>
+</sdf>

@@ -96,10 +96,6 @@ Open [http://localhost:8765](http://localhost:8765). The first run prepares the
 Python environment and downloads about 207 MB of model weights. Later starts
 reuse both. Run `./app stop` when you are finished.
 
-You can also open the [live ACT demo](/demos/act-aloha-cube-transfer/live) for
-a temporary browser session, or use the [demo page](/demos/act-aloha-cube-transfer)
-to see the recorded result before starting anything.
-
 ## What this checkpoint shows
 
 The app uses LeRobot's official 80k-step

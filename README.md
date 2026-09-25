@@ -17,13 +17,13 @@ Explore the code. Get a robot working. Make it yours.
 
 <table>
   <tr>
-    <td width="60%">
-      <a href="robot-navigation/"><img src="robot-navigation/assets/stills/readme-navigation.png" alt="A simulated TurtleBot mapping and navigating a home"></a>
+    <td width="50%" align="center">
+      <a href="robot-zoo/"><img src="robot-zoo/assets/stills/robot-zoo-macos.png" alt="Robot Zoo showing MuJoCo and a compact native controller side by side"></a><br>
+      <strong>Robot Zoo</strong> — try three robots
     </td>
-    <td width="40%" valign="middle">
-      <strong>Your first Robium project</strong><br><br>
-      Map a simulated home, localize a TurtleBot, and send it to a Nav2 goal.<br><br>
-      <code>Simulation · Docker · No GPU</code>
+    <td width="50%" align="center">
+      <a href="stackchan-er2-sim/"><img src="stackchan-er2-sim/assets/stills/stackchan-er2-sim-macos.png" alt="Stack-chan responding in a local MuJoCo simulation"></a><br>
+      <strong>Talking Stack-chan</strong> — local voice and face tracking
     </td>
   </tr>
 </table>
@@ -38,27 +38,72 @@ npx robium-ai setup
 npx robium-ai doctor
 ```
 
-For the most reliable first run, start Docker and try the stable navigation
-example from any directory:
+For the quickest first run, try three interactive MuJoCo robots from any
+directory. It needs no Docker, GPU, model checkpoint, or API key:
+
+```bash
+npx robium-ai app doctor robot-zoo
+npx robium-ai app run robot-zoo
+```
+
+The first run builds its pinned environment and downloads the three robot
+models. You should see MuJoCo's standard viewer on the left and a compact
+native controller on the right—no browser window opens.
+
+Prefer to work through your coding agent? Restart it after setup and paste:
+
+> Show me a few robots in MuJoCo that I can try and interact with.
+
+The agent will inspect this repository and the selected app's README, check the
+graphical desktop, run the existing example unchanged, and show the working
+viewer before proposing custom work.
+
+For an equally local first run with voice and face tracking, try Stack-chan. Its
+default brain, Whisper speech recognition, and Kokoro voice all run locally;
+Gemini Robotics ER2 remains an explicit opt-in:
+
+```bash
+npx robium-ai app doctor stackchan-er2-sim
+npx robium-ai app run stackchan-er2-sim
+```
+
+Or paste this into your coding agent:
+
+> Show me a simulated Stack-chan I can talk to locally and ask to follow my face.
+
+## Four more guided projects
+
+### Autonomous driving
+
+> Help me run a pretrained vision policy that drives a simulated racetrack in real time on my Mac.
+
+Robium selects [`car-racing-ppo`](car-racing-ppo/). It runs a pinned
+third-party PPO checkpoint on CPU in Gymnasium's native CarRacing window; no
+training or dedicated GPU is required. The qualified path is Apple Silicon
+macOS, and the first build downloads the external model.
+
+```bash
+npx robium-ai app doctor car-racing-ppo
+npx robium-ai app check car-racing-ppo
+npx robium-ai app run car-racing-ppo
+```
+
+The runner is MIT licensed, but the external checkpoint declares no license,
+so Robium does not bundle or redistribute its weights. This is a toy
+visual-control benchmark, not a real-road driving system.
+
+### Robot navigation
+
+> Help me map a simulated environment, localize a mobile robot, and navigate to a goal.
+
+Robium selects [`robot-navigation`](robot-navigation/). Start Docker first;
+the visible proof is a simulated robot, map, laser scan, and navigation
+controls in the bundled viewer.
 
 ```bash
 npx robium-ai app doctor robot-navigation
 npx robium-ai app run robot-navigation
 ```
-
-The first run may build or download its pinned environment. Follow the URL
-printed by the launcher. You should see the simulated robot, map, laser scan,
-and navigation controls in the bundled viewer.
-
-Prefer to work through your coding agent? Restart it after setup and paste:
-
-> Help me map a simulated environment, localize a mobile robot, and navigate to a goal.
-
-The agent will inspect this repository and the selected app's README, check
-Docker and ports, run the existing example unchanged, and verify a saved map,
-localization, and a reached goal before proposing custom work.
-
-## Two more first projects
 
 ### Pretrained robot-arm manipulation
 
@@ -87,12 +132,15 @@ live-model results.
 
 ## Application catalog
 
-The first three entries are the best onboarding paths. Other apps may need a
+The first six entries are the best onboarding paths. Other apps may need a
 specific host, model access, cloud GPU, or physical robot; each app README is
 the source of truth.
 
 | Application | What you can see working | Primary runtime |
 | --- | --- | --- |
+| [robot-zoo](robot-zoo/) | Switch among and interact with three robots in MuJoCo's native viewer | uv, MuJoCo |
+| [stackchan-er2-sim](stackchan-er2-sim/) | Talk locally to Stack-chan and let its MuJoCo head follow your face | uv, MuJoCo + Three.js |
+| [car-racing-ppo](car-racing-ppo/) | Watch a pinned pretrained vision policy drive a generated racetrack in real time | uv, Gymnasium |
 | [robot-navigation](robot-navigation/) | Map a simulated home, localize, and drive Nav2 goals | Docker |
 | [act-aloha-cube-transfer](act-aloha-cube-transfer/) | Run pretrained bimanual cube transfer | uv, MuJoCo |
 | [silly-turtlebot](silly-turtlebot/) | Give visual, natural-language missions to a simulated TurtleBot | uv + Docker |

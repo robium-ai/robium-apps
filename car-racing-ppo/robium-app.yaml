@@ -1,0 +1,46 @@
+schema_version: "1"
+id: car-racing-ppo
+name: CarRacing PPO
+summary: Run a pinned third-party visual PPO policy on CarRacing tracks on macOS; checkpoint license unspecified.
+version: 1.0.0
+status: experimental
+license: MIT
+tags: [autonomous-driving, reinforcement-learning, pretrained-policy, gymnasium, ppo, macos, third-party-checkpoint]
+
+runtime:
+  kind: uv
+  entrypoint: ./app run
+
+verbs:
+  help:
+    command: ./app help
+    summary: Show commands, controls, and examples
+  doctor:
+    command: ./app doctor
+    summary: Diagnose uv, platform, environment, and checkpoint readiness
+  build:
+    command: ./app build
+    summary: Prepare the locked environment and pinned checkpoint
+  check:
+    command: ./app check
+    summary: Measure three deterministic headless episodes
+  run:
+    command: ./app run
+    summary: Watch the pretrained policy drive a generated track
+  smoke:
+    command: ./app smoke
+    summary: Run tests and one real checkpoint episode
+
+requirements:
+  hardware: []
+  gpu: none
+  network: required
+
+demo:
+  default_mode: run
+  hosted: false
+  estimated_startup_seconds: 15
+
+artifacts:
+  thumbnail: assets/stills/car-racing-ppo-macos.png
+  architecture_brief: docs/architecture-brief.md

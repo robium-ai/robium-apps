@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+# Repository-local command surface. See robium-app.yaml for the contract.
+set -euo pipefail
+cd "$(dirname "$0")"
+
+python_command() {
+  if [ "$(uname -s)" = "Darwin" ]; then
+    uv run mjpython "$@"
+  else
+    uv run python "$@"
+  fi
+}
+
+case "${1:-help}" in
+  help|-h|--help)
+    cat <<'USAGE'
+robot-zoo - a small native controller for MuJoCo's robot zoo
+
+  ./app build              install dependencies and cache the robot models
+  ./app doctor             check desktop and runtime prerequisites
+  ./app run                open the controller and Franka Panda demo
+  ./app run --robot NAME   start with panda, stretch, or go2
+  ./app viewer --robot NAME
+                           open only MuJoCo (mouse and native UI)
+  ./app check              run bounded headless physics checks
+  ./app smoke              run the app and physics test suite
+
+Inside the controller:
+  Robot + Load    switch Panda / Stretch / Go2
+  Arrow buttons  start movement at the selected speed
+  Stop            hold the current position
+  Robot action    run actions such as Stand, Sit, or Open gripper
+
+MuJoCo retains its full native left/right panels. Double-click a body to select
+it, Ctrl-drag to rotate it, or Ctrl-right-drag to translate it.
+USAGE
+    ;;
+  doctor)
+    ok=1
+    if command -v uv >/dev/null 2>&1; then
+      echo "ok: uv is installed"
+    else
+      echo "FAIL: uv is not installed (https://docs.astral.sh/uv/)"
+      ok=0
+    fi
+    [ -f uv.lock ] || { echo "FAIL: uv.lock is missing (broken checkout)"; ok=0; }
+    case "$(uname -s)" in
+      Darwin)
+        echo "ok: macOS native desktop session"
+        ;;
+      Linux)
+        if [ "$(uname -m)" = "x86_64" ]; then
+          echo "ok: Linux x86_64 host"
+        else
+          echo "FAIL: Linux qualification currently covers x86_64 only"
+          ok=0
+        fi
+        if [ -n "${DISPLAY:-}" ]; then
+          echo "ok: X11/XWayland display available at ${DISPLAY}"
+        elif [ -n "${WAYLAND_DISPLAY:-}" ]; then
+          echo "FAIL: pure Wayland is not yet qualified; enable XWayland so DISPLAY is set"
+          ok=0
+        else
+          echo "FAIL: no graphical display; run inside an X11 or XWayland desktop session"
+          ok=0
+        fi
+        ;;
+      *)
+        echo "FAIL: supported desktops are macOS and Ubuntu Linux with X11/XWayland"
+        ok=0
+        ;;
+    esac
+    if [ -d .venv ] && command -v uv >/dev/null 2>&1; then
+      if uv run --no-sync python -c 'import gradio, mujoco, webview; from robot_zoo.controllers import ROBOTS; assert len(ROBOTS) == 3' >/dev/null 2>&1; then
+        echo "ok: Python environment and three-robot registry are ready"
+      else
+        echo "FAIL: Python environment is incomplete; run './app build'"
+        ok=0
+      fi
+      if [ "$(uname -s)" = "Linux" ]; then
+        if uv run --no-sync python -c 'import Xlib; from PyQt6 import QtWebEngineCore' >/dev/null 2>&1; then
+          echo "ok: Qt and X11 desktop dependencies are ready"
+        else
+          echo "FAIL: Linux Qt/X11 libraries are incomplete; see README prerequisites, then run './app build'"
+          ok=0
+        fi
+      fi
+    else
+      echo "note: environment not prepared; './app build' will install it"
+    fi
+    [ "$ok" -eq 1 ] && echo "DOCTOR PASS" || { echo "DOCTOR FAIL"; exit 1; }
+    ;;
+  build)
+    uv sync
+    uv run python -m robot_zoo prefetch
+    ;;
+  run)
+    shift
+    uv sync --quiet
+    uv run python -m robot_zoo run "$@"
+    ;;
+  viewer)
+    shift
+    uv sync --quiet
+    python_command -m robot_zoo viewer "$@"
+    ;;
+  check)
+    shift
+    uv run python -m robot_zoo check "$@"
+    ;;
+  smoke)
+    make smoke
+    ;;
+  *)
+    echo "Unknown command: $1" >&2
+    echo "Run './app help' for usage." >&2
+    exit 1
+    ;;
+esac

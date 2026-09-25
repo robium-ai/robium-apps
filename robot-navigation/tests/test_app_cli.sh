@@ -72,4 +72,6 @@ $APP_DIR/app stop >/dev/null
 stop_calls=$(cat "$DOCKER_CALLS")
 assert_contains "$stop_calls" "compose -f docker/compose.yaml --profile * down --remove-orphans"
 
+python3 "$APP_DIR/tests/test_simple_house.py"
+
 echo "APP CLI PASS"

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stack-chan — local voice + MuJoCo</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/sim/vendor/three.module.js",
+        "three/addons/": "/sim/vendor/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main class="shell">
+    <section class="workspace">
+      <aside class="control-panel">
+        <div class="status-line">
+          <span class="dot"></span><span id="status">Connecting…</span>
+          <span class="brain-mode" id="brain-badge">local brain</span>
+        </div>
+
+        <section class="card conversation">
+          <p class="label">You said</p>
+          <p class="transcript" id="transcript">Try a command below or hold the mic.</p>
+          <p class="label">Stack-chan</p>
+          <p class="reply" id="reply">Ready when you are.</p>
+        </section>
+
+        <button class="mic" id="mic-button" type="button">
+          <span class="mic__icon">●</span>
+          <span id="mic-label">Hold to talk</span>
+        </button>
+
+        <form id="command-form" class="command-form">
+          <input id="command-input" autocomplete="off" placeholder="Or type a command…" aria-label="Command">
+          <button type="submit">Send</button>
+        </form>
+
+        <div class="examples" aria-label="Example commands">
+          <button type="button" data-command="Introduce yourself">Introduce yourself</button>
+          <button type="button" data-command="Look left">Look left</button>
+          <button type="button" data-command="Nod yes">Nod yes</button>
+          <button type="button" data-command="Track me">Track me</button>
+        </div>
+
+        <section class="camera-card" id="camera-card">
+          <div class="camera-card__head">
+            <div>
+              <p class="label">Face tracker</p>
+              <strong id="tracking-state">Off</strong>
+            </div>
+            <button id="tracking-button" type="button">Enable camera</button>
+          </div>
+          <div class="preview-wrap">
+            <video id="camera" playsinline muted></video>
+            <canvas id="camera-overlay"></canvas>
+          </div>
+          <p class="privacy">Frames stay in this tab. Only smoothed x/y face coordinates go to the local simulator.</p>
+        </section>
+
+      </aside>
+
+      <section class="sim-card">
+        <div class="sim-card__bar">
+          <div><span class="dot dot--amber" id="sim-dot"></span><span id="sim-status">MuJoCo connecting…</span></div>
+        </div>
+        <div class="robot-viewport" id="robot-viewport" aria-label="Stack-chan MuJoCo simulation">
+          <div class="sim-speech is-hidden" id="sim-speech"></div>
+          <div class="viewport-hint">Drag to orbit · scroll to zoom</div>
+        </div>
+      </section>
+    </section>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

@@ -47,6 +47,9 @@ FURNISHED_HOUSE_SYSTEMS = (
 
 def world_spec(bringup, tb3_gazebo, world_name):
     """Resolve a world and a collision-free TurtleBot spawn pose."""
+    if world_name == 'simple_house':
+        return (os.path.join(bringup, 'worlds', 'simple_house.world'),
+                '-2.0', '-0.5')
     if world_name == 'tugbot_warehouse':
         if not TUGBOT_WAREHOUSE_WORLD.is_file():
             raise RuntimeError(
@@ -199,9 +202,9 @@ def generate_launch_description():
     bringup = get_package_share_directory('robot_nav_bringup')
 
     world_arg = DeclareLaunchArgument(
-        'world', default_value='furnished_house',
-        choices=['furnished_house', 'tugbot_warehouse'],
-        description='House or Warehouse simulation environment')
+        'world', default_value='simple_house',
+        choices=['simple_house', 'furnished_house', 'tugbot_warehouse'],
+        description='Simple House, Furnished House, or Warehouse environment')
     gui_arg = DeclareLaunchArgument(
         'gui', default_value='false', choices=['true', 'false'],
         description='open a native Gazebo GUI attached to the server')
@@ -217,12 +220,10 @@ def generate_launch_description():
     # ros_gz parameter_bridge from turtlebot3_waffle_pi_bridge.yaml. That
     # launch also starts ros_gz_image's image_bridge for any model other than
     # plain burger, which is what puts /camera/image_raw on ROS for us.
-    # (-2.0, -0.5) is upstream's default spawn for BOTH turtlebot3_world.launch.py
-    # and turtlebot3_house.launch.py, and it lands in interior free space in the
-    # house (verified against the model's collision geometry at the lidar plane),
-    # so the world swap does not move the robot. That matters downstream: the
-    # saved map's origin is the SLAM start pose, so `map = world + (2.0, 0.5)`
-    # still holds and every frame-conversion comment stays true.
+    # Simple House keeps the historical (-2.0, -0.5) spawn used by the
+    # scripted mapping route. Other worlds use their own verified free pose.
+    # Each saved map is scoped to its world, so different spawn poses do not
+    # cross-contaminate localization sessions.
     spawn = OpaqueFunction(
         function=robot_actions, args=[bringup, tb3_gazebo])
 

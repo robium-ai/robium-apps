@@ -113,9 +113,8 @@ a hand-written controller.
 
 ## Try it, then build on it
 
-The [demo page](/demos/diffusion-policy-pusht) shows the recorded rollout and
-current hosted availability. For hands-on experiments, the local application
-is the recommended path.
+The recorded rollout above shows the published result. For hands-on
+experiments, the local application is the recommended path.
 
 Once the loop makes sense, change the seed, inference setting, or block shape.
 Then try ACT for a different policy architecture, or Pi0.5 when you are ready

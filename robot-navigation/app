@@ -99,7 +99,7 @@ status() {
 
 rtf() {
   samples=${RTF_SAMPLES:-6}
-  world=${WORLD:-furnished_house}
+  world=${WORLD:-simple_house}
   export WORLD="$world"
   compose --profile sim up -d sim
   echo "world=$world: waiting for gz world stats (up to ~2 min)..."

@@ -96,7 +96,7 @@ Five byte-matched rollout clips form the browser progression: iterations 0,
 100, 300, 1,000, and 1,999. The complete manifest records a digest and role for
 every file, so a future Hub upload can be checked against the recovered source.
 
-## The first live demo used a simple stream
+## The first browser prototype used a simple stream
 
 The original interactive panel did not use WebRTC. It captured Isaac Lab's
 rendered frames, served them as one MJPEG stream, and accepted forward, strafe,

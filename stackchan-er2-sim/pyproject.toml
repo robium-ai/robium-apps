@@ -1,0 +1,40 @@
+[project]
+name = "stackchan-er2-sim"
+version = "0.1.0"
+description = "A local-first voice and face-tracking Stack-chan demo in MuJoCo"
+readme = "README.md"
+authors = [{ name = "robium", email = "admin@robium.ai" }]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.116,<1",
+    "google-genai>=2.22.0,<3",
+    "kokoro-onnx==0.6.1",
+    "matplotlib>=3.10,<4",
+    "mujoco>=3.3,<4",
+    "numpy>=2.2,<3",
+    "pywhispercpp==1.5.1",
+    "soundfile>=0.13,<1",
+    "uvicorn[standard]>=0.35,<1",
+]
+
+[project.scripts]
+stackchan-er2-sim = "stackchan_er2_sim.cli:main"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28,<1",
+    "pytest>=8.4,<9",
+    "ruff>=0.12,<1",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.29,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

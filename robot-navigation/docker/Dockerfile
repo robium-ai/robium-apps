@@ -63,16 +63,17 @@ RUN . /opt/ros/${ROS_DISTRO}/setup.sh \
 # Make Waffle Pi's upstream sensors affordable under software rendering by
 # reducing only their rates. Preserve optics, samples, noise, and frame IDs.
 #
-# Frame RATE is the only lever that works here. Every camera frame is a full
-# ogre2 render pass over the ~100-model house on llvmpipe, and the cost is
-# scene traversal rather than rasterization: dropping the image to 320x240
-# measured RTF 0.521 against 0.522 at 640x480 — no change at all. Rate does
-# bind. With the 4 ms physics step from sim.launch.py's tune_physics(),
-# measured RTF was 0.63 at 10 Hz, 0.79 at 4 Hz with a live subscriber, and
-# 0.999 with the camera off entirely (8 CPUs). 4 Hz keeps a live camera panel
-# in the hosted demo while leaving the simulator near real time, which is
-# what a teleop demo needs; the browser sees JPEG frames, so the low rate
-# costs no fidelity beyond motion smoothness in that one panel.
+# Frame RATE is the only lever that works in the optional Furnished House.
+# Every camera frame there is a full ogre2 render pass over ~100 models on
+# llvmpipe, and the cost is scene traversal rather than rasterization: dropping
+# the image to 320x240 measured RTF 0.521 against 0.522 at 640x480 — no change
+# at all. Rate does bind. With the 4 ms physics step from sim.launch.py's
+# tune_physics(), measured RTF was 0.63 at 10 Hz, 0.79 at 4 Hz with a live
+# subscriber, and 0.999 with the camera off entirely (8 CPUs). Simple House is
+# now the lightweight default, while 4 Hz keeps every selectable world within
+# the same sensor contract and retains a live camera panel in the hosted demo;
+# the browser sees JPEG frames, so the low rate costs no fidelity beyond motion
+# smoothness in that one panel.
 #
 # The lidar is the OTHER render-based sensor — gpu_lidar renders the scene
 # exactly as the camera does — and halving it buys more headroom than

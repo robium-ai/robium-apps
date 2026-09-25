@@ -59,6 +59,7 @@ robot-navigation/
 │       │   ├── slam.launch.py        # sim + slam_toolbox (online_async) + Nav2 servers launched DIRECTLY
 │       │   └── nav.launch.py         # sim + map_server(saved map) + AMCL + Nav2 servers launched DIRECTLY
 │       ├── config/                   # nav2_params.yaml (TB3 Waffle Pi radius + smoother_server), slam_params.yaml
+│       ├── worlds/                   # source-owned primitive Simple House (default)
 │       ├── maps/                     # current local map store; generated files remain untracked
 │       └── robot_nav_bringup/        # package module (ros2 run entry points)
 │           ├── drive_mapping_route.py  # scripted waypoint route for the SLAM run
@@ -87,13 +88,15 @@ uses Waffle Pi's 0.15 m radius, adds `smoother_server`, and enables
 `enable_stamped_cmd_vel: true` in all five cmd_vel-publishing sections.
 
 Responsibilities:
-- **Upstream (apt):** robot model/URDF (`turtlebot3_description`), sim worlds/models
-  (`turtlebot3_gazebo`), baseline Nav2/SLAM params (`turtlebot3_navigation2`).
+- **Upstream (apt):** robot model/URDF and support models
+  (`turtlebot3_description`, `turtlebot3_gazebo`) plus baseline Nav2/SLAM
+  params (`turtlebot3_navigation2`).
 - **`shared/assets`:** stable world IDs, immutable sources, checksums, licenses,
   entrypoints, and a safe resolver shared by every app. Docker materializes
   only the IDs declared by this app beneath `/opt/robium/assets/`.
-- **`robot_nav_bringup`:** launch composition, tuned parameters, session
-  management, mapping, navigation, and the current local map boundary.
+- **`robot_nav_bringup`:** the primitive, mesh-free Simple House default;
+  launch composition; tuned parameters; session management; mapping;
+  navigation; and the current local map boundary.
 - **`docker/`:** one image, several compose profiles; the `environments` skill owns detail.
 
 ## 4. Comms plan
@@ -168,11 +171,14 @@ through Metal while Lichtblick remains the complementary ROS-state dashboard.
 
 Non-learning app — short plan.
 
-- **Worlds are shared pointer assets:** `world.aws-small-house` pins the
-  MIT-licensed Git archive and `world.tugbot-warehouse` pins Fuel version 2,
-  which is restricted CC BY-NC-ND 4.0. Their manifests live under
-  `shared/assets/`; verified payloads use its gitignored `.cache/`, and images
-  materialize them under `/opt/robium/assets/<asset-id>/`.
+- **The default world is source-owned:** `worlds/simple_house.world` uses one
+  static model with ten primitive wall boxes and two primitive furnishings.
+  It has no mesh or network dependencies. The richer optional worlds are
+  shared pointer assets: `world.aws-small-house` pins the MIT-licensed Git
+  archive and `world.tugbot-warehouse` pins Fuel version 2, which is
+  restricted CC BY-NC-ND 4.0. Their manifests live under `shared/assets/`;
+  verified payloads use its gitignored `.cache/`, and images materialize them
+  under `/opt/robium/assets/<asset-id>/`.
 - **Saved maps are writable local data:** the current compose mount remains
   `src/robot_nav_bringup/maps/` so existing untracked maps stay visible.
   `data/maps/` is the approved future boundary, but it is not mounted until a
@@ -191,13 +197,14 @@ Non-learning app — short plan.
 
 ## 7. Robium skills per build phase
 
-Ordered by the design spec's milestones. Validation is performed while running
-the development scenarios; this app intentionally carries no automated tests.
+Ordered by the design spec's milestones. Fast source-level contract tests
+cover the launcher and world shape; runtime validation is performed while
+running the development scenarios.
 
 | Phase | Skill(s) | Exit criterion |
 |---|---|---|
 | Env setup | `environments` | image builds arm64; `ros2 topic list` works in container |
-| Bringup (M1) | `ros2`, `gazebo` | TB3 Waffle Pi spawns in House by default; `/scan` and `/camera/image_raw` publish; drivable |
+| Bringup (M1) | `ros2`, `gazebo` | TB3 Waffle Pi spawns in Simple House by default; `/scan` and `/camera/image_raw` publish; drivable |
 | Visualization (M1) | `visualization` → `foxglove` | live `/scan` + TF in browser Foxglove |
 | SLAM (M2) | `nav2` (slam_toolbox is in its orbit), `ros2` | scripted drive → map saved locally |
 | Navigation (M3) | `nav2` | AMCL localizes on saved map; `send_goals.py` reaches goals |

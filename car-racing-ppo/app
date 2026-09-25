@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+
+show_help() {
+  cat <<'EOF'
+CarRacing PPO - a pretrained visual driving policy
+
+  ./app doctor             check uv, platform, environment, and model cache
+  ./app build              install the locked environment and fetch the model
+  ./app run [options]      open an autonomous driving rollout
+  ./app check [options]    measure deterministic headless episodes
+  ./app smoke              run tests and one real checkpoint episode
+
+Run options:
+  --seed N                 select a reproducible generated track (default: 1)
+  --max-policy-steps N     stop early after N policy decisions
+
+Check options:
+  --episodes N             number of seeded episodes (default: 3)
+  --seed N                 first seed (default: 0)
+
+In the simulation window, press Q or Esc to stop.
+EOF
+}
+
+doctor() {
+  ok=1
+  if command -v uv >/dev/null 2>&1; then
+    echo "ok: uv is installed"
+  else
+    echo "FAIL: uv is not installed (https://docs.astral.sh/uv/)"
+    ok=0
+  fi
+
+  [ -f uv.lock ] || { echo "FAIL: uv.lock is missing"; ok=0; }
+
+  if [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; then
+    echo "ok: Apple Silicon macOS host"
+  else
+    echo "note: this reference app is qualified only on Apple Silicon macOS"
+  fi
+
+  if [ -d .venv ]; then
+    if uv run --no-sync python -c 'import Box2D, gymnasium, stable_baselines3; import car_racing_ppo' >/dev/null 2>&1; then
+      echo "ok: Python environment is ready"
+      uv run --no-sync python -m car_racing_ppo status
+    else
+      echo "FAIL: Python environment is incomplete; run './app build'"
+      ok=0
+    fi
+  else
+    echo "note: environment not prepared; './app build' will install it"
+  fi
+
+  [ "$ok" -eq 1 ] && echo "DOCTOR PASS" || { echo "DOCTOR FAIL"; exit 1; }
+}
+
+command=${1:-help}
+if [ "$#" -gt 0 ]; then
+  shift
+fi
+
+case "$command" in
+  help|-h|--help)
+    show_help
+    ;;
+  doctor)
+    doctor
+    ;;
+  build)
+    uv sync
+    uv run python -m car_racing_ppo download
+    ;;
+  run)
+    uv sync --quiet
+    uv run python -m car_racing_ppo run "$@"
+    ;;
+  check)
+    uv sync --quiet
+    uv run python -m car_racing_ppo check "$@"
+    ;;
+  smoke)
+    make smoke
+    ;;
+  *)
+    echo "Unknown command: $command" >&2
+    echo "Run './app help' for usage." >&2
+    exit 1
+    ;;
+esac

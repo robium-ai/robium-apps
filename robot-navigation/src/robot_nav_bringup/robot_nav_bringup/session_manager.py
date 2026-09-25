@@ -58,7 +58,7 @@ class SessionManager(Node):
     def __init__(self):
         super().__init__('session_manager')
         self.declare_parameter('map_name', 'map')
-        self.declare_parameter('world', 'furnished_house')
+        self.declare_parameter('world', 'simple_house')
         self.declare_parameter('maps_root', '/ws/maps')
         self.declare_parameter('waypoint_name', 'waypoint')
         self._lock = threading.RLock()

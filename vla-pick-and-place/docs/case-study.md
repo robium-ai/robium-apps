@@ -202,22 +202,6 @@ Current public availability and runtime mode remain website-owned operational
 choices. The article describes the application contract, not a promise that
 paid GPU capacity is enabled for every visit.
 
-## Try the live Pi0.5 workspace
-
-The [live demo](/demos/vla-pick-and-place/live) starts a private RunPod session
-when GPU capacity and the daily allowance are available. A cold start can take
-several minutes because the Pod must attach the model volume, validate the
-checkpoint, stage it onto local disk, and load Pi0.5 before the workspace is
-ready. Once ready, the session lasts ten minutes.
-
-Choose one of the three starting states, keep the canonical instruction or edit
-it for a qualitative experiment, and select **Run task**. **Stop** cancels at
-the next simulator action. Edited instructions are useful for exploration, but
-they do not inherit the published 20-out-of-20 result.
-
-If live capacity is busy or disabled, the [recorded demo and complete run
-evidence](/demos/vla-pick-and-place) remain available without starting a GPU.
-
 ## Cheap iteration, expensive run
 
 The [architect](https://github.com/robium-ai/robium/tree/main/skills/architect)

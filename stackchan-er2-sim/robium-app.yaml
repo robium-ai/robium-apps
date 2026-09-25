@@ -1,0 +1,51 @@
+schema_version: "1"
+id: stackchan-er2-sim
+name: Stack-chan ER2 Simulator
+summary: Talk to a simulated Stack-chan locally, then let it follow your face in MuJoCo.
+version: 0.1.0
+status: experimental
+license: MIT
+tags: [stackchan, mujoco, local-voice, whisper, kokoro, face-tracking, gemini-robotics]
+
+runtime:
+  kind: uv
+  entrypoint: ./app run
+
+verbs:
+  help:
+    command: ./app help
+    summary: Show setup and run commands
+  build:
+    command: ./app build
+    summary: Install dependencies and fetch pinned local assets
+  doctor:
+    command: ./app doctor
+    summary: Check simulator, local speech models, and optional ER2
+  run:
+    command: ./app run
+    summary: Start the local Stack-chan demo
+  smoke:
+    command: ./app smoke
+    summary: Run lint, unit tests, and the deterministic command demo
+
+modes:
+  local:
+    command: ./app run
+    summary: No-key scripted commands with local Whisper and Kokoro
+  er2:
+    command: ./app run --brain er2
+    summary: Optional Gemini Robotics ER2 brain with local speech in and out
+
+requirements:
+  hardware: [microphone and webcam are optional]
+  gpu: none
+  network: required for the first build and optional ER2 calls
+
+demo:
+  default_mode: local
+  hosted: false
+  estimated_startup_seconds: 8
+
+artifacts:
+  thumbnail: assets/stills/stackchan-er2-sim-macos.png
+  architecture_brief: docs/architecture-brief.md

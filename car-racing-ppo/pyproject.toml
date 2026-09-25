@@ -1,0 +1,30 @@
+[project]
+name = "car-racing-ppo"
+version = "1.0.0"
+description = "Run a pinned pretrained PPO policy in Gymnasium CarRacing on macOS"
+readme = "README.md"
+requires-python = ">=3.10,<3.11"
+dependencies = [
+    "gymnasium[box2d]==0.29.1",
+    "huggingface-hub==1.24.0",
+    "numpy==1.26.4",
+    "opencv-python-headless==4.10.0.84",
+    "stable-baselines3==2.3.2",
+    "torch==2.4.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.8,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = ["pytest>=8.3,<9"]
+
+# box2d-py 2.3.5 has no Apple Silicon wheel and omits SWIG from its build
+# requirements. Keep the compiler in uv's isolated build environment rather
+# than requiring a manually installed Homebrew package.
+[tool.uv.extra-build-dependencies]
+box2d-py = ["swig>=4.3,<5"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

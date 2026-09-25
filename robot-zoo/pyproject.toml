@@ -1,0 +1,23 @@
+[project]
+name = "robot-zoo"
+version = "1.0.0"
+description = "A tiny interactive robot showroom in MuJoCo's native viewer"
+readme = "README.md"
+authors = [{ name = "robium", email = "admin@robium.ai" }]
+requires-python = ">=3.12,<3.15"
+dependencies = [
+    "gradio>=6.28.0",
+    "mujoco==3.14.0",
+    "mujoco-menagerie==2026.9.0",
+    "numpy>=2.3,<3",
+    "pywebview>=6.2.1",
+    "pywebview[qt]>=6.2.1; sys_platform == 'linux'",
+    "python-xlib>=0.33; sys_platform == 'linux'",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.8,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = ["pytest>=9.1.1"]
