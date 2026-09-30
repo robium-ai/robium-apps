@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stack Chan · Control panel</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;background:#080e19;color:#dff9ff}
+*{box-sizing:border-box}body{margin:0;padding:44px 24px}main{max-width:1040px;margin:auto}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:42px}
+.eyebrow{font-size:11px;letter-spacing:.22em;color:#78a5ae}h1{font-size:32px;font-weight:500;margin:10px 0}
+.connection{font-size:13px;border:1px solid #28424d;border-radius:30px;padding:10px 15px;color:#96b2bc}
+.connection.online{color:#80e6b5;border-color:#255345}.workspace{display:grid;grid-template-columns:1fr 1fr;gap:38px}
+.screen{background:#080e19;aspect-ratio:4/3;border:1px solid #28424d;border-radius:28px;display:grid;place-items:center;overflow:hidden;box-shadow:0 20px 60px #0005}
+.screen img{width:100%;height:100%;object-fit:contain}.screen img:not([src]){display:none}
+.caption{font-size:12px;line-height:1.6;color:#79929c;margin:14px 2px}.preview-title{display:flex;justify-content:space-between;align-items:center;margin-top:18px}
+button{cursor:pointer;font:inherit;color:inherit;border:1px solid #28424d;border-radius:14px;background:#101d2b;padding:15px;transition:.15s}
+button:hover{border-color:#8dd6dd;background:#152b3b}button:disabled{opacity:.5;cursor:wait}button.selected{background:#19373e;border-color:#9be8e8}
+.emotions{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.emotion{padding:12px 16px;text-align:left;font-size:16px}
+.expression{display:block;font:20px ui-monospace,monospace;color:#8bc7d1;letter-spacing:.06em;white-space:nowrap;margin-bottom:5px;height:24px}
+.actions{display:flex;gap:10px;margin-top:22px}.actions button{font-size:13px;flex:1}.secondary{padding:7px 11px;font-size:12px;border-radius:8px}
+.speech{margin-top:20px}textarea{width:100%;resize:vertical;min-height:76px;background:#101d2b;color:#dff9ff;border:1px solid #28424d;border-radius:12px;padding:12px;font:13px/1.5 system-ui}
+.speech-controls{display:flex;align-items:center;gap:12px;margin-top:10px}.speech-controls button{font-size:13px}#speech-status{font-size:12px;color:#8bc7d1}
+.voice-picker{display:flex;align-items:center;gap:12px;margin-bottom:10px;font-size:13px;color:#8bc7d1}.voice-picker select{background:#101d2b;color:#dff9ff;border:1px solid #28424d;border-radius:8px;padding:8px;font:13px system-ui}
+#error{color:#ffb6ac;font-size:13px;min-height:20px;margin-top:18px}#details{font-size:12px;color:#79929c;line-height:1.6}
+@media(max-width:600px){body{padding:25px 18px}.workspace{grid-template-columns:1fr;gap:24px}header{margin-bottom:24px}h1{font-size:26px}}
+</style>
+<main>
+<header><div><div class="eyebrow">STACK CHAN / FILMING</div><h1>Your scene partner.</h1></div><span id="connection" class="connection">Connecting…</span></header>
+<section style="border:1px solid #28424d;border-radius:18px;padding:20px;margin-bottom:28px">
+<h2 style="margin:0;font-size:20px">LEGO drive mode</h2>
+<p class="caption">Use the selected ACT model. Loading opens the driving window and sets the camera to that model’s training angle. Put the robot on its training track and center the controller sticks.</p>
+<div class="actions" style="margin-top:12px"><button id="drive-start">Load driving mode</button><button id="drive-stop" disabled>Stop driving mode</button></div>
+<p id="drive-status" role="status" class="caption">Reading driving mode…</p>
+<p class="caption">Hold Space in the driving window or R1 to let the model drive (up to 20 seconds). Release to stop, or use arrows/sticks to take over. Press R to start/stop recording inference video and decisions; these clips are excluded from training. T/G adjust tilt. Face and speech controls stay available. Stop returns the head to manual posing.</p>
+</section>
+<div class="workspace"><section>
+<div class="screen"><img id="preview" alt="Face rendered by Stack Chan"><span id="placeholder">Waiting for Stack Chan</span></div>
+<div class="preview-title"><span id="visible">LCD preview</span><button id="refresh" class="secondary">Refresh snapshot</button></div>
+<p class="caption">A snapshot of the board's rendered face. Watch the LCD for live blinking and audio bars.</p>
+<div class="actions"><button id="animate">Freeze face</button></div>
+<h2 style="font-size:17px;margin-top:28px">Head positioning</h2>
+<div class="actions"><button id="release">Manual posing</button><button id="resume">Powered hold</button></div>
+<p id="head-status" class="caption" role="status">Reading servo mode…</p>
+<p class="caption">Manual posing releases both servos. Powered hold restores motor resistance at the current pose.</p>
+<section class="speech">
+<h2 style="font-size:20px">MacBook voice</h2>
+<div class="voice-picker"><label for="mac-voice">MacBook voice</label><select id="mac-voice">__VOICE_OPTIONS__</select></div>
+<textarea id="mac-text" aria-label="Words for MacBook" maxlength="120" placeholder="What should the MacBook say?"></textarea>
+<p class="caption">Plays through the Mac’s selected audio output, after a 5-second delay. You can switch apps or change your background. First-time voice preparation may take longer.</p>
+<div class="speech-controls"><button id="mac-speak">Talk on MacBook · 5s delay</button><span id="mac-status" role="status">Ready</span></div>
+</section>
+</section><section>
+<div class="emotions">
+<button class="emotion" data-emotion="curious"><span class="expression">◉ ◉</span>Curious</button>
+<button class="emotion" data-emotion="neutral"><span class="expression">• ‿ •</span>Neutral / natural</button>
+<button class="emotion" data-emotion="happy"><span class="expression">⌒ ▽ ⌒</span>Happy</button>
+<button class="emotion" data-emotion="angry"><span class="expression">› — ‹</span>Angry</button>
+<button class="emotion" data-emotion="sad"><span class="expression">• ⌢ •</span>Sad</button>
+<button class="emotion" data-emotion="doubtful"><span class="expression">• _ ◕</span>Doubtful</button>
+<button class="emotion" data-emotion="sleepy"><span class="expression">— o — z</span>Sleepy</button>
+</div>
+<div class="actions"><button id="cycle">Cycle emotions</button></div>
+<section class="speech"><div class="voice-picker"><label for="speech-voice">Voice</label><select id="speech-voice">__VOICE_OPTIONS__</select></div><textarea id="speech-text" aria-label="Words for Stack Chan" maxlength="120">Hello! I'm Stack Chan. Ready for our next adventure?</textarea>
+<p class="caption">Kokoro voices run locally on the Mac. Stack Chan plays the audio and animates its bars.</p>
+<div class="speech-controls"><button id="speak">Speak on Stack Chan · 5s delay</button><span id="speech-status" role="status">Audio-driven spectrum</span></div></section>
+<p id="error" role="alert"></p><p id="details">Face actions are independent of driving and speech.</p>
+</section></div>
+</main>
+<script>
+const base='__BASE__';let state=null,busy=false,imageUrl=null;
+let driveActive=false,drivePending=false;
+const $=id=>document.getElementById(id);
+function online(ok){$('connection').textContent=ok?'Stack Chan connected':'Stack Chan unavailable';$('connection').classList.toggle('online',ok)}
+function update(s){state=s;online(true);$('error').textContent='';
+document.querySelectorAll('[data-emotion]').forEach(b=>b.classList.toggle('selected',!s.auto_cycle&&b.dataset.emotion===s.emotion));
+$('animate').textContent=s.animated?'Freeze face':'Animate face';$('animate').classList.toggle('selected',!s.animated);
+$('cycle').classList.toggle('selected',s.auto_cycle);$('cycle').textContent=s.auto_cycle?'Stop cycling':'Cycle emotions';
+$('details').textContent=`LCD: ${s.visible_emotion} · ${s.target_render_fps.toFixed(1)} FPS animation target · Head pose is controlled separately. Camera profile is unchanged.`}
+async function request(path,action){const r=await fetch(base+path,action?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(action)}:{});
+if(!r.ok){const e=await r.json();throw Error(e.error)}return r}
+async function snapshot(){const r=await request('/snapshot');const next=URL.createObjectURL(await r.blob());
+if(imageUrl)URL.revokeObjectURL(imageUrl);imageUrl=next;$('preview').src=next;$('placeholder').hidden=true;
+$('visible').textContent=`Board snapshot · ${new Date().toLocaleTimeString()}`}
+function failure(e){online(false);$('error').textContent=e.message;$('visible').textContent='Previous snapshot — refresh when connected'}
+async function action(a){if(busy)return;busy=true;document.querySelectorAll('.emotion,#cycle,#animate').forEach(b=>b.disabled=true);
+try{const accepted=await(await request('/action',a)).json();update(accepted);
+const deadline=Date.now()+2000;while(state.rendered_revision!==accepted.revision){
+if(Date.now()>deadline)throw Error('Face accepted but LCD rendering is delayed; refresh to check');
+await new Promise(r=>setTimeout(r,80));update(await(await request('/state')).json())}await snapshot()}
+catch(e){failure(e)}finally{busy=false;document.querySelectorAll('.emotion,#cycle,#animate').forEach(b=>b.disabled=false)}}
+document.querySelectorAll('[data-emotion]').forEach(b=>b.onclick=()=>action({emotion:b.dataset.emotion}));
+$('animate').onclick=()=>action({animated:!state?.animated});
+$('cycle').onclick=()=>action({auto_cycle:!state?.auto_cycle});
+function updateHead(s){
+$('release').classList.toggle('selected',s.manual_posing);$('resume').classList.toggle('selected',!s.manual_posing);
+$('release').disabled=$('resume').disabled=driveActive;
+$('head-status').textContent=s.manual_posing?(s.release_applied?'Servos released · pose the head by hand':'Releasing servos…'):(s.release_applied?'Restoring powered hold…':'Powered hold · head stays in position')}
+async function headAction(mode){if(busy)return;busy=true;$('release').disabled=$('resume').disabled=true;
+try{updateHead(await(await request('/head',{mode})).json());$('error').textContent=''}
+catch(e){$('error').textContent=e.message}finally{busy=false;$('release').disabled=$('resume').disabled=false}}
+$('release').onclick=()=>headAction('release');$('resume').onclick=()=>headAction('resume');
+$('speak').onclick=async()=>{if(busy)return;busy=true;$('speak').disabled=true;const starts=Date.now()+5000;
+const countdown=setInterval(()=>{$('speech-status').textContent=Date.now()<starts?`Speaking in ${Math.ceil((starts-Date.now())/1000)}s…`:'Preparing voice…'},100);$('speech-status').textContent='Speaking in 5s…';
+try{const r=await request('/speak',{text:$('speech-text').value,voice:$('speech-voice').value});const s=await r.json();$('speech-status').textContent=`${s.phase} · bars follow audio`}
+catch(e){$('error').textContent=e.message;$('speech-status').textContent='Speech failed'}finally{clearInterval(countdown);busy=false}};
+$('refresh').onclick=async()=>{if(busy)return;busy=true;try{update(await(await request('/state')).json());await snapshot()}catch(e){failure(e)}finally{busy=false}};
+function updateDrive(s){driveActive=s.active;$('drive-start').disabled=s.active||drivePending||s.phase==='unavailable';
+$('drive-stop').disabled=!s.active||drivePending;
+$('release').disabled=$('resume').disabled=s.active;
+const r=s.runtime;let message=s.phase==='idle'?'Face & talk mode · driving stopped':s.phase==='preparing'?'Preparing camera and loading the driving window…':s.phase==='stopping'?'Stopping wheels and restoring manual head positioning…':s.phase==='running'?'Driving window starting…':s.error;
+if(s.phase==='running'&&r){message=`${r.policy_environment||'ACT'} ${r.policy_ready?'ready':'loading'} · tilt ${r.head_tilt_deg==null?'—':Number(r.head_tilt_deg).toFixed(0)+'°'} · LEGO ${r.lego_connected?'connected':'connecting'} · Camera ${r.camera_ready?Number(r.camera_fps).toFixed(1)+' FPS':'waiting'} · Controller ${r.controller_connected?r.controller:'not connected'} · ${r.mode}`;if(r.error)message+=' · '+r.error}
+$('drive-status').textContent=message||s.error||s.phase}
+async function driveAction(action){if(drivePending)return;drivePending=true;
+try{updateDrive(await(await request('/drive',{action})).json())}catch(e){$('drive-status').textContent=e.message}finally{drivePending=false}}
+$('drive-start').onclick=()=>driveAction('start');$('drive-stop').onclick=()=>driveAction('stop');
+async function pollDrive(){if(!drivePending){try{updateDrive(await(await request('/drive')).json())}catch(e){$('drive-status').textContent='Driving service unavailable'}}setTimeout(pollDrive,750)}
+pollDrive();
+let macPending=false;
+function updateMac(s){$('mac-speak').disabled=s.busy||macPending;
+$('mac-status').textContent=s.phase==='preparing'?(s.remaining_seconds?`Preparing · starts in at least ${s.remaining_seconds}s`:'Preparing voice…'):s.phase==='countdown'?`Speaking in ${s.remaining_seconds}s…`:s.phase==='playing'?'Speaking on MacBook…':s.phase==='complete'?'Finished':s.phase==='error'?s.error:'Ready · 5-second delay'}
+$('mac-speak').onclick=async()=>{if(macPending)return;macPending=true;$('mac-speak').disabled=true;
+try{updateMac(await(await request('/mac-speak',{text:$('mac-text').value,voice:$('mac-voice').value})).json())}
+catch(e){$('mac-status').textContent=e.message}finally{macPending=false}};
+async function pollMac(){if(!macPending){try{updateMac(await(await request('/mac-speech')).json())}catch(e){$('mac-status').textContent='Mac speech service unavailable'}}setTimeout(pollMac,250)}
+pollMac();
+async function poll(){if(!busy){try{update(await(await request('/state')).json());updateHead(await(await request('/head')).json());const s=await(await request('/speech')).json();
+$('speak').disabled=s.busy;$('speech-status').textContent=s.busy?`${s.phase} · ${(s.position_ms/1000).toFixed(1)} / ${(s.duration_ms/1000).toFixed(1)} s`:s.phase==='complete'?'Finished · audio bars resting':s.ready?'Audio-driven spectrum ready':'Speaker unavailable'}catch(e){failure(e)}}setTimeout(poll,1000)}
+for(const id of ['speech-text','speech-voice','mac-text','mac-voice']){
+const saved=localStorage.getItem('stackchan-'+id);if(saved!==null)$(id).value=saved;
+$(id).addEventListener('input',()=>localStorage.setItem('stackchan-'+id,$(id).value));
+$(id).addEventListener('change',()=>localStorage.setItem('stackchan-'+id,$(id).value))}
+(async()=>{busy=true;try{update(await(await request('/state')).json());await snapshot()}catch(e){failure(e)}finally{busy=false;poll()}})();
+</script>
+</html>

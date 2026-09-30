@@ -1,0 +1,39 @@
+schema_version: "1"
+id: lego-stackchan-drive
+name: Stack Chan Learns to Drive
+summary: Collect Stack Chan camera and LEGO driving demonstrations, train an ACT policy, and test supervised line following.
+version: 0.1.0
+status: experimental
+license: MIT
+tags: [real-robot, imitation-learning, act, lerobot, pybricks, lego, stackchan, data-collection]
+runtime:
+  kind: uv
+  entrypoint: ./app run
+verbs:
+  help:
+    command: ./app help
+    summary: Show commands
+  build:
+    command: ./app build
+    summary: Create the locked native Python environment
+  check:
+    command: ./app check
+    summary: Check host stop behavior and episode storage
+  doctor:
+    command: ./app probe
+    summary: Verify live camera and LEGO with zero motor power
+  run:
+    command: ./app run
+    summary: Open joystick driving and episode capture; add --policy for supervised ACT driving
+  smoke:
+    command: ./app probe
+    summary: Record and reopen a zero-power hardware diagnostic
+requirements:
+  hardware: [LEGO Pybricks hub with D/B motors, M5Stack Stack Chan K151, Mac with BLE, 2.4 GHz Wi-Fi]
+  gpu: none
+  network: required
+demo:
+  default_mode: run
+  hosted: false
+artifacts:
+  architecture_brief: docs/architecture-brief.md

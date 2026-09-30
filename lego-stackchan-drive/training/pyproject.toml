@@ -1,0 +1,18 @@
+[project]
+name = "lego-stackchan-training"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "lerobot[dataset,training]==0.6.1",
+  "torch==2.8.0",
+  "torchvision==0.23.0",
+  "torchcodec==0.7.0",
+  "huggingface-hub==1.24.0",
+  "matplotlib>=3.10,<4",
+]
+
+[tool.uv]
+environments = [
+  "sys_platform == 'darwin' and platform_machine == 'arm64'",
+  "sys_platform == 'linux' and platform_machine == 'x86_64'",
+]

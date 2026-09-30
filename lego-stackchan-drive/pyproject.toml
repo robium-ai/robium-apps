@@ -1,0 +1,20 @@
+[project]
+name = "lego-stackchan-drive"
+version = "0.1.0"
+description = "LEGO joystick driving and timestamped Stack Chan capture proof of concept"
+requires-python = ">=3.12,<3.13"
+dependencies = ["bleak>=2,<4", "pygame==2.6.1", "pyserial==3.5", "kokoro-onnx==0.6.1"]
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "ruff>=0.12,<1"]
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"
+
+[project.scripts]
+lego-stackchan-drive = "lego_stackchan_drive.main:main"
+
+[tool.ruff]
+line-length = 100
+exclude = ["src/lego_stackchan_drive/vendor"]

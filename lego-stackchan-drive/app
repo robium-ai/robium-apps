@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+case "${1:-help}" in
+  build) uv sync --locked ;;
+  build-voices) shift; uv run --locked python -m lego_stackchan_drive.speech "$@" ;;
+  check) uv run --locked ruff check src tests training/*.py; uv run --locked pytest -q ;;
+  run|probe|inspect) uv run --locked lego-stackchan-drive "$@" ;;
+  faces) shift; uv run --locked python -m lego_stackchan_drive.faces "$@" ;;
+  training) shift; uv run --project training --locked python training/pipeline.py "$@" ;;
+  build-training) uv sync --project training --locked ;;
+  *) echo './app build | build-voices | check | probe | run | faces | inspect EPISODE | build-training | training prepare|smoke|submit|fetch|evaluate' ;;
+esac
