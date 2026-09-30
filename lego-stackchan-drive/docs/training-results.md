@@ -3,7 +3,9 @@
 Training completed successfully. Validation selected the 5,000-step ACT
 checkpoint; the run stopped at 10,000 steps after five checks without improvement.
 The final downloaded weights match the checkpoint evaluated on all 856 held-out
-frames on the Mac. Autonomous road-following behavior has not yet been verified.
+frames on the Mac. Physical road-following behavior of this first checkpoint
+was not established by that offline evaluation; later supervised track trials
+are described below.
 
 ## Data
 
@@ -74,6 +76,12 @@ The final checkpoint is
 Reports, prediction plots, and file-hash verification are in
 `.local/training/road-v1/final-mac-evaluation/`. The full training metrics log is
 in `.local/training/road-v1/cloud-train/runs/train/metrics.jsonl`.
+
+![First road-v1 ACT predictions compared with demonstrator actions](../assets/plots/road-v1-held-out-predictions.png)
+
+*Copied without modification from the final Mac evaluation's
+`predictions.png`. The x-axis concatenates the three held-out clips for display;
+it is not continuous robot motion.*
 
 Both GPU jobs completed and the queued L40S job is canceled. Estimated compute
 cost from recorded job runtimes and submitted rates is $0.63; this is an estimate,
@@ -163,3 +171,25 @@ The [finished video](https://www.youtube.com/watch?v=_1pQTt8gqZM) shows the
 project on its filmed track; it is not a measured success rate or a test of
 unseen tracks and lighting. Local comparison details remain in
 `.local/training/tape-comparison-20260927/results.md`.
+
+## Guardrail course experiment
+
+A separate ACT policy was trained for the red-and-white LEGO guardrail course
+from September 27 demonstrations. Its training split contains 2,404 frames
+from two complete source clips; one complete clip of 175 frames was held out.
+The local evaluation reported normalized throttle MAE 0.1579 and steering MAE
+0.1232, against constant training-mean baselines of 0.2809 and 0.4532.
+
+![Guardrail ACT predictions compared with demonstrator actions](../assets/plots/guardrail-held-out-predictions.png)
+
+*Copied without modification from
+`.local/training/red-white-guards-v1/local-evaluation/predictions.png`. Blue is
+the recorded demonstrator; orange is the policy. The x-axis concatenates
+held-out learning segments from the single validation clip for display.*
+
+The operator reported that the policy handled the filmed guardrail course with
+few interventions after the first data collection. This is a qualitative
+observation. The validation set has only one short source clip, and neither
+the plot nor the filmed trial measures success across new layouts. The
+black-tape and guardrail datasets have different scenes and splits, so their
+offline errors are not a direct model comparison.
