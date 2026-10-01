@@ -94,7 +94,7 @@ visual-control benchmark, not a real-road driving system.
 
 ### Robot navigation
 
-> Help me map a simulated environment, localize a mobile robot, and navigate to a goal.
+> Map a simulated house with ROS 2, Gazebo, and SLAM, then navigate the robot to a goal.
 
 Robium selects [`robot-navigation`](robot-navigation/). Start Docker first;
 the visible proof is a simulated robot, map, laser scan, and navigation
