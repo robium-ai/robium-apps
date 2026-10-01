@@ -74,4 +74,5 @@ bundle to Hugging Face remains a separate, reviewed action.
 - [`docs/pipeline.md`](docs/pipeline.md): how the reinforcement-learning loop works.
 - [`docs/live-demo.md`](docs/live-demo.md): the verified MJPEG control prototype.
 - [`docs/architecture-brief.md`](docs/architecture-brief.md): current decisions and risks.
-- [`docs/case-study.md`](docs/case-study.md): portable article source.
+- [`docs/case-study.md`](docs/case-study.md): portable article source. Its
+  thumbnail is editorial art; the embedded simulator frame and clips are run evidence.

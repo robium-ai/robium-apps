@@ -14,7 +14,9 @@ date: 2026-08-28
 tested: 2026-07-27
 hero: evidence/previews/go2-hero.png
 hero_alt: A simulated Unitree Go2 walking across a flat gray Isaac Lab scene
-social_image: assets/social/card.png
+thumbnail: assets/social/go2-thumbnail.png
+thumbnail_alt: Illustrated white quadruped on a simulated grid with Teaching Go2 to Walk text
+social_image: assets/social/go2-thumbnail.png
 featured: false
 ---
 
