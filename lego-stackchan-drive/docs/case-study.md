@@ -1,6 +1,6 @@
 ---
 title: Teaching Stack Chan to drive with LEGO, Pybricks, and Robium
-summary: We recorded camera views and joystick commands, trained an ACT policy on Hugging Face, and tested it on a real LEGO car.
+summary: Stack Chan can see and speak, but it needed wheels. In lego-stackchan-drive, we added LEGO motors and taught it to follow lines and drive between guardrails.
 collection: blog
 category: tutorial
 kind: tutorial
@@ -18,11 +18,31 @@ social_image: assets/social/stackchan-video-cover.png
 featured: false
 ---
 
-Stack Chan wanted to drive. We put its camera and expressive head on a LEGO
-Technic car, drew a track, and taught it from a handful of human-driven runs.
-The result is a small, physical imitation-learning project: the robot sees the
-route through its own camera, while a policy predicts steering and speed. The
-film shows the build, the mistakes, and the supervised track trials.
+[Stack Chan](https://shop.m5stack.com/products/stackchan-kawaii-co-created-open-source-ai-desktop-robot)
+is a $99 desktop robot co-created by M5Stack and its community. Its
+[CoreS3](https://docs.m5stack.com/en/core/CoreS3) has a touch display, camera,
+microphones, speaker, motion sensors, Wi-Fi, and Bluetooth. It can see, listen,
+and make faces. The one thing it was missing was wheels.
+
+For [**lego-stackchan-drive**](https://github.com/robium-ai/robium-apps/tree/main/lego-stackchan-drive),
+we put Stack Chan on a LEGO Technic car with inexpensive motors and a hub. We
+collected about 20 human-driven demonstration laps and used Robium's
+[LeRobot](https://github.com/robium-ai/robium/tree/main/skills/lerobot) and
+[Hugging Face](https://github.com/robium-ai/robium/tree/main/skills/huggingface)
+skills to train an Action Chunking Transformer (ACT). That was enough for
+Stack Chan to follow a black line and, with a separate set of demonstrations,
+drive between red-and-white guardrails **without a line** during our supervised
+track trials.
+
+We filmed the build, data collection, wrong turns, and driving trials as a fun
+little trailer. We hope you enjoy it and see what you can make with Robium. If
+you do, please [star the Robium repository](https://github.com/robium-ai/robium)
+and explore the [reference apps](https://github.com/robium-ai/robium-apps) you
+can start using today.
+
+No LEGO motors at home? Think about the wheels, motors, or mobile base you do
+have. Robium can help you adapt the drive hardware and integrate it with Stack
+Chan so you can make more of this little robot.
 
 ![The assembled Stack Chan robot on its LEGO car beside a laptop showing Robium](../assets/stills/stackchan-lego-car.jpg)
 
@@ -35,7 +55,7 @@ film shows the build, the mistakes, and the supervised track trials.
 [Watch on YouTube](https://www.youtube.com/watch?v=_1pQTt8gqZM) if the player
 does not load.
 
-## One robot, three jobs
+## Inside lego-stackchan-drive
 
 ![A LEGO two-wheel chassis, hub, and Stack Chan head laid out on a workbench before assembly](../assets/stills/lego-chassis-build.jpg)
 
@@ -126,18 +146,7 @@ Direction mattered too. A first set driven only clockwise gave better
 track-side results in that direction. When we mixed in counterclockwise runs,
 performance dipped for a while. More demonstrations in **both** directions
 improved the observed line following. These are observations from the filmed
-development process, not a controlled success-rate comparison. The later
-20° black-tape model comparison used its own recorded camera setting and
-held-out clips, so its errors cannot isolate the effect of direction or the
-45° reframing.
-
-Two fresh black-tape models trained from later recordings scored **0.3176**
-and **0.3156** mean action error on the same 943 held-out frames. Those figures
-are from a different dataset and cannot be compared directly with the first
-run's steering-only number. The team observed successful supervised laps, but
-the saved records do not identify which later checkpoint produced each filmed
-lap. The video is a demonstration on the shown track, not a measured success
-rate or a claim about new tracks and lighting.
+development process, not a controlled success-rate comparison.
 
 ## The guardrail course
 

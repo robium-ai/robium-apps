@@ -1,16 +1,18 @@
 # Stack Chan learns to drive
 
-Mount an M5Stack Stack Chan on a LEGO Technic car, drive it with a controller,
-and collect the camera images and steering commands needed to train a small
+`lego-stackchan-drive` mounts an M5Stack Stack Chan on a LEGO Technic car,
+drives it with a controller, and collects the camera images and steering
+commands needed to train a small
 ACT policy. The Mac owns joystick input, Pybricks Bluetooth motor control,
 camera capture over Wi-Fi, training data, and local policy inference. Stack
 Chan supplies the camera, expressive face, head motion, and speaker.
 
 Watch the [finished driving video](https://www.youtube.com/watch?v=_1pQTt8gqZM)
 and read the short [build and training tutorial](docs/case-study.md), including
-the camera-angle and direction lessons, guardrail-course trial, and real camera
-view. This app requires the physical LEGO hub, two motors on ports D and B, a Stack Chan K151,
-and a Mac with Bluetooth LE and access to the robot's 2.4 GHz Wi-Fi network.
+the camera-angle and direction lessons, guardrail-course trial, real camera
+view, and ideas for other mobility hardware. This app requires the physical
+LEGO hub, two motors on ports D and B, a Stack Chan K151, and a Mac with
+Bluetooth LE and access to the robot's 2.4 GHz Wi-Fi network.
 There is no hosted robot session. The [training record](docs/training-results.md)
 separates the first road-following experiment, later black-tape comparison, and
 guardrail-course model. Filmed track trials use additional data and must not be
