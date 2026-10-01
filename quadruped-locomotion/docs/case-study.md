@@ -14,9 +14,9 @@ date: 2026-08-28
 tested: 2026-07-27
 hero: evidence/previews/go2-hero.png
 hero_alt: A simulated Unitree Go2 walking across a flat gray Isaac Lab scene
-thumbnail: assets/social/go2-thumbnail-unitree.png
-thumbnail_alt: Illustrated gray Unitree Go2 on a simulated grid with Teaching Go2 to Walk text
-social_image: assets/social/go2-thumbnail-unitree.png
+thumbnail: assets/social/go2-thumbnail-isaac-nvidia.png
+thumbnail_alt: Illustrated gray Unitree Go2 on a simulation grid beside Teaching Go2 to Walk, Isaac Lab, NVIDIA, and Robium branding
+social_image: assets/social/go2-thumbnail-isaac-nvidia.png
 featured: false
 ---
 
