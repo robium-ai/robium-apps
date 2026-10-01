@@ -12,8 +12,9 @@ tags: [robium, gemini-robotics, turtlebot4, turtlebot3, ros2, nav2, gazebo, oak-
 app: silly-turtlebot
 date: 2026-09-17
 tested: 2026-09-14
-hero: gazebo-oakd-after.jpg
-hero_alt: A simulated TurtleBot 4 camera view inside the furnished Gazebo home
+hero: silly-turtlebot-gemini-robotics-hero.jpg
+hero_alt: Illustrated TurtleBot 4 in a furnished home beside a navigation map, with Home Robot and Gemini Robotics ER 2 text
+article_images: false
 featured: false
 ---
 
@@ -89,11 +90,9 @@ choose correctly; Python remains responsible for enforcing the rules.
 
 ## How the parts connect
 
-![Silly TurtleBot system flow](../assets/diagrams/system.svg)
-
-*ER 2 interprets the instruction and camera stream. The guard converts approved
+ER 2 interprets the instruction and camera stream. The guard converts approved
 requests into ROS 2 and Nav2 actions, while the browser shows the same robot
-state through a separate visualization path.*
+state through a separate visualization path.
 
 The Gemini agent runs in a locked Python environment and talks to a narrow HTTP
 adapter. ROS 2 stays on the robot or inside the simulator, where Nav2 owns route
