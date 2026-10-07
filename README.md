@@ -15,6 +15,12 @@ Explore the code. Get a robot working. Make it yours.
 
 </div>
 
+## Introducing Robium
+
+https://github.com/user-attachments/assets/90eed7a7-d240-4e64-bd2a-6a7d6290be46
+
+[Watch on YouTube](https://www.youtube.com/watch?v=y1a3PakIQsQ)
+
 <table>
   <tr>
     <td width="50%" align="center">
