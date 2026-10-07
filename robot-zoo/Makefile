@@ -14,6 +14,7 @@ app-test:
 	tests/test_app_cli.sh
 
 smoke: app-test
+	node --test tests/test_input_mapping.cjs
 	uv run pytest tests -v
 	./app check
 

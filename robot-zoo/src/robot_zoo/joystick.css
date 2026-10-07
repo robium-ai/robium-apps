@@ -1,0 +1,54 @@
+.pilot { color:#e8edf1; font:13px/1.4 -apple-system,BlinkMacSystemFont,system-ui,sans-serif; }
+.pilot * { box-sizing:border-box; }
+.pilot-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:24px; margin-bottom:8px; }
+.motion-status { margin:0; color:#a6dbb1; font-size:12px; white-space:nowrap; }
+.pad-row { display:flex; align-items:center; gap:8px; min-width:0; }
+.pad-status { color:#adb8c3; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px; }
+.connection-dot { width:6px; height:6px; flex-shrink:0; border-radius:50%; background:#6a7480; }
+.sticks { display:grid; grid-template-columns:minmax(0,1fr) 88px minmax(0,1fr); gap:12px; }
+.stick-column { border:1px solid #39434d; border-radius:12px; background:linear-gradient(130deg,#2a3139,#232a31); padding:12px; min-width:0; }
+.stick-heading { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.stick-heading strong { font-size:14px; font-weight:600; }
+.stick-heading small { font-size:10px; color:#93a0ad; white-space:nowrap; }
+.stick { position:relative; width:202px; height:202px; margin:9px auto 0; border-radius:50%; touch-action:none; user-select:none; cursor:grab; background:radial-gradient(circle at 45% 35%,#3a454f,#2f3943 65%,#29323b); border:1px solid #53616d; box-shadow:0 5px 10px #0003,inset 0 1px 1px #ffffff0c; }
+.stick:focus-visible { outline:2px solid #8add9a; outline-offset:4px; }
+.stick::before,.stick::after { content:''; position:absolute; background:#617080; opacity:.14; pointer-events:none; }
+.stick::before { width:1px;height:66%;top:17%;left:50%; } .stick::after { height:1px;width:66%;top:50%;left:17%; }
+.knob { z-index:1; position:absolute; width:36%; height:36%; top:32%;left:32%; border-radius:50%; background:linear-gradient(140deg,#56616b,#343e48); border:3px solid #89d99a; box-shadow:0 5px 9px #0006,inset 0 0 0 5px #404c56; pointer-events:none; }
+.stick span:not(.knob) { position:absolute; font-size:11px; color:#c4ced6; pointer-events:none; }
+.north { top:10px;left:0;right:0;text-align:center; } .south { bottom:10px;left:0;right:0;text-align:center; }
+.stick .west,.stick .east { top:calc(50% - 13px);font-size:22px; } .west {left:10px;} .east {right:10px;}
+.stop-column { display:flex; flex-direction:column; justify-content:center; align-items:center; gap:6px; }
+.stop-column strong { font-size:12px; letter-spacing:.08em; } .stop-column small { color:#8f9ba7;font-size:10px; }
+.pilot button { border:1px solid #46515d; border-radius:8px; background:linear-gradient(150deg,#303943,#272f38); padding:8px 12px; cursor:pointer; color:#e8edf1; font:13px system-ui,sans-serif; }
+.pilot button:hover { background:#36434e; border-color:#6b7b89; } .pilot button:focus-visible { outline:2px solid #93dfa2;outline-offset:2px; }
+.pilot button:active,.pilot button[data-active="true"] { border-color:#95e4a5; background:#385340; }
+.pilot .central-stop { display:grid; place-items:center; width:74px; height:74px; border:3px solid #f48787; border-radius:50%; background:linear-gradient(145deg,#e55252,#b72e36); box-shadow:0 0 0 5px #151b22,0 6px 14px #0005; padding:0; }
+.pilot .central-stop:hover { background:#ed585c; } .pilot .central-stop:active,.pilot .central-stop[data-active="true"] { background:#ff7a7f; }
+.stop-square { display:block; width:20px;height:20px;border-radius:3px;background:#fff4f4; }
+.pose-actions { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:12px; }
+.pose-actions button { display:flex; justify-content:center; align-items:center; gap:12px; min-height:44px; }
+.badge { display:inline-flex; align-items:center;justify-content:center; border-radius:50%; width:24px;height:24px; color:#14211b; font-size:13px; }
+.a { background:#89dc9c; } .b { background:#fa717b; } .x { background:#72b9f6; } .y { background:#efd276; }
+.pilot .pad-toggle { padding:5px 9px; font-size:10px; white-space:nowrap; }
+.pilot-notes { display:flex; justify-content:space-between; gap:12px; margin-top:5px; color:#94a1af; font-size:10px; }
+@media (max-width:650px) {
+  .pilot-heading {gap:6px;min-height:22px;margin-bottom:5px;}
+  .motion-status {font-size:10px;}
+  .pad-row {gap:5px;}
+  .pad-status {max-width:125px;font-size:10px;}
+  .sticks {gap:8px;grid-template-columns:minmax(0,1fr) 60px minmax(0,1fr);}
+  .stick-column {padding:7px;}
+  .stick-heading strong {font-size:12px;}
+  .stick-heading small {display:none;}
+  .stick {width:136px;height:136px;margin-top:5px;}
+  .stick span:not(.knob) {font-size:10px;}
+  .north {top:7px;} .south {bottom:7px;}
+  .pilot .central-stop {width:54px;height:54px;}
+  .stop-square {width:16px;height:16px;}
+  .stop-column strong {font-size:10px;}
+  .pose-actions {gap:6px;margin-top:7px;}
+  .pose-actions button {min-height:32px;padding:5px 8px;gap:7px;font-size:12px;}
+  .badge {width:20px;height:20px;font-size:11px;}
+  .pilot-notes {gap:6px;font-size:9px;margin-top:4px;}
+}

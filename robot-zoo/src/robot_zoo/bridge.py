@@ -51,6 +51,9 @@ class SimulationProxy:
     def move(self, vx: float, wz: float) -> str:
         return self._call("move", vx, wz)
 
+    def teleop(self, robot: str, vx: float, vy: float, wz: float, action: str | None = None) -> str:
+        return self._call("teleop", robot, vx, vy, wz, action)
+
     def stop(self) -> str:
         return self._call("stop")
 
@@ -77,6 +80,7 @@ def serve_commands(manager: SimulationManager, connection: Connection) -> None:
     allowed = {
         "load_robot",
         "move",
+        "teleop",
         "stop",
         "set_speed",
         "reset",

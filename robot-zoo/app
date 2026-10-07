@@ -19,19 +19,19 @@ robot-zoo - a small native controller for MuJoCo's robot zoo
   ./app build              install dependencies and cache the robot models
   ./app doctor             check desktop and runtime prerequisites
   ./app run                open the controller and Franka Panda demo
-  ./app run --robot NAME   start with panda, stretch, or go2
+  ./app run --robot NAME   start with panda, turtlebot3, or go2
   ./app viewer --robot NAME
                            open only MuJoCo (mouse and native UI)
   ./app check              run bounded headless physics checks
   ./app smoke              run the app and physics test suite
 
 Inside the controller:
-  Robot + Load    switch Panda / Stretch / Go2
-  Arrow buttons  start movement at the selected speed
+  Robot + Load    switch Panda / TurtleBot3 / Go2
+  Analog sticks   move / strafe / turn; release to stop
   Stop            hold the current position
-  Robot action    run actions such as Stand, Sit, or Open gripper
+  Robot action    run actions such as Stand, Low profile, or Open gripper
 
-MuJoCo retains its full native left/right panels. Double-click a body to select
+MuJoCo panels start hidden (Tab / Shift-Tab toggles them). Double-click a body to select
 it, Ctrl-drag to rotate it, or Ctrl-right-drag to translate it.
 USAGE
     ;;

@@ -7,12 +7,11 @@ import os
 import subprocess
 import sys
 import threading
-import time
 from multiprocessing.connection import Listener
 from pathlib import Path
 
 from .bridge import SimulationProxy
-from .desktop import activate_mujoco_viewer, controller_window
+from .desktop import (CONTROLLER_MIN_SIZE, ControllerWindow, controller_window, save_controller_window)
 
 
 def _mjpython_executable() -> Path:
@@ -29,8 +28,6 @@ def run_native_application(
 ) -> int:
     """Open Gradio inside a native window and MuJoCo in a worker process."""
     if sys.platform.startswith("linux"):
-        # Qt's xcb path works for X11 and XWayland and keeps both native
-        # windows addressable by the same desktop-layout helper.
         os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
     import webview
 
@@ -49,8 +46,7 @@ def run_native_application(
         host,
         "--port",
         str(port),
-        "--authkey",
-        encoded_key,
+        f"--authkey={encoded_key}",
         "--robot",
         initial_robot,
     ]
@@ -60,10 +56,17 @@ def run_native_application(
     try:
         connection = listener.accept()
         proxy = SimulationProxy(connection, initial_robot)
+        window = None
+
+        def set_pinned(pinned: bool) -> None:
+            if window is not None:
+                window.on_top = pinned
+
         demo, local_url = launch_control_ui(
             proxy,
             inbrowser=False,
             server_port=server_port,
+            on_pin=set_pinned,
         )
         frame = controller_window()
         window = webview.create_window(
@@ -73,29 +76,39 @@ def run_native_application(
             y=frame.y,
             width=frame.width,
             height=frame.height,
-            min_size=(350, 620),
+            min_size=CONTROLLER_MIN_SIZE,
             resizable=True,
             on_top=True,
-            background_color="#f5f7f8",
+            background_color="#232a31",
             text_select=False,
         )
+
+        geometry = {"x": frame.x, "y": frame.y, "width": frame.width, "height": frame.height}
+        geometry_lock = threading.Lock()
+
+        def moved(x, y):
+            with geometry_lock:
+                geometry.update(x=round(x), y=round(y))
+
+        def resized(width, height):
+            with geometry_lock:
+                geometry.update(width=round(width), height=round(height))
+
+        def save_geometry():
+            with geometry_lock:
+                save_controller_window(ControllerWindow(**geometry))
+
+        window.events.moved += moved
+        window.events.resized += resized
+        window.events.closed += save_geometry
         shutdown_started = threading.Event()
 
-        def stop_simulation_when_controller_closes() -> None:
-            # Cocoa exits its application loop when the final window closes,
-            # while Qt can keep the loop alive briefly. Signal the worker from
-            # the window event so both backends have the same lifecycle.
-            if shutdown_started.is_set():
-                return
-            shutdown_started.set()
-            if proxy is not None:
+        def stop_simulation_when_controller_closes():
+            if not shutdown_started.is_set():
+                shutdown_started.set()
                 proxy.shutdown()
 
         window.events.closed += stop_simulation_when_controller_closes
-
-        def activate_simulation() -> None:
-            time.sleep(0.6)
-            activate_mujoco_viewer(worker.pid)
 
         def close_controller_when_simulation_exits() -> None:
             worker.wait()
@@ -109,12 +122,7 @@ def run_native_application(
             name="simulation-monitor",
             daemon=True,
         ).start()
-        webview.start(
-            activate_simulation,
-            gui="qt" if sys.platform.startswith("linux") else None,
-            debug=False,
-            private_mode=True,
-        )
+        webview.start(gui="qt" if sys.platform.startswith("linux") else None, debug=False, private_mode=True)
         return worker.returncode or 0
     finally:
         if proxy is not None:

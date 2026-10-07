@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from pathlib import Path
 
 import mujoco
 import mujoco_menagerie
@@ -33,15 +34,15 @@ ROBOTS: dict[str, RobotInfo] = {
         1.35,
         ("Raise", "Lower", "Open gripper", "Close gripper"),
     ),
-    "stretch": RobotInfo(
-        "stretch",
-        "Hello Robot Stretch 3",
-        "hello_robot_stretch_3",
+    "turtlebot3": RobotInfo(
+        "turtlebot3",
+        "TurtleBot3 Burger",
+        "robotis_turtlebot3_burger",
         "Apache-2.0",
-        -55.0,
-        -18.0,
-        1.75,
-        ("Lift up", "Lift down", "Extend", "Retract"),
+        120.0,
+        -22.0,
+        0.85,
+        (),
     ),
     "go2": RobotInfo(
         "go2",
@@ -51,16 +52,25 @@ ROBOTS: dict[str, RobotInfo] = {
         120.0,
         -18.0,
         1.45,
-        ("Stand", "Sit"),
+        ("Stand", "Low profile", "High profile"),
     ),
 }
 
 
+def load_robot_model(info: RobotInfo) -> mujoco.MjModel:
+    if info.key == "turtlebot3":
+        scene = Path(__file__).parent / "models/turtlebot3_burger/scene_turtlebot3_burger.xml"
+        return mujoco.MjModel.from_xml_path(str(scene))
+    return mujoco_menagerie.load(info.model_id)
+
+
 def prefetch_models() -> None:
     """Download and compile every pinned showroom model once."""
+    from .go2_policy import policy_path
+    policy_path()
     for info in ROBOTS.values():
         print(f"fetching {info.label} ...", flush=True)
-        model = mujoco_menagerie.load(info.model_id)
+        model = load_robot_model(info)
         print(f"  ok: {model.nq} qpos, {model.nu} actuators ({info.license})")
 
 
@@ -69,12 +79,13 @@ class RobotController:
 
     def __init__(self, info: RobotInfo):
         self.info = info
-        self.model = mujoco_menagerie.load(info.model_id)
+        self.model = load_robot_model(info)
         self.data = mujoco.MjData(self.model)
         self.automatic = True
         self.motion_vx = 0.0
+        self.motion_vy = 0.0
         self.motion_wz = 0.0
-        self.speed = 0.5
+        self.speed = 1.0
         self.reset()
 
     def reset(self) -> None:
@@ -90,14 +101,16 @@ class RobotController:
         self.automatic = True
         self.reset()
 
-    def set_motion(self, vx: float, wz: float, speed: float) -> None:
+    def set_motion(self, vx: float, wz: float, speed: float, vy: float = 0.0) -> None:
         self.automatic = False
         self.motion_vx = float(np.clip(vx, -1.0, 1.0))
+        self.motion_vy = float(np.clip(vy, -1.0, 1.0))
         self.motion_wz = float(np.clip(wz, -1.0, 1.0))
         self.speed = float(np.clip(speed, 0.1, 1.0))
 
     def stop(self) -> None:
         self.motion_vx = 0.0
+        self.motion_vy = 0.0
         self.motion_wz = 0.0
 
     def action(self, name: str) -> bool:
@@ -180,105 +193,112 @@ class PandaController(RobotController):
         self.data.ctrl[7] = float(np.clip(self.gripper, 0.0, 255.0))
 
 
-class StretchController(RobotController):
-    def action(self, name: str) -> bool:
+class TurtleBotController(RobotController):
+    """Body velocity to wheel velocity using ROBOTIS's Burger geometry."""
+
+    WHEEL_RADIUS = 0.033
+    WHEEL_SEPARATION = 0.160
+    MAX_LINEAR_SPEED = 0.22
+    MAX_YAW_RATE = 1.5
+
+    def _reset_controller(self) -> None:
+        self._wheel_ids = np.array([
+            self.model.actuator("wheel_left").id,
+            self.model.actuator("wheel_right").id,
+        ])
         self.automatic = False
-        if name == "Lift up":
-            self.data.ctrl[2] = np.clip(self.data.ctrl[2] + 0.08, 0.0, 1.1)
-        elif name == "Lift down":
-            self.data.ctrl[2] = np.clip(self.data.ctrl[2] - 0.08, 0.0, 1.1)
-        elif name == "Extend":
-            self.data.ctrl[3] = np.clip(self.data.ctrl[3] + 0.06, 0.0, 0.52)
-        elif name == "Retract":
-            self.data.ctrl[3] = np.clip(self.data.ctrl[3] - 0.06, 0.0, 0.52)
-        else:
-            return False
-        return True
+        self.stop()
 
     def _apply_control(self) -> None:
-        if self.automatic:
-            t = self.data.time
-            self.data.ctrl[0] = 0.75 * math.sin(0.55 * t)
-            self.data.ctrl[1] = -0.75 * math.sin(0.55 * t)
-            self.data.ctrl[2] = 0.62 + 0.22 * (0.5 + 0.5 * math.sin(0.65 * t))
-            self.data.ctrl[3] = 0.10 + 0.22 * (0.5 + 0.5 * math.sin(0.45 * t))
-            self.data.ctrl[8] = 0.65 * math.sin(0.75 * t)
-            self.data.ctrl[9] = -0.35 + 0.12 * math.sin(0.55 * t)
-            return
-
-        self.data.ctrl[0] = self.speed * (
-            -2.0 * self.motion_vx - 1.5 * self.motion_wz
-        )
-        self.data.ctrl[1] = self.speed * (
-            2.0 * self.motion_vx - 1.5 * self.motion_wz
-        )
+        linear = self.MAX_LINEAR_SPEED * self.speed * self.motion_vx
+        angular = self.MAX_YAW_RATE * self.speed * self.motion_wz
+        wheels = np.array([
+            linear - angular * self.WHEEL_SEPARATION / 2,
+            linear + angular * self.WHEEL_SEPARATION / 2,
+        ]) / self.WHEEL_RADIUS
+        # Scale both wheels together to preserve curvature at actuator limits.
+        limits = self.model.actuator_ctrlrange[self._wheel_ids, 1]
+        wheels /= max(1.0, float(np.max(np.abs(wheels) / limits)))
+        self.data.ctrl[self._wheel_ids] = wheels
 
 
 class Go2Controller(RobotController):
+    """CPU walking policy with explicit stationary posture transitions."""
+
     def _reset_controller(self) -> None:
-        names = (
-            "FL_hip_joint",
-            "FL_thigh_joint",
-            "FL_calf_joint",
-            "FR_hip_joint",
-            "FR_thigh_joint",
-            "FR_calf_joint",
-            "RL_hip_joint",
-            "RL_thigh_joint",
-            "RL_calf_joint",
-            "RR_hip_joint",
-            "RR_thigh_joint",
-            "RR_calf_joint",
-        )
-        self._joint_ids = np.array([self.model.joint(name).id for name in names])
-        self._qpos_ids = self.model.jnt_qposadr[self._joint_ids]
-        self._dof_ids = self.model.jnt_dofadr[self._joint_ids]
-        self.home = self.data.qpos[self._qpos_ids].copy()
+        from .go2_policy import Go2Policy, DEFAULT_ANGLES
+        if not hasattr(self, "policy"):
+            self.policy = Go2Policy()
+        self.policy.reset()
+        # Match the deployment model's passive joint dynamics and calf limits.
+        # Menagerie's default damping=2 would fight this policy's kd=0.5.
+        self.model.opt.timestep = .002
+        self.model.dof_damping[6:] = .001
+        self.model.dof_frictionloss[6:] = .1
+        self.model.actuator_ctrlrange[2::3] = [-35.55, 35.55]
+        self.home = DEFAULT_ANGLES.copy()
         self.target = self.home.copy()
-        self.crouch = 0.0
-        self.sway = 0.0
+        self.profile = "Stand"
+        self._pending_profile = None
+        self._settle_until = 0.0
+        self._counter = 0
+        self._pose_start = self.home.copy()
+        self._pose_time = 0.0
+        self.automatic = False
+        self.stop()
+
+    def set_motion(self, vx: float, wz: float, speed: float, vy: float = 0.0) -> None:
+        super().set_motion(vx, wz, speed, vy)
+        # Walking always uses the policy's trained height. Postures are stationary.
+        if max(abs(vx), abs(vy), abs(wz)) > 0 and (
+            self.profile != "Stand" or self._pending_profile is not None
+        ):
+            self.profile = "Stand"
+            self._pending_profile = None
+            self.policy.reset()
+            self._counter = 0
 
     def action(self, name: str) -> bool:
-        self.automatic = False
-        if name == "Stand":
-            self.crouch = 0.0
-        elif name == "Sit":
-            self.crouch = 0.34
-        else:
+        if name not in self.info.actions:
             return False
+        self.stop()
+        if name == "Stand":
+            self.profile = name
+            self._pending_profile = None
+            self.policy.reset()
+            self._counter = 0
+        elif name != self.profile and name != self._pending_profile:
+            # Let zero-velocity policy settle before transitioning to posture PD.
+            self._pending_profile = name
+            self._settle_until = self.data.time + (.8 if self.profile == "Stand" else 0)
         return True
 
     def _apply_control(self) -> None:
-        if self.automatic:
-            t = self.data.time
-            self.crouch = 0.16 * (0.5 + 0.5 * math.sin(0.85 * t))
-            self.sway = 0.06 * math.sin(0.55 * t)
+        if self._pending_profile and self.data.time >= self._settle_until:
+            self.profile = self._pending_profile
+            self._pending_profile = None
+            self._pose_start = self.data.qpos[7:].copy()
+            self._pose_time = self.data.time
+        if self.profile == "Stand":
+            if self._counter % 10 == 0:
+                command = self.speed * np.array([
+                    .5 * self.motion_vx, .35 * self.motion_vy, .8 * self.motion_wz
+                ])
+                self.target = self.policy.target(self.data, command)
+            self._counter += 1
+            kp, kd = 20., .5
         else:
-            dt = self.model.opt.timestep
-            self.crouch = float(
-                np.clip(
-                    self.crouch - dt * 0.60 * self.speed * self.motion_vx,
-                    0.0,
-                    0.38,
-                )
-            )
-            self.sway = float(
-                np.clip(
-                    self.sway + dt * 0.35 * self.speed * self.motion_wz,
-                    -0.18,
-                    0.18,
-                )
-            )
-
-        self.target[:] = self.home
-        self.target[1::3] += self.crouch
-        self.target[2::3] -= 2.0 * self.crouch
-        self.target[[0, 6]] += self.sway
-        self.target[[3, 9]] -= self.sway
-
-        position = self.data.qpos[self._qpos_ids]
-        velocity = self.data.qvel[self._dof_ids]
-        torque = 80.0 * (self.target - position) - 3.0 * velocity
+            # Interpolate between Unitree's documented FixStand poses.
+            # These are stationary joint targets, not a fabricated walking gait.
+            high = np.tile([0., .8, -1.5], 4)
+            low = np.tile([0., 1.36, -2.65], 4)
+            goal = high if self.profile == "High profile" else .6 * low + .4 * high
+            alpha = min(1., (self.data.time - self._pose_time) / 1.2)
+            alpha = alpha * alpha * (3 - 2 * alpha)
+            self.target = (1-alpha) * self._pose_start + alpha * goal
+            kp, kd = 60., 4.
+        self.target = np.clip(self.target, self.model.jnt_range[1:, 0], self.model.jnt_range[1:, 1])
+        torque = kp * (self.target - self.data.qpos[7:]) - kd * self.data.qvel[6:]
         ranges = self.model.actuator_ctrlrange
         self.data.ctrl[:] = np.clip(torque, ranges[:, 0], ranges[:, 1])
 
@@ -287,8 +307,8 @@ def create_controller(name: str) -> RobotController:
     info = ROBOTS[name]
     if name == "panda":
         return PandaController(info)
-    if name == "stretch":
-        return StretchController(info)
+    if name == "turtlebot3":
+        return TurtleBotController(info)
     if name == "go2":
         return Go2Controller(info)
     raise KeyError(name)

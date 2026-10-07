@@ -17,6 +17,7 @@ class SimulationState:
     active_robot: str
     requested_robot: str | None
     vx: float
+    vy: float
     wz: float
     speed: float
     manual_commanded: bool
@@ -36,8 +37,9 @@ class SimulationManager:
         self._active_robot = self._resolve_robot(initial_robot)
         self._requested_robot: str | None = None
         self._vx = 0.0
+        self._vy = 0.0
         self._wz = 0.0
-        self._speed = 0.5
+        self._speed = 1.0
         self._manual_commanded = False
         self._load_version = 0
         self._motion_version = 0
@@ -45,6 +47,7 @@ class SimulationManager:
         self._action_version = 0
         self._pending_action: str | None = None
         self._shutdown = False
+        self._last_input: float | None = None
 
     @property
     def robot_choices(self) -> tuple[str, ...]:
@@ -67,10 +70,13 @@ class SimulationManager:
 
     def snapshot(self) -> SimulationState:
         with self._lock:
+            if self._last_input is not None and time.monotonic() - self._last_input > .5:
+                self.stop()
             return SimulationState(
                 active_robot=self._active_robot,
                 requested_robot=self._requested_robot,
                 vx=self._vx,
+                vy=self._vy,
                 wz=self._wz,
                 speed=self._speed,
                 manual_commanded=self._manual_commanded,
@@ -90,14 +96,19 @@ class SimulationManager:
         with self._lock:
             self._requested_robot = key
             self._vx = 0.0
+            self._vy = 0.0
+            self._last_input = None
             self._wz = 0.0
             self._manual_commanded = False
+            self._pending_action = None
             self._load_version += 1
             self._motion_version += 1
         return f"Loading {ROBOTS[key].label} in MuJoCo…"
 
     def move(self, vx: float, wz: float) -> str:
         with self._lock:
+            self._vy = 0.0
+            self._last_input = None
             self._vx = float(np.clip(vx, -1.0, 1.0))
             self._wz = float(np.clip(wz, -1.0, 1.0))
             self._manual_commanded = True
@@ -105,9 +116,33 @@ class SimulationManager:
             speed = self._speed
         return f"Moving at {speed:.1f}× · press Stop to hold"
 
+    def teleop(self, robot: str, vx: float, vy: float, wz: float, action: str | None = None) -> str:
+        """One fresh joystick frame, applied atomically with a 500 ms lease."""
+        values = np.asarray([vx, vy, wz], dtype=float)
+        if not np.isfinite(values).all():
+            self.stop()
+            raise ValueError("Joystick axes must be finite")
+        with self._lock:
+            if self._requested_robot is not None or self._resolve_robot(robot) != self._active_robot:
+                return "Waiting for the selected robot to load"
+            if action:
+                if action == "Stop":
+                    return self.stop()
+                if action == "Reset":
+                    return self.reset()
+                self.stop()
+                return self.action(action)
+            self._vx, self._vy, self._wz = map(float, np.clip(values, -1., 1.))
+            self._manual_commanded = True
+            self._last_input = time.monotonic()
+            self._motion_version += 1
+            return "Moving · release to stop" if np.any(values) else "Ready · sticks centered"
+
     def stop(self) -> str:
         with self._lock:
             self._vx = 0.0
+            self._vy = 0.0
+            self._last_input = None
             self._wz = 0.0
             self._manual_commanded = True
             self._motion_version += 1
@@ -124,8 +159,11 @@ class SimulationManager:
     def reset(self) -> str:
         with self._lock:
             self._vx = 0.0
+            self._vy = 0.0
+            self._last_input = None
             self._wz = 0.0
             self._manual_commanded = False
+            self._pending_action = None
             self._reset_version += 1
             self._motion_version += 1
             label = ROBOTS[self._active_robot].label
@@ -145,6 +183,8 @@ class SimulationManager:
             )
             if canonical is None:
                 raise ValueError(f"{name!r} is not an action for {ROBOTS[robot].label}")
+            if robot == "go2":
+                self.stop()
             self._pending_action = canonical
             self._action_version += 1
         return f"Action: {canonical}"
@@ -166,6 +206,7 @@ class SimulationManager:
     def _configure_camera(viewer, controller: RobotController) -> None:
         viewer.cam.lookat[:] = controller.model.stat.center
         viewer.cam.distance = (
+            2.5 if controller.info.key == "go2" else
             controller.info.camera_distance * controller.model.stat.extent
         )
         viewer.cam.azimuth = controller.info.camera_azimuth
@@ -182,16 +223,16 @@ class SimulationManager:
                 selected = requested
             controller, initial = self._begin_robot(selected)
             last_load = initial.load_version
-            last_motion = initial.motion_version
+            last_motion = -1
             last_reset = initial.reset_version
-            last_action = initial.action_version
+            last_action = -1
             reload_robot: str | None = None
 
             with mujoco.viewer.launch_passive(
                 controller.model,
                 controller.data,
-                show_left_ui=True,
-                show_right_ui=True,
+                show_left_ui=False,
+                show_right_ui=False,
             ) as viewer:
                 self._configure_camera(viewer, controller)
                 configure_mujoco_viewer()
@@ -220,12 +261,14 @@ class SimulationManager:
                         if state.motion_version != last_motion:
                             if state.manual_commanded:
                                 controller.set_motion(
-                                    state.vx, state.wz, state.speed
+                                    state.vx, state.wz, state.speed, vy=state.vy
                                 )
                             last_motion = state.motion_version
                         for _ in range(physics_steps):
                             controller.step()
 
+                    if selected in {"go2", "turtlebot3"}:
+                        viewer.cam.lookat[:] = controller.data.qpos[:3]
                     viewer.sync()
                     delay = frame_period - (time.monotonic() - started)
                     if delay > 0:

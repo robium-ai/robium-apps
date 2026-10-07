@@ -10,6 +10,7 @@ dependencies = [
     "mujoco==3.14.0",
     "mujoco-menagerie==2026.9.0",
     "numpy>=2.3,<3",
+    "torch>=2.6,<3",
     "pywebview>=6.2.1",
     "pywebview[qt]>=6.2.1; sys_platform == 'linux'",
     "python-xlib>=0.33; sys_platform == 'linux'",

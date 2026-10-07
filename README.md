@@ -39,16 +39,16 @@ npx robium-ai doctor
 ```
 
 For the quickest first run, try three interactive MuJoCo robots from any
-directory. It needs no Docker, GPU, model checkpoint, or API key:
+directory. It needs no Docker, GPU, or API key:
 
 ```bash
 npx robium-ai app doctor robot-zoo
 npx robium-ai app run robot-zoo
 ```
 
-The first run builds its pinned environment and downloads the three robot
-models. You should see MuJoCo's standard viewer on the left and a compact
-native controller on the right—no browser window opens.
+The first run builds its pinned environment and downloads the Panda/Go2 models
+and Go2's pretrained walking policy; TurtleBot3's model is bundled. MuJoCo opens
+with a compact floating joystick controller—no browser window opens.
 
 Prefer to work through your coding agent? Restart it after setup and paste:
 

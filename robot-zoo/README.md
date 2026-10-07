@@ -1,29 +1,41 @@
 # Robot Zoo
 
-Try three robots in MuJoCo from a small native controller—no ROS, Docker,
-GPU, model checkpoint, account, API key, browser window, or MuJoCo fork.
+Control a Franka Panda, TurtleBot3 Burger, or Unitree Go2 from a floating
+native joystick controller window while MuJoCo's standard native viewer handles
+simulation, rendering, camera interaction, and its full left/right diagnostic
+panels.
 
-![Robot Zoo running with the MuJoCo viewer and native controller side by side](assets/stills/robot-zoo-macos.png)
+This runs locally without ROS, Docker, a GPU, an account, or API keys. Go2
+walking uses a pinned, checksum-verified pretrained policy on CPU (5.2 MB).
 
-## What opens
+![Compact joystick controller](assets/controller-gamepad.jpg)
 
-`./app run` opens two native windows side by side:
+## Quick start
 
-1. **MuJoCo's standard viewer** with its camera controls, body interaction,
-   rendering options, joints, actuators, and other diagnostic panels.
-2. **Robot Zoo Controller**, a compact native window for selecting and moving
-   a Franka Panda, Hello Robot Stretch 3, or Unitree Go2.
+```bash
+./app doctor
+./app build
+./app run
+```
 
-The controller uses a local Gradio page inside pywebview. It does not open a
-browser or replace MuJoCo's viewer. Rendering and Joint are the only MuJoCo
-sections expanded initially; every standard section remains available.
+The first build installs the locked Python environment and downloads the two
+pinned MuJoCo Menagerie model packages and the Go2 policy. TurtleBot3 is bundled. Later runs use the local uv and
+Menagerie caches.
+
+`./app run` opens two surfaces:
+
+1. A wide floating controller with two large joysticks and a central Stop button.
+2. MuJoCo's native viewer with a clear simulation viewport and mouse interaction.
+
+The controller content is built with Gradio and hosted locally, but pywebview
+embeds it in a native window. No browser or browser chrome is opened.
 
 ## Prerequisites
 
 - macOS, or Ubuntu 24.04 x86_64 in an X11/XWayland desktop session
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Network access for the first build, which downloads locked Python packages
-  and the three pinned MuJoCo Menagerie models
+  the Panda/Go2 models, and the Go2 walking policy
 
 Ubuntu desktop installations normally provide the native libraries used by Qt
 WebEngine. A minimal Ubuntu installation may need:
@@ -42,116 +54,133 @@ Check the host without installing anything:
 ./app doctor
 ```
 
-The qualified Linux layout is captured in
-[robot-zoo-linux.png](assets/stills/robot-zoo-linux.png).
+The earlier Linux layout is captured in
+[robot-zoo-linux.png](assets/stills/robot-zoo-linux.png). The new floating layout
+and locomotion changes are verified on macOS; Linux requalification is pending.
 
-## Quick start
 
-From this directory:
+## Controller
 
-```bash
-./app build
-./app run
-```
+Drag the circular sticks; release to stop. The left stick moves, while the right
+stick turns Go2 or TurtleBot3. Right-stick up/down is unassigned. Sticks support
+mouse, simultaneous touch, keyboard, and standard-mapped gamepads.
 
-The first command prepares the locked environment and caches the robot models.
-Later runs reuse the local uv and Menagerie caches.
+| Gamepad / screen input | Go2 action | Keyboard |
+| --- | --- | --- |
+| Left stick up/down | Forward/backward | W / S |
+| Left stick left/right | Strafe left/right | A / D |
+| Right stick left/right | Turn left/right | Q / E |
+| Right stick up/down | Unassigned | — |
+| D-pad | Slow forward/backward/strafe | Arrow keys (normal speed) |
+| A | Stand / walking-ready | — |
+| B | Stop | Space |
+| X / Y | Low / high profile | F / R |
 
-With Robium installed, the same path works from any directory:
+Connect a gamepad by USB or an existing Bluetooth pairing, press a controller
+button so the browser can discover it, then click **Enable gamepad**. Center
+both sticks and release buttons to enable movement. Keep the controller window
+focused. Physical gamepad hardware still needs a hands-on check; if the native
+webview cannot map it, open the printed local controller URL in Chrome.
 
-```bash
-npx robium-ai app check robot-zoo
-npx robium-ai app run robot-zoo
-```
+The speed multiplier is fixed at 1× in the controller; stick deflection controls
+movement intensity, and the D-pad uses 35% deflection. Stop,
+release, focus loss, disconnect, and a 500 ms input timeout zero movement.
+**Reset robot** restores the initial pose. **Robot + Load** switches the model.
 
-You should see the Panda moving automatically, with MuJoCo on the left and the
-controller on the right. Closing either window stops the complete application.
+### Robot behavior
 
-## Select and control a robot
+- **Franka Panda:** left stick moves the Cartesian end-effector target in XY.
+  Actions raise/lower the target or open/close the gripper.
+- **TurtleBot3 Burger:** left stick drives forward/backward; right stick turns.
+  W/S drives and A/D or Q/E turns; the D-pad drives/turns slowly. No strafing
+  or posture actions. B/Space/Stop stops; Reset restores the starting pose.
+- **Unitree Go2:** a published MoE/CTS policy drives real contact-based walking,
+  strafing and turning in MuJoCo. Low/high are stationary poses: selecting one
+  stops motion, and moving again returns to the policy's walking height.
+  Variable-height walking is not supported by this checkpoint.
 
-| Control | Result |
-| --- | --- |
-| Robot + **Load** | Safely close the current viewer, load the selected model, and reopen MuJoCo |
-| `↑` / `↓` | Move forward/back or adjust the robot-specific target |
-| `←` / `→` | Turn, sway, or move the end-effector sideways |
-| **Stop** | Zero the persistent movement command and hold |
-| Speed | Scale current and future movement commands |
-| Action + **Run action** | Run a robot-specific action |
-| **Reset robot** | Return to the default automatic demo |
+See [Go2 controller sources and details](docs/go2-controller.md) for the upstream
+API research, exact checkpoint, model settings, mappings, and validation.
 
-- **Franka Panda:** arrows move the Cartesian end-effector target in the XY
-  plane. Actions raise/lower the target or open/close the gripper.
-- **Stretch 3:** arrows command base velocity. Actions move the lift or arm.
-- **Unitree Go2:** arrows adjust stand/crouch and lateral posture. Actions set
-  Stand or Sit. This is posture control, not a locomotion-policy claim.
+## Native MuJoCo interaction
 
-Movement continues until **Stop** is pressed. Controller callbacks only send
-commands through the local bridge; they never manipulate `MjModel` or `MjData`.
+Both native panels start hidden to leave more room for the simulation.
+With the MuJoCo window focused, `Tab` toggles the left configuration panel and
+`Shift+Tab` toggles the right joint/control panel. Every standard section
+remains available when needed.
 
-## Use MuJoCo's mouse controls
+The controller opens as a movable 560 × 440 window over the simulator, with
+136-pixel sticks (larger when the window is widened) and the A/B/X/Y action row. **Pinned** keeps it above other
+windows; click it to toggle **Pin on top**. Resize or move it using the native
+window frame. Its geometry is saved in `~/.config/robot-zoo/window.json` and
+restored within the current display bounds. MuJoCo uses the display independently.
+**More · actions & controls** contains robot-specific actions and the control guide.
 
-- Drag in empty space to rotate or pan the camera; scroll to zoom.
-- Double-click a body to select it.
-- Ctrl-drag rotates the selected body.
-- Ctrl-right-drag translates the selected body.
-- Press `F1` for MuJoCo's complete built-in help.
+- Drag to rotate or pan the camera; scroll to zoom.
+- Double-click a body, then Ctrl-drag to apply a perturbation.
+- `F1` opens MuJoCo's built-in help.
+- The native actuator panel remains available for inspection.
 
-The native actuator and visualization panels remain available for inspection.
+The simulation loop owns `mj_step()` and calls `viewer.sync()`. Robot switching
+never replaces model/data underneath a live viewer: the manager closes the
+current viewer, creates new `MjModel`/`MjData`, then opens a new passive viewer.
 
-## More commands
+## Commands
 
 | Command | Purpose |
 | --- | --- |
-| `./app doctor` | Diagnose host, display, and installed-environment prerequisites |
-| `./app run --robot stretch` | Start with Stretch 3 |
-| `./app run --robot go2` | Start with Unitree Go2 |
-| `./app viewer --robot panda` | Open only MuJoCo's standard viewer |
-| `./app check` | Run bounded headless physics checks for all three robots |
-| `./app smoke` | Test the launcher, UI contract, controllers, and models |
+| `./app build` | Resolve the uv environment and cache all robot models |
+| `./app run` | Open the native controller and Panda in MuJoCo |
+| `./app run --robot turtlebot3` | Start the controller and TurtleBot3 Burger |
+| `./app run --robot go2` | Start the controller and Go2 |
+| `./app viewer --robot panda` | Open only the full native MuJoCo viewer |
+| `./app check` | Run bounded headless physics checks |
+| `./app smoke` | Check the launcher, UI contract, controllers, and models |
 
-## Troubleshooting and cleanup
+## Model provenance
 
-- **`uv` is missing:** install uv, then rerun `./app doctor`.
-- **No Linux display:** run in a graphical X11 session or enable XWayland so
-  `DISPLAY` is set. Remote headless shells cannot open the native windows.
-- **A first build takes longer:** package and model downloads happen only on
-  the first clean build.
-- **A window closed unexpectedly:** close the other window and run
-  `./app run` again. Robot switching should be done with **Load**.
-- **Reset local dependencies:** remove `.venv`, then rerun `./app build`.
-
-The app binds its authenticated command bridge and embedded controller server
-only to `127.0.0.1`; sharing is disabled.
-
-## Model sources and licenses
-
-Models come from the pinned `mujoco-menagerie==2026.9.0` package and remain
-under their upstream licenses:
+Panda and Go2 are downloaded through the pinned `mujoco-menagerie==2026.9.0`
+package and remain under their upstream licenses:
 
 - Franka Emika Panda — Apache-2.0
-- Hello Robot Stretch 3 — Apache-2.0
 - Unitree Go2 — BSD-3-Clause
 
-Robot Zoo does not copy or modify those model packages. See
-[MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie) for the
-model documentation, revisions, and license texts.
+See [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie)
+for those models' documentation, revisions, and licenses.
 
-## Architecture boundary
+TurtleBot3 Burger comes from the manufacturer's
+[ROBOTIS MuJoCo repository](https://github.com/ROBOTIS-GIT/robotis_mujoco_menagerie/tree/d8344c0dbe7a00208d0301111523dde65efc174a/robotis_tb3),
+revision `d8344c0dbe7a00208d0301111523dde65efc174a`, Apache-2.0.
+The original scene, robot XML, four required meshes, and license are bundled in
+`src/robot_zoo/models/turtlebot3_burger/`; `SOURCE.json` records their SHA-256 hashes.
+The model files are unmodified. No ROS or Gazebo conversion is involved.
+
+The Burger controller uses the model's 0.033 m wheel radius, 0.160 m wheel
+separation, and named wheel velocity actuators. Body commands convert to
+wheel rates `(v - ωL/2)/r` and `(v + ωL/2)/r`. The app requests up to 0.22 m/s
+and 1.5 rad/s; both rates scale together at the model's ±6.67 rad/s actuator
+limits. These are commanded speeds: simulated contact and friction affect
+measured travel. Physics tests check actual forward/reverse displacement,
+left/right yaw, uprightness, stopping, and reset.
+
+## Current boundary
+
+The embedded controller server is local-only at `127.0.0.1`; sharing is
+disabled. The native controller and MuJoCo run as two small processes because
+both Cocoa/WebKit and MuJoCo require a main-thread UI loop. A local authenticated
+command bridge keeps Gradio decoupled from `MjModel` and `MjData`:
 
 ```text
-Native controller (Gradio in pywebview)
-                    ↓
-          authenticated local bridge
-                    ↓
-            SimulationManager
-                    ↓
-           robot controller
-                    ↓
-          MuJoCo native viewer
+Native window (Gradio/WebKit)
+            ↓
+       command bridge
+            ↓
+    SimulationManager
+            ↓
+     robot controller
+            ↓
+   MuJoCo native viewer
 ```
 
-The simulation loop alone owns `mj_step()` and `viewer.sync()`. Switching a
-robot closes the active viewer, creates new model/data, and opens a fresh
-viewer rather than hot-swapping state underneath a live window. See the
-[architecture brief](docs/architecture-brief.md) for the design and evidence
-boundary.
+The Go2 camera follows its base as it walks. Hardware control, obstacle courses,
+and variable-height walking remain outside this local simulation example.

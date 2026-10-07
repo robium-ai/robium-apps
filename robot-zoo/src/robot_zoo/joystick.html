@@ -1,0 +1,27 @@
+<section class="pilot" aria-label="Joystick controls">
+  <div class="pilot-heading">
+    <p class="motion-status" role="status" aria-live="polite">Ready · sticks centered</p>
+    <div class="pad-row"><span class="connection-dot"></span><span class="pad-status">Connect gamepad · press a button</span><button class="pad-toggle">Enable gamepad</button></div>
+  </div>
+  <div class="sticks">
+    <div class="stick-column"><div class="stick-heading"><strong class="left-title">Move / strafe</strong><small class="left-hint">W A S D</small></div>
+      <div class="stick" data-stick="move" tabindex="0" role="group" aria-label="Move joystick. W S forward backward, A D strafe.">
+        <span class="north">▴ &nbsp; Forward</span><span class="south">▾ &nbsp; Back</span>
+        <span class="west">‹</span><span class="east">›</span><span class="knob"></span>
+      </div>
+    </div>
+    <div class="stop-column"><button class="central-stop" data-action="Stop" aria-label="Stop movement"><span class="stop-square"></span></button><strong>STOP</strong><small>Space</small></div>
+    <div class="stick-column"><div class="stick-heading"><strong>Turn</strong><small>Q E</small></div>
+      <div class="stick" data-stick="turn" tabindex="0" role="group" aria-label="Turn joystick. Q E turn left and right.">
+        <span class="west">↶</span><span class="east">↷</span><span class="knob"></span>
+      </div>
+    </div>
+  </div>
+  <div class="pose-actions">
+    <button data-action="Stand"><b class="badge a">A</b>Stand</button>
+    <button data-action="Stop"><b class="badge b">B</b>Stop</button>
+    <button data-action="Low profile"><b class="badge x">X</b>Low</button>
+    <button data-action="High profile"><b class="badge y">Y</b>High</button>
+  </div>
+  <div class="pilot-notes"><span>Release to stop · D-pad: slow movement</span><span class="profile-note">Low / high posture is stationary</span></div>
+</section>

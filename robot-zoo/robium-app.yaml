@@ -1,11 +1,11 @@
 schema_version: "1"
 id: robot-zoo
 name: Robot Zoo
-summary: Try a Panda, Stretch 3, and Go2 from a compact native controller beside MuJoCo's standard viewer.
+summary: Drive TurtleBot3, walk Go2, and move Panda with a floating joystick controller.
 version: 1.0.0
 status: experimental
 license: MIT
-tags: [mujoco, simulation, manipulation, mobile-manipulation, quadruped, interactive, native-ui]
+tags: [mujoco, simulation, manipulation, differential-drive, quadruped, interactive, native-ui]
 
 runtime:
   kind: uv
@@ -26,7 +26,7 @@ verbs:
     summary: Prepare the locked uv environment and robot models
   run:
     command: ./app run
-    summary: Open the controller beside MuJoCo's standard viewer
+    summary: Open the floating controller over MuJoCo's standard viewer
   smoke:
     command: ./app smoke
     summary: Test the launcher, controllers, models, and physics
@@ -35,9 +35,9 @@ modes:
   panda:
     command: ./app run --robot panda
     summary: Open the Franka Panda arm
-  stretch:
-    command: ./app run --robot stretch
-    summary: Open the Stretch 3 mobile manipulator
+  turtlebot3:
+    command: ./app run --robot turtlebot3
+    summary: Open the TurtleBot3 Burger differential-drive robot
   go2:
     command: ./app run --robot go2
     summary: Open the Unitree Go2 quadruped

@@ -53,21 +53,22 @@ def check_models(seconds: float = 3.0) -> int:
         raise RuntimeError(f"Panda hand barely moved: {hand_distance:.4f} m")
     results.append(f"Panda hand moved {hand_distance:.3f} m")
 
-    stretch = create_controller("stretch")
-    lift_id = stretch.model.joint("joint_lift").qposadr[0]
-    lift_samples: list[float] = []
-    for step in range(math.ceil(seconds / stretch.model.opt.timestep)):
-        stretch.step()
-        if step % 50 == 0:
-            lift_samples.append(float(stretch.data.qpos[lift_id]))
-    lift_span = max(lift_samples) - min(lift_samples)
-    if lift_span < 0.04:
-        raise RuntimeError(f"Stretch lift barely moved: {lift_span:.4f} m")
-    if not np.isfinite(stretch.data.qpos).all():
-        raise RuntimeError("Stretch state contains non-finite values")
-    results.append(f"Stretch lift moved through {lift_span:.3f} m")
+    turtlebot = create_controller("turtlebot3")
+    turtlebot.set_motion(1., 0., 1.)
+    for _ in range(math.ceil(seconds / turtlebot.model.opt.timestep)):
+        turtlebot.step()
+    travel = float(turtlebot.data.qpos[0])
+    if travel < .1 or not np.isfinite(turtlebot.data.qpos).all():
+        raise RuntimeError(f"TurtleBot3 failed to drive forward: {travel:.3f} m")
+    turtlebot.stop()
+    for _ in range(round(1 / turtlebot.model.opt.timestep)):
+        turtlebot.step()
+    if np.linalg.norm(turtlebot.data.qvel[:6]) > .02:
+        raise RuntimeError("TurtleBot3 did not settle after Stop")
+    results.append(f"TurtleBot3 drove {travel:.3f} m and stopped")
 
     go2 = create_controller("go2")
+    go2.set_motion(1., 0., .7, vy=.5)
     for _ in range(math.ceil(max(seconds, 5.0) / go2.model.opt.timestep)):
         go2.step()
     base_height = float(go2.data.qpos[2])
@@ -78,7 +79,15 @@ def check_models(seconds: float = 3.0) -> int:
         )
     if not np.isfinite(go2.data.qpos).all() or not np.isfinite(go2.data.ctrl).all():
         raise RuntimeError("Go2 state or controls contain non-finite values")
-    results.append(f"Go2 held posture at z={base_height:.3f} m")
+    travel = float(np.linalg.norm(go2.data.qpos[:2]))
+    if travel < .5:
+        raise RuntimeError(f"Go2 barely moved: {travel:.3f} m")
+    go2.stop()
+    for _ in range(round(2.5 / go2.model.opt.timestep)):
+        go2.step()
+    if np.linalg.norm(go2.data.qvel[:3]) > .10:
+        raise RuntimeError("Go2 did not settle after Stop")
+    results.append(f"Go2 walked {travel:.3f} m, stayed upright, and stopped")
 
     for result in results:
         print(f"ok: {result}")
@@ -111,7 +120,7 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument("--seconds", type=float, default=3.0)
     check.set_defaults(func=lambda args: check_models(args.seconds))
 
-    prefetch = sub.add_parser("prefetch", help="Cache the three Menagerie models")
+    prefetch = sub.add_parser("prefetch", help="Cache and compile the robot models")
     prefetch.set_defaults(func=lambda _args: prefetch_models() or 0)
 
     worker = sub.add_parser("worker", help=argparse.SUPPRESS)
